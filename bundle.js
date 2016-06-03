@@ -102095,7 +102095,8 @@ var ImageGrid = function (_React$Component) {
 
       var columnsCount = Math.floor(containerWidth / thumbSize);
       var image = images[rowIndex * columnsCount + columnIndex];
-      var url = image && image.url;
+      if (!image) return;
+      var url = image.url;
       return React.createElement(Image, { url: url, key: url, onClick: _this.handleImageClick.bind(_this, image.featureId) });
     }, _temp), _possibleConstructorReturn(_this, _ret);
   }
@@ -102673,7 +102674,7 @@ require('../../css/fonts.css');
 
 // Attach Chrome devTools extensions if it is present.
 var devTools = window.devToolsExtension ? window.devToolsExtension() : undefined;
-var storeEnhancer = compose(devTools, applyMiddleware(thunk));
+var storeEnhancer = devTools ? compose(devTools, applyMiddleware(thunk)) : applyMiddleware(thunk);
 var store = createStore(reducers, storeEnhancer);
 
 var App = function App() {
