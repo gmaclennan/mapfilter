@@ -394,7 +394,7 @@ var objectKeys = Object.keys || function (obj) {
   return keys;
 };
 
-},{"util/":825}],5:[function(require,module,exports){
+},{"util/":874}],5:[function(require,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -2595,7 +2595,7 @@ function isnan (val) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"base64-js":9,"ieee754":106,"isarray":10}],9:[function(require,module,exports){
+},{"base64-js":9,"ieee754":109,"isarray":10}],9:[function(require,module,exports){
 'use strict'
 
 exports.toByteArray = toByteArray
@@ -3334,7 +3334,7 @@ function coerce(val) {
   return val;
 }
 
-},{"ms":562}],15:[function(require,module,exports){
+},{"ms":561}],15:[function(require,module,exports){
 var pSlice = Array.prototype.slice;
 var objectKeys = require('./lib/keys.js');
 var isArguments = require('./lib/is_arguments.js');
@@ -3464,6 +3464,35 @@ function shim (obj) {
 }
 
 },{}],18:[function(require,module,exports){
+'use strict';
+module.exports = !!(typeof window !== 'undefined' && window.document && window.document.createElement);
+},{}],19:[function(require,module,exports){
+'use strict';
+
+var canUseDOM = require('./inDOM');
+
+var size;
+
+module.exports = function (recalc) {
+  if (!size || recalc) {
+    if (canUseDOM) {
+      var scrollDiv = document.createElement('div');
+
+      scrollDiv.style.position = 'absolute';
+      scrollDiv.style.top = '-9999px';
+      scrollDiv.style.width = '50px';
+      scrollDiv.style.height = '50px';
+      scrollDiv.style.overflow = 'scroll';
+
+      document.body.appendChild(scrollDiv);
+      size = scrollDiv.offsetWidth - scrollDiv.clientWidth;
+      document.body.removeChild(scrollDiv);
+    }
+  }
+
+  return size;
+};
+},{"./inDOM":18}],20:[function(require,module,exports){
 'use strict';
 
 module.exports = earcut;
@@ -4109,7 +4138,7 @@ earcut.flatten = function (data) {
     return result;
 };
 
-},{}],19:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 module.exports = function(opts) {
   return new ElementClass(opts)
 }
@@ -4170,7 +4199,88 @@ ElementClass.prototype.toggle = function(className) {
   else this.add(className)
 }
 
-},{}],20:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
+var exports = function exports(element, fn) {
+  var window = this
+  var document = window.document
+  var isIE
+  var requestFrame
+
+  var attachEvent = document.attachEvent
+  if (typeof navigator !== 'undefined') {
+    isIE = navigator.userAgent.match(/Trident/) || navigator.userAgent.match(/Edge/)
+  }
+
+  requestFrame = (function () {
+    var raf = window.requestAnimationFrame ||
+      window.mozRequestAnimationFrame ||
+        window.webkitRequestAnimationFrame ||
+          function fallbackRAF(func) {
+            return window.setTimeout(func, 20)
+          }
+    return function requestFrameFunction(func) {
+      return raf(func)
+    }
+  })()
+
+  var cancelFrame = (function () {
+    var cancel = window.cancelAnimationFrame ||
+      window.mozCancelAnimationFrame ||
+        window.webkitCancelAnimationFrame ||
+          window.clearTimeout
+    return function cancelFrameFunction(id) {
+      return cancel(id)
+    }
+  })()
+
+  function resizeListener(e) {
+    var win = e.target || e.srcElement
+    if (win.__resizeRAF__) {
+      cancelFrame(win.__resizeRAF__)
+    }
+    win.__resizeRAF__ = requestFrame(function () {
+      var trigger = win.__resizeTrigger__
+      trigger.__resizeListeners__.forEach(function (fn) {
+        fn.call(trigger, e)
+      })
+    })
+  }
+
+  function objectLoad() {
+    this.contentDocument.defaultView.__resizeTrigger__ = this.__resizeElement__
+    this.contentDocument.defaultView.addEventListener('resize', resizeListener)
+  }
+
+  if (!element.__resizeListeners__) {
+    element.__resizeListeners__ = []
+    if (attachEvent) {
+      element.__resizeTrigger__ = element
+      element.attachEvent('onresize', resizeListener)
+    } else {
+      if (getComputedStyle(element).position === 'static') {
+        element.style.position = 'relative'
+      }
+      var obj = element.__resizeTrigger__ = document.createElement('object')
+      obj.setAttribute('style', 'display: block; position: absolute; top: 0; left: 0; height: 100%; width: 100%; overflow: hidden; pointer-events: none; z-index: -1;')
+      obj.setAttribute('class', 'resize-sensor')
+      obj.__resizeElement__ = element
+      obj.onload = objectLoad
+      obj.type = 'text/html'
+      if (isIE) {
+        element.appendChild(obj)
+      }
+      obj.data = 'about:blank'
+      if (!isIE) {
+        element.appendChild(obj)
+      }
+    }
+  }
+  element.__resizeListeners__.push(fn)
+}
+
+module.exports = (typeof window === 'undefined') ? exports : exports.bind(window)
+
+},{}],23:[function(require,module,exports){
 /*!
   Copyright (c) 2015 Jed Watson.
   Based on code that is Copyright 2013-2015, Facebook, Inc.
@@ -4211,7 +4321,7 @@ ElementClass.prototype.toggle = function(className) {
 
 }());
 
-},{}],21:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4247,18 +4357,18 @@ var EventListener = {
    * @param {function} callback Callback function.
    * @return {object} Object with a `remove` method.
    */
-  listen: function (target, eventType, callback) {
+  listen: function listen(target, eventType, callback) {
     if (target.addEventListener) {
       target.addEventListener(eventType, callback, false);
       return {
-        remove: function () {
+        remove: function remove() {
           target.removeEventListener(eventType, callback, false);
         }
       };
     } else if (target.attachEvent) {
       target.attachEvent('on' + eventType, callback);
       return {
-        remove: function () {
+        remove: function remove() {
           target.detachEvent('on' + eventType, callback);
         }
       };
@@ -4273,11 +4383,11 @@ var EventListener = {
    * @param {function} callback Callback function.
    * @return {object} Object with a `remove` method.
    */
-  capture: function (target, eventType, callback) {
+  capture: function capture(target, eventType, callback) {
     if (target.addEventListener) {
       target.addEventListener(eventType, callback, true);
       return {
-        remove: function () {
+        remove: function remove() {
           target.removeEventListener(eventType, callback, true);
         }
       };
@@ -4291,11 +4401,11 @@ var EventListener = {
     }
   },
 
-  registerDefault: function () {}
+  registerDefault: function registerDefault() {}
 };
 
 module.exports = EventListener;
-},{"./emptyFunction":28}],22:[function(require,module,exports){
+},{"./emptyFunction":31}],25:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -4331,7 +4441,7 @@ var ExecutionEnvironment = {
 };
 
 module.exports = ExecutionEnvironment;
-},{}],23:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 "use strict";
 
 /**
@@ -4363,7 +4473,7 @@ function camelize(string) {
 }
 
 module.exports = camelize;
-},{}],24:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -4403,7 +4513,7 @@ function camelizeStyleName(string) {
 }
 
 module.exports = camelizeStyleName;
-},{"./camelize":23}],25:[function(require,module,exports){
+},{"./camelize":26}],28:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4414,7 +4524,7 @@ module.exports = camelizeStyleName;
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @typechecks
+ * 
  */
 
 var isTextNode = require('./isTextNode');
@@ -4423,10 +4533,6 @@ var isTextNode = require('./isTextNode');
 
 /**
  * Checks if a given DOM node contains or is another DOM node.
- *
- * @param {?DOMNode} outerNode Outer DOM node.
- * @param {?DOMNode} innerNode Inner DOM node.
- * @return {boolean} True if `outerNode` contains or is `innerNode`.
  */
 function containsNode(outerNode, innerNode) {
   if (!outerNode || !innerNode) {
@@ -4437,7 +4543,7 @@ function containsNode(outerNode, innerNode) {
     return false;
   } else if (isTextNode(innerNode)) {
     return containsNode(outerNode, innerNode.parentNode);
-  } else if (outerNode.contains) {
+  } else if ('contains' in outerNode) {
     return outerNode.contains(innerNode);
   } else if (outerNode.compareDocumentPosition) {
     return !!(outerNode.compareDocumentPosition(innerNode) & 16);
@@ -4447,7 +4553,7 @@ function containsNode(outerNode, innerNode) {
 }
 
 module.exports = containsNode;
-},{"./isTextNode":38}],26:[function(require,module,exports){
+},{"./isTextNode":41}],29:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4574,7 +4680,7 @@ function createArrayFromMixed(obj) {
 }
 
 module.exports = createArrayFromMixed;
-},{"./invariant":36}],27:[function(require,module,exports){
+},{"./invariant":39}],30:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4658,7 +4764,7 @@ function createNodesFromMarkup(markup, handleScript) {
 }
 
 module.exports = createNodesFromMarkup;
-},{"./ExecutionEnvironment":22,"./createArrayFromMixed":26,"./getMarkupWrap":32,"./invariant":36}],28:[function(require,module,exports){
+},{"./ExecutionEnvironment":25,"./createArrayFromMixed":29,"./getMarkupWrap":35,"./invariant":39}],31:[function(require,module,exports){
 "use strict";
 
 /**
@@ -4669,6 +4775,7 @@ module.exports = createNodesFromMarkup;
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
+ * 
  */
 
 function makeEmptyFunction(arg) {
@@ -4682,7 +4789,7 @@ function makeEmptyFunction(arg) {
  * primarily useful idiomatically for overridable function endpoints which
  * always need to be callable, since JS lacks a null-call idiom ala Cocoa.
  */
-function emptyFunction() {}
+var emptyFunction = function emptyFunction() {};
 
 emptyFunction.thatReturns = makeEmptyFunction;
 emptyFunction.thatReturnsFalse = makeEmptyFunction(false);
@@ -4696,7 +4803,7 @@ emptyFunction.thatReturnsArgument = function (arg) {
 };
 
 module.exports = emptyFunction;
-},{}],29:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -4716,7 +4823,7 @@ if ("production" !== 'production') {
 }
 
 module.exports = emptyObject;
-},{}],30:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -4743,7 +4850,7 @@ function focusNode(node) {
 }
 
 module.exports = focusNode;
-},{}],31:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4778,7 +4885,7 @@ function getActiveElement() /*?DOMElement*/{
 }
 
 module.exports = getActiveElement;
-},{}],32:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4873,7 +4980,7 @@ function getMarkupWrap(nodeName) {
 }
 
 module.exports = getMarkupWrap;
-},{"./ExecutionEnvironment":22,"./invariant":36}],33:[function(require,module,exports){
+},{"./ExecutionEnvironment":25,"./invariant":39}],36:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -4912,7 +5019,7 @@ function getUnboundedScrollPosition(scrollable) {
 }
 
 module.exports = getUnboundedScrollPosition;
-},{}],34:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 'use strict';
 
 /**
@@ -4945,7 +5052,7 @@ function hyphenate(string) {
 }
 
 module.exports = hyphenate;
-},{}],35:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -4984,7 +5091,7 @@ function hyphenateStyleName(string) {
 }
 
 module.exports = hyphenateStyleName;
-},{"./hyphenate":34}],36:[function(require,module,exports){
+},{"./hyphenate":37}],39:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -5034,7 +5141,7 @@ function invariant(condition, format, a, b, c, d, e, f) {
 }
 
 module.exports = invariant;
-},{}],37:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 'use strict';
 
 /**
@@ -5057,7 +5164,7 @@ function isNode(object) {
 }
 
 module.exports = isNode;
-},{}],38:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 'use strict';
 
 /**
@@ -5082,7 +5189,7 @@ function isTextNode(object) {
 }
 
 module.exports = isTextNode;
-},{"./isNode":37}],39:[function(require,module,exports){
+},{"./isNode":40}],42:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -5116,7 +5223,7 @@ var invariant = require('./invariant');
  * @param {object} obj
  * @return {object}
  */
-var keyMirror = function (obj) {
+var keyMirror = function keyMirror(obj) {
   var ret = {};
   var key;
   !(obj instanceof Object && !Array.isArray(obj)) ? "production" !== 'production' ? invariant(false, 'keyMirror(...): Argument must be an object.') : invariant(false) : void 0;
@@ -5130,7 +5237,7 @@ var keyMirror = function (obj) {
 };
 
 module.exports = keyMirror;
-},{"./invariant":36}],40:[function(require,module,exports){
+},{"./invariant":39}],43:[function(require,module,exports){
 "use strict";
 
 /**
@@ -5153,7 +5260,7 @@ module.exports = keyMirror;
  * 'xa12' in that case. Resolve keys you want to use once at startup time, then
  * reuse those resolutions.
  */
-var keyOf = function (oneKeyObj) {
+var keyOf = function keyOf(oneKeyObj) {
   var key;
   for (key in oneKeyObj) {
     if (!oneKeyObj.hasOwnProperty(key)) {
@@ -5165,7 +5272,7 @@ var keyOf = function (oneKeyObj) {
 };
 
 module.exports = keyOf;
-},{}],41:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -5216,7 +5323,7 @@ function mapObject(object, callback, context) {
 }
 
 module.exports = mapObject;
-},{}],42:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -5225,6 +5332,7 @@ module.exports = mapObject;
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
+ * 
  * @typechecks static-only
  */
 
@@ -5232,9 +5340,6 @@ module.exports = mapObject;
 
 /**
  * Memoizes the return value of a function that accepts one string argument.
- *
- * @param {function} callback
- * @return {function}
  */
 
 function memoizeStringOnly(callback) {
@@ -5248,7 +5353,7 @@ function memoizeStringOnly(callback) {
 }
 
 module.exports = memoizeStringOnly;
-},{}],43:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -5271,7 +5376,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = performance || {};
-},{"./ExecutionEnvironment":22}],44:[function(require,module,exports){
+},{"./ExecutionEnvironment":25}],47:[function(require,module,exports){
 'use strict';
 
 /**
@@ -5295,17 +5400,17 @@ var performanceNow;
  * because of Facebook's testing infrastructure.
  */
 if (performance.now) {
-  performanceNow = function () {
+  performanceNow = function performanceNow() {
     return performance.now();
   };
 } else {
-  performanceNow = function () {
+  performanceNow = function performanceNow() {
     return Date.now();
   };
 }
 
 module.exports = performanceNow;
-},{"./performance":43}],45:[function(require,module,exports){
+},{"./performance":46}],48:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -5372,7 +5477,7 @@ function shallowEqual(objA, objB) {
 }
 
 module.exports = shallowEqual;
-},{}],46:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -5397,7 +5502,7 @@ var emptyFunction = require('./emptyFunction');
 var warning = emptyFunction;
 
 if ("production" !== 'production') {
-  warning = function (condition, format) {
+  warning = function warning(condition, format) {
     for (var _len = arguments.length, args = Array(_len > 2 ? _len - 2 : 0), _key = 2; _key < _len; _key++) {
       args[_key - 2] = arguments[_key];
     }
@@ -5429,7 +5534,7 @@ if ("production" !== 'production') {
 }
 
 module.exports = warning;
-},{"./emptyFunction":28}],47:[function(require,module,exports){
+},{"./emptyFunction":31}],50:[function(require,module,exports){
 'use strict';
 
 module.exports = createFilter;
@@ -5511,7 +5616,7 @@ function compare(a, b) {
     return a < b ? -1 : a > b ? 1 : 0;
 }
 
-},{}],48:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 var isBuffer = require('is-buffer')
 
 var flat = module.exports = flatten
@@ -5622,7 +5727,7 @@ function unflatten(target, opts) {
   return result
 }
 
-},{"is-buffer":141}],49:[function(require,module,exports){
+},{"is-buffer":144}],52:[function(require,module,exports){
 var wgs84 = require('wgs84');
 
 module.exports.geometry = geometry;
@@ -5688,7 +5793,7 @@ function rad(_) {
     return _ * Math.PI / 180;
 }
 
-},{"wgs84":835}],50:[function(require,module,exports){
+},{"wgs84":884}],53:[function(require,module,exports){
 var geojsonArea = require('geojson-area');
 
 module.exports = rewind;
@@ -5739,7 +5844,7 @@ function cw(_) {
     return geojsonArea.ring(_) >= 0;
 }
 
-},{"geojson-area":49}],51:[function(require,module,exports){
+},{"geojson-area":52}],54:[function(require,module,exports){
 'use strict';
 
 module.exports = clip;
@@ -5892,7 +5997,7 @@ function newSlice(slices, slice, area, dist) {
     return [];
 }
 
-},{}],52:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 'use strict';
 
 module.exports = convert;
@@ -6038,7 +6143,7 @@ function calcRingBBox(min, max, points) {
     }
 }
 
-},{"./simplify":54}],53:[function(require,module,exports){
+},{"./simplify":57}],56:[function(require,module,exports){
 'use strict';
 
 module.exports = geojsonvt;
@@ -6280,7 +6385,7 @@ function isClippedSquare(tile, extent, buffer) {
     return true;
 }
 
-},{"./clip":51,"./convert":52,"./tile":55,"./transform":56,"./wrap":57}],54:[function(require,module,exports){
+},{"./clip":54,"./convert":55,"./tile":58,"./transform":59,"./wrap":60}],57:[function(require,module,exports){
 'use strict';
 
 module.exports = simplify;
@@ -6356,7 +6461,7 @@ function getSqSegDist(p, a, b) {
     return dx * dx + dy * dy;
 }
 
-},{}],55:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 'use strict';
 
 module.exports = createTile;
@@ -6443,7 +6548,7 @@ function addFeature(tile, feature, tolerance, noSimplify) {
     }
 }
 
-},{}],56:[function(require,module,exports){
+},{}],59:[function(require,module,exports){
 'use strict';
 
 exports.tile = transformTile;
@@ -6486,7 +6591,7 @@ function transformPoint(p, extent, z2, tx, ty) {
     return [x, y];
 }
 
-},{}],57:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 'use strict';
 
 var clip = require('./clip');
@@ -6549,7 +6654,7 @@ function shiftCoords(points, offset) {
     return newPoints;
 }
 
-},{"./clip":51}],58:[function(require,module,exports){
+},{"./clip":54}],61:[function(require,module,exports){
 /**
  * @fileoverview gl-matrix - High performance matrix and vector operations
  * @author Brandon Jones
@@ -6587,7 +6692,7 @@ exports.quat = require("./gl-matrix/quat.js");
 exports.vec2 = require("./gl-matrix/vec2.js");
 exports.vec3 = require("./gl-matrix/vec3.js");
 exports.vec4 = require("./gl-matrix/vec4.js");
-},{"./gl-matrix/common.js":59,"./gl-matrix/mat2.js":60,"./gl-matrix/mat2d.js":61,"./gl-matrix/mat3.js":62,"./gl-matrix/mat4.js":63,"./gl-matrix/quat.js":64,"./gl-matrix/vec2.js":65,"./gl-matrix/vec3.js":66,"./gl-matrix/vec4.js":67}],59:[function(require,module,exports){
+},{"./gl-matrix/common.js":62,"./gl-matrix/mat2.js":63,"./gl-matrix/mat2d.js":64,"./gl-matrix/mat3.js":65,"./gl-matrix/mat4.js":66,"./gl-matrix/quat.js":67,"./gl-matrix/vec2.js":68,"./gl-matrix/vec3.js":69,"./gl-matrix/vec4.js":70}],62:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -6659,7 +6764,7 @@ glMatrix.equals = function(a, b) {
 
 module.exports = glMatrix;
 
-},{}],60:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -7097,7 +7202,7 @@ mat2.multiplyScalarAndAdd = function(out, a, b, scale) {
 
 module.exports = mat2;
 
-},{"./common.js":59}],61:[function(require,module,exports){
+},{"./common.js":62}],64:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -7568,7 +7673,7 @@ mat2d.equals = function (a, b) {
 
 module.exports = mat2d;
 
-},{"./common.js":59}],62:[function(require,module,exports){
+},{"./common.js":62}],65:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -8316,7 +8421,7 @@ mat3.equals = function (a, b) {
 
 module.exports = mat3;
 
-},{"./common.js":59}],63:[function(require,module,exports){
+},{"./common.js":62}],66:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -10454,7 +10559,7 @@ mat4.equals = function (a, b) {
 
 module.exports = mat4;
 
-},{"./common.js":59}],64:[function(require,module,exports){
+},{"./common.js":62}],67:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -11056,7 +11161,7 @@ quat.equals = vec4.equals;
 
 module.exports = quat;
 
-},{"./common.js":59,"./mat3.js":62,"./vec3.js":66,"./vec4.js":67}],65:[function(require,module,exports){
+},{"./common.js":62,"./mat3.js":65,"./vec3.js":69,"./vec4.js":70}],68:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -11645,7 +11750,7 @@ vec2.equals = function (a, b) {
 
 module.exports = vec2;
 
-},{"./common.js":59}],66:[function(require,module,exports){
+},{"./common.js":62}],69:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -12424,7 +12529,7 @@ vec3.equals = function (a, b) {
 
 module.exports = vec3;
 
-},{"./common.js":59}],67:[function(require,module,exports){
+},{"./common.js":62}],70:[function(require,module,exports){
 /* Copyright (c) 2015, Brandon Jones, Colin MacKenzie IV.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -13035,7 +13140,7 @@ vec4.equals = function (a, b) {
 
 module.exports = vec4;
 
-},{"./common.js":59}],68:[function(require,module,exports){
+},{"./common.js":62}],71:[function(require,module,exports){
 'use strict';
 
 module.exports = GridIndex;
@@ -13194,7 +13299,7 @@ GridIndex.prototype.toArrayBuffer = function() {
     return array.buffer;
 };
 
-},{}],69:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13262,7 +13367,7 @@ exports['default'] = inst;
 module.exports = exports['default'];
 
 
-},{"./handlebars/base":70,"./handlebars/exception":73,"./handlebars/no-conflict":83,"./handlebars/runtime":84,"./handlebars/safe-string":85,"./handlebars/utils":86}],70:[function(require,module,exports){
+},{"./handlebars/base":73,"./handlebars/exception":76,"./handlebars/no-conflict":86,"./handlebars/runtime":87,"./handlebars/safe-string":88,"./handlebars/utils":89}],73:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13368,7 +13473,7 @@ exports.createFrame = _utils.createFrame;
 exports.logger = _logger2['default'];
 
 
-},{"./decorators":71,"./exception":73,"./helpers":74,"./logger":82,"./utils":86}],71:[function(require,module,exports){
+},{"./decorators":74,"./exception":76,"./helpers":77,"./logger":85,"./utils":89}],74:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13386,7 +13491,7 @@ function registerDefaultDecorators(instance) {
 }
 
 
-},{"./decorators/inline":72}],72:[function(require,module,exports){
+},{"./decorators/inline":75}],75:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13417,7 +13522,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../utils":86}],73:[function(require,module,exports){
+},{"../utils":89}],76:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13459,7 +13564,7 @@ exports['default'] = Exception;
 module.exports = exports['default'];
 
 
-},{}],74:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13507,7 +13612,7 @@ function registerDefaultHelpers(instance) {
 }
 
 
-},{"./helpers/block-helper-missing":75,"./helpers/each":76,"./helpers/helper-missing":77,"./helpers/if":78,"./helpers/log":79,"./helpers/lookup":80,"./helpers/with":81}],75:[function(require,module,exports){
+},{"./helpers/block-helper-missing":78,"./helpers/each":79,"./helpers/helper-missing":80,"./helpers/if":81,"./helpers/log":82,"./helpers/lookup":83,"./helpers/with":84}],78:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13548,7 +13653,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../utils":86}],76:[function(require,module,exports){
+},{"../utils":89}],79:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13644,7 +13749,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../exception":73,"../utils":86}],77:[function(require,module,exports){
+},{"../exception":76,"../utils":89}],80:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13671,7 +13776,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../exception":73}],78:[function(require,module,exports){
+},{"../exception":76}],81:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13702,7 +13807,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../utils":86}],79:[function(require,module,exports){
+},{"../utils":89}],82:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13730,7 +13835,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{}],80:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13744,7 +13849,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{}],81:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13779,7 +13884,7 @@ exports['default'] = function (instance) {
 module.exports = exports['default'];
 
 
-},{"../utils":86}],82:[function(require,module,exports){
+},{"../utils":89}],85:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13828,7 +13933,7 @@ exports['default'] = logger;
 module.exports = exports['default'];
 
 
-},{"./utils":86}],83:[function(require,module,exports){
+},{"./utils":89}],86:[function(require,module,exports){
 (function (global){
 /* global window */
 'use strict';
@@ -13852,7 +13957,7 @@ module.exports = exports['default'];
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],84:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14146,7 +14251,7 @@ function executeDecorators(fn, prog, container, depths, data, blockParams) {
 }
 
 
-},{"./base":70,"./exception":73,"./utils":86}],85:[function(require,module,exports){
+},{"./base":73,"./exception":76,"./utils":89}],88:[function(require,module,exports){
 // Build out our basic SafeString type
 'use strict';
 
@@ -14163,7 +14268,7 @@ exports['default'] = SafeString;
 module.exports = exports['default'];
 
 
-},{}],86:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14289,15 +14394,15 @@ function appendContextPath(contextPath, id) {
 }
 
 
-},{}],87:[function(require,module,exports){
+},{}],90:[function(require,module,exports){
 // Create a simple path alias to allow browserify to resolve
 // the runtime on a supported path.
 module.exports = require('./dist/cjs/handlebars.runtime')['default'];
 
-},{"./dist/cjs/handlebars.runtime":69}],88:[function(require,module,exports){
+},{"./dist/cjs/handlebars.runtime":72}],91:[function(require,module,exports){
 module.exports = require("handlebars/runtime")["default"];
 
-},{"handlebars/runtime":87}],89:[function(require,module,exports){
+},{"handlebars/runtime":90}],92:[function(require,module,exports){
 /**
  * Indicates that navigation was caused by a call to history.push.
  */
@@ -14329,7 +14434,7 @@ exports['default'] = {
   REPLACE: REPLACE,
   POP: POP
 };
-},{}],90:[function(require,module,exports){
+},{}],93:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -14388,7 +14493,7 @@ function loopAsync(turns, work, callback) {
 
   next();
 }
-},{}],91:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 (function (process){
 /*eslint-disable no-empty */
 'use strict';
@@ -14464,7 +14569,7 @@ function readState(key) {
   return null;
 }
 }).call(this,require('_process'))
-},{"_process":570,"warning":833}],92:[function(require,module,exports){
+},{"_process":570,"warning":882}],95:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14540,13 +14645,13 @@ function supportsGoWithoutReloadUsingHash() {
   var ua = navigator.userAgent;
   return ua.indexOf('Firefox') === -1;
 }
-},{}],93:[function(require,module,exports){
+},{}],96:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
 var canUseDOM = !!(typeof window !== 'undefined' && window.document && window.document.createElement);
 exports.canUseDOM = canUseDOM;
-},{}],94:[function(require,module,exports){
+},{}],97:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -14596,7 +14701,7 @@ function parsePath(path) {
   };
 }
 }).call(this,require('_process'))
-},{"_process":570,"warning":833}],95:[function(require,module,exports){
+},{"_process":570,"warning":882}],98:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -14644,7 +14749,11 @@ function createBrowserHistory() {
   var useRefresh = !isSupported || forceRefresh;
 
   function getCurrentLocation(historyState) {
-    historyState = historyState || window.history.state || {};
+    try {
+      historyState = historyState || window.history.state || {};
+    } catch (e) {
+      historyState = {};
+    }
 
     var path = _DOMUtils.getWindowPath();
     var _historyState = historyState;
@@ -14775,7 +14884,7 @@ function createBrowserHistory() {
 exports['default'] = createBrowserHistory;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./Actions":89,"./DOMStateStorage":91,"./DOMUtils":92,"./ExecutionEnvironment":93,"./PathUtils":94,"./createDOMHistory":96,"_process":570,"invariant":139}],96:[function(require,module,exports){
+},{"./Actions":92,"./DOMStateStorage":94,"./DOMUtils":95,"./ExecutionEnvironment":96,"./PathUtils":97,"./createDOMHistory":99,"_process":570,"invariant":142}],99:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -14818,7 +14927,7 @@ function createDOMHistory(options) {
 exports['default'] = createDOMHistory;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./DOMUtils":92,"./ExecutionEnvironment":93,"./createHistory":98,"_process":570,"invariant":139}],97:[function(require,module,exports){
+},{"./DOMUtils":95,"./ExecutionEnvironment":96,"./createHistory":101,"_process":570,"invariant":142}],100:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15067,7 +15176,7 @@ function createHashHistory() {
 exports['default'] = createHashHistory;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./Actions":89,"./DOMStateStorage":91,"./DOMUtils":92,"./ExecutionEnvironment":93,"./PathUtils":94,"./createDOMHistory":96,"_process":570,"invariant":139,"warning":833}],98:[function(require,module,exports){
+},{"./Actions":92,"./DOMStateStorage":94,"./DOMUtils":95,"./ExecutionEnvironment":96,"./PathUtils":97,"./createDOMHistory":99,"_process":570,"invariant":142,"warning":882}],101:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15358,7 +15467,7 @@ function createHistory() {
 exports['default'] = createHistory;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./Actions":89,"./AsyncUtils":90,"./PathUtils":94,"./createLocation":99,"./deprecate":101,"./runTransitionHook":102,"_process":570,"deep-equal":15,"warning":833}],99:[function(require,module,exports){
+},{"./Actions":92,"./AsyncUtils":93,"./PathUtils":97,"./createLocation":102,"./deprecate":104,"./runTransitionHook":105,"_process":570,"deep-equal":15,"warning":882}],102:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15412,7 +15521,7 @@ function createLocation() {
 exports['default'] = createLocation;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./Actions":89,"./PathUtils":94,"_process":570,"warning":833}],100:[function(require,module,exports){
+},{"./Actions":92,"./PathUtils":97,"_process":570,"warning":882}],103:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15569,7 +15678,7 @@ function createMemoryHistory() {
 exports['default'] = createMemoryHistory;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./Actions":89,"./PathUtils":94,"./createHistory":98,"_process":570,"invariant":139,"warning":833}],101:[function(require,module,exports){
+},{"./Actions":92,"./PathUtils":97,"./createHistory":101,"_process":570,"invariant":142,"warning":882}],104:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15591,7 +15700,7 @@ function deprecate(fn, message) {
 exports['default'] = deprecate;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"_process":570,"warning":833}],102:[function(require,module,exports){
+},{"_process":570,"warning":882}],105:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15618,7 +15727,7 @@ function runTransitionHook(hook, location, callback) {
 exports['default'] = runTransitionHook;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"_process":570,"warning":833}],103:[function(require,module,exports){
+},{"_process":570,"warning":882}],106:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15779,7 +15888,7 @@ function useBasename(createHistory) {
 exports['default'] = useBasename;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":93,"./PathUtils":94,"./deprecate":101,"./runTransitionHook":102,"_process":570,"warning":833}],104:[function(require,module,exports){
+},{"./ExecutionEnvironment":96,"./PathUtils":97,"./deprecate":104,"./runTransitionHook":105,"_process":570,"warning":882}],107:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -15958,7 +16067,7 @@ function useQueries(createHistory) {
 exports['default'] = useQueries;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./PathUtils":94,"./deprecate":101,"./runTransitionHook":102,"_process":570,"query-string":572,"warning":833}],105:[function(require,module,exports){
+},{"./PathUtils":97,"./deprecate":104,"./runTransitionHook":105,"_process":570,"query-string":572,"warning":882}],108:[function(require,module,exports){
 /**
  * Copyright 2015, Yahoo! Inc.
  * Copyrights licensed under the New BSD License. See the accompanying LICENSE file for terms.
@@ -16002,7 +16111,7 @@ module.exports = function hoistNonReactStatics(targetComponent, sourceComponent)
     return targetComponent;
 };
 
-},{}],106:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -16088,7 +16197,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],107:[function(require,module,exports){
+},{}],110:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -16113,7 +16222,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],108:[function(require,module,exports){
+},{}],111:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16136,7 +16245,7 @@ function calc(property, value) {
 }
 
 module.exports = exports['default'];
-},{"../utils/joinPrefixedRules":121}],109:[function(require,module,exports){
+},{"../utils/joinPrefixedRules":124}],112:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16164,7 +16273,7 @@ function cursor(property, value) {
 }
 
 module.exports = exports['default'];
-},{"../utils/joinPrefixedRules":121}],110:[function(require,module,exports){
+},{"../utils/joinPrefixedRules":124}],113:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16192,7 +16301,7 @@ function flex(property, value) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":119}],111:[function(require,module,exports){
+},{"../utils/camelToDashCase":122}],114:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16226,7 +16335,7 @@ function flexboxIE(property, value) {
 }
 
 module.exports = exports['default'];
-},{}],112:[function(require,module,exports){
+},{}],115:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16270,7 +16379,7 @@ function flexboxOld(property, value) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":119}],113:[function(require,module,exports){
+},{"../utils/camelToDashCase":122}],116:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16293,7 +16402,7 @@ function gradient(property, value) {
 }
 
 module.exports = exports['default'];
-},{"../utils/joinPrefixedRules":121}],114:[function(require,module,exports){
+},{"../utils/joinPrefixedRules":124}],117:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16331,7 +16440,7 @@ function sizing(property, value) {
 }
 
 module.exports = exports['default'];
-},{"../utils/joinPrefixedRules":121}],115:[function(require,module,exports){
+},{"../utils/joinPrefixedRules":124}],118:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16408,7 +16517,7 @@ function transition(property, value) {
 }
 
 module.exports = exports['default'];
-},{"../prefixProps":117,"../utils/camelToDashCase":119,"../utils/capitalizeString":120,"../utils/unprefixProperty":122}],116:[function(require,module,exports){
+},{"../prefixProps":120,"../utils/camelToDashCase":122,"../utils/capitalizeString":123,"../utils/unprefixProperty":125}],119:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16498,7 +16607,7 @@ function prefixAll(styles) {
 }
 
 module.exports = exports['default'];
-},{"./plugins/calc":108,"./plugins/cursor":109,"./plugins/flex":110,"./plugins/flexboxIE":111,"./plugins/flexboxOld":112,"./plugins/gradient":113,"./plugins/sizing":114,"./plugins/transition":115,"./prefixProps":117,"./utils/assign":118,"./utils/capitalizeString":120}],117:[function(require,module,exports){
+},{"./plugins/calc":111,"./plugins/cursor":112,"./plugins/flex":113,"./plugins/flexboxIE":114,"./plugins/flexboxOld":115,"./plugins/gradient":116,"./plugins/sizing":117,"./plugins/transition":118,"./prefixProps":120,"./utils/assign":121,"./utils/capitalizeString":123}],120:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -16506,7 +16615,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = { "Webkit": { "transform": true, "transformOrigin": true, "transformOriginX": true, "transformOriginY": true, "backfaceVisibility": true, "perspective": true, "perspectiveOrigin": true, "transformStyle": true, "transformOriginZ": true, "animation": true, "animationDelay": true, "animationDirection": true, "animationFillMode": true, "animationDuration": true, "animationIterationCount": true, "animationName": true, "animationPlayState": true, "animationTimingFunction": true, "appearance": true, "userSelect": true, "fontKerning": true, "textEmphasisPosition": true, "textEmphasis": true, "textEmphasisStyle": true, "textEmphasisColor": true, "boxDecorationBreak": true, "clipPath": true, "maskImage": true, "maskMode": true, "maskRepeat": true, "maskPosition": true, "maskClip": true, "maskOrigin": true, "maskSize": true, "maskComposite": true, "mask": true, "maskBorderSource": true, "maskBorderMode": true, "maskBorderSlice": true, "maskBorderWidth": true, "maskBorderOutset": true, "maskBorderRepeat": true, "maskBorder": true, "maskType": true, "textDecorationStyle": true, "textDecorationSkip": true, "textDecorationLine": true, "textDecorationColor": true, "filter": true, "fontFeatureSettings": true, "breakAfter": true, "breakBefore": true, "breakInside": true, "columnCount": true, "columnFill": true, "columnGap": true, "columnRule": true, "columnRuleColor": true, "columnRuleStyle": true, "columnRuleWidth": true, "columns": true, "columnSpan": true, "columnWidth": true, "flex": true, "flexBasis": true, "flexDirection": true, "flexGrow": true, "flexFlow": true, "flexShrink": true, "flexWrap": true, "alignContent": true, "alignItems": true, "alignSelf": true, "justifyContent": true, "order": true, "transition": true, "transitionDelay": true, "transitionDuration": true, "transitionProperty": true, "transitionTimingFunction": true, "backdropFilter": true, "scrollSnapType": true, "scrollSnapPointsX": true, "scrollSnapPointsY": true, "scrollSnapDestination": true, "scrollSnapCoordinate": true, "shapeImageThreshold": true, "shapeImageMargin": true, "shapeImageOutside": true, "hyphens": true, "flowInto": true, "flowFrom": true, "regionFragment": true, "textSizeAdjust": true, "borderImage": true, "borderImageOutset": true, "borderImageRepeat": true, "borderImageSlice": true, "borderImageSource": true, "borderImageWidth": true, "tabSize": true, "objectFit": true, "objectPosition": true }, "Moz": { "appearance": true, "userSelect": true, "boxSizing": true, "textAlignLast": true, "textDecorationStyle": true, "textDecorationSkip": true, "textDecorationLine": true, "textDecorationColor": true, "tabSize": true, "hyphens": true, "fontFeatureSettings": true, "breakAfter": true, "breakBefore": true, "breakInside": true, "columnCount": true, "columnFill": true, "columnGap": true, "columnRule": true, "columnRuleColor": true, "columnRuleStyle": true, "columnRuleWidth": true, "columns": true, "columnSpan": true, "columnWidth": true }, "ms": { "flex": true, "flexBasis": false, "flexDirection": true, "flexGrow": false, "flexFlow": true, "flexShrink": false, "flexWrap": true, "alignContent": false, "alignItems": false, "alignSelf": false, "justifyContent": false, "order": false, "transform": true, "transformOrigin": true, "transformOriginX": true, "transformOriginY": true, "userSelect": true, "wrapFlow": true, "wrapThrough": true, "wrapMargin": true, "scrollSnapType": true, "scrollSnapPointsX": true, "scrollSnapPointsY": true, "scrollSnapDestination": true, "scrollSnapCoordinate": true, "touchAction": true, "hyphens": true, "flowInto": true, "flowFrom": true, "breakBefore": true, "breakAfter": true, "breakInside": true, "regionFragment": true, "gridTemplateColumns": true, "gridTemplateRows": true, "gridTemplateAreas": true, "gridTemplate": true, "gridAutoColumns": true, "gridAutoRows": true, "gridAutoFlow": true, "grid": true, "gridRowStart": true, "gridColumnStart": true, "gridRowEnd": true, "gridRow": true, "gridColumn": true, "gridColumnEnd": true, "gridColumnGap": true, "gridRowGap": true, "gridArea": true, "gridGap": true, "textSizeAdjust": true } };
 module.exports = exports["default"];
-},{}],118:[function(require,module,exports){
+},{}],121:[function(require,module,exports){
 // leight polyfill for Object.assign
 "use strict";
 
@@ -16523,7 +16632,7 @@ exports["default"] = function (base) {
 };
 
 module.exports = exports["default"];
-},{}],119:[function(require,module,exports){
+},{}],122:[function(require,module,exports){
 /**
  * Converts a camel-case string to a dash-case string
  * @param {string} str - str that gets converted to dash-case
@@ -16541,7 +16650,7 @@ exports['default'] = function (str) {
 };
 
 module.exports = exports['default'];
-},{}],120:[function(require,module,exports){
+},{}],123:[function(require,module,exports){
 // helper to capitalize strings
 "use strict";
 
@@ -16554,7 +16663,7 @@ exports["default"] = function (str) {
 };
 
 module.exports = exports["default"];
-},{}],121:[function(require,module,exports){
+},{}],124:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16583,7 +16692,7 @@ exports['default'] = function (property, value) {
 };
 
 module.exports = exports['default'];
-},{"./camelToDashCase":119}],122:[function(require,module,exports){
+},{"./camelToDashCase":122}],125:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16596,7 +16705,7 @@ exports['default'] = function (property) {
 };
 
 module.exports = exports['default'];
-},{}],123:[function(require,module,exports){
+},{}],126:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16795,7 +16904,7 @@ var Prefixer = (function () {
 
 exports['default'] = Prefixer;
 module.exports = exports['default'];
-},{"./plugins/calc":124,"./plugins/cursor":125,"./plugins/flex":126,"./plugins/flexboxIE":127,"./plugins/flexboxOld":128,"./plugins/gradient":129,"./plugins/sizing":130,"./plugins/transition":131,"./prefixProps":132,"./utils/assign":133,"./utils/capitalizeString":135,"./utils/getBrowserInformation":136,"./utils/getPrefixedKeyframes":137,"inline-style-prefix-all":116}],124:[function(require,module,exports){
+},{"./plugins/calc":127,"./plugins/cursor":128,"./plugins/flex":129,"./plugins/flexboxIE":130,"./plugins/flexboxOld":131,"./plugins/gradient":132,"./plugins/sizing":133,"./plugins/transition":134,"./prefixProps":135,"./utils/assign":136,"./utils/capitalizeString":138,"./utils/getBrowserInformation":139,"./utils/getPrefixedKeyframes":140,"inline-style-prefix-all":119}],127:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16826,7 +16935,7 @@ function calc(_ref2) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":134}],125:[function(require,module,exports){
+},{"../utils/camelToDashCase":137}],128:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16864,7 +16973,7 @@ function cursor(_ref) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":134}],126:[function(require,module,exports){
+},{"../utils/camelToDashCase":137}],129:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16900,7 +17009,7 @@ function flex(_ref) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":134}],127:[function(require,module,exports){
+},{"../utils/camelToDashCase":137}],130:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -16966,7 +17075,7 @@ function flexboxIE(_ref2) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":134}],128:[function(require,module,exports){
+},{"../utils/camelToDashCase":137}],131:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -17038,7 +17147,7 @@ function flexboxOld(_ref2) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":134}],129:[function(require,module,exports){
+},{"../utils/camelToDashCase":137}],132:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -17071,7 +17180,7 @@ function gradient(_ref2) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":134}],130:[function(require,module,exports){
+},{"../utils/camelToDashCase":137}],133:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -17118,7 +17227,7 @@ function sizing(_ref2) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":134}],131:[function(require,module,exports){
+},{"../utils/camelToDashCase":137}],134:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -17183,7 +17292,7 @@ function transition(_ref2) {
 }
 
 module.exports = exports['default'];
-},{"../utils/camelToDashCase":134,"../utils/capitalizeString":135,"../utils/unprefixProperty":138}],132:[function(require,module,exports){
+},{"../utils/camelToDashCase":137,"../utils/capitalizeString":138,"../utils/unprefixProperty":141}],135:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -17191,7 +17300,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = { "chrome": { "transform": 35, "transformOrigin": 35, "transformOriginX": 35, "transformOriginY": 35, "backfaceVisibility": 35, "perspective": 35, "perspectiveOrigin": 35, "transformStyle": 35, "transformOriginZ": 35, "animation": 42, "animationDelay": 42, "animationDirection": 42, "animationFillMode": 42, "animationDuration": 42, "animationIterationCount": 42, "animationName": 42, "animationPlayState": 42, "animationTimingFunction": 42, "appearance": 52, "userSelect": 52, "fontKerning": 32, "textEmphasisPosition": 52, "textEmphasis": 52, "textEmphasisStyle": 52, "textEmphasisColor": 52, "boxDecorationBreak": 52, "clipPath": 52, "maskImage": 52, "maskMode": 52, "maskRepeat": 52, "maskPosition": 52, "maskClip": 52, "maskOrigin": 52, "maskSize": 52, "maskComposite": 52, "mask": 52, "maskBorderSource": 52, "maskBorderMode": 52, "maskBorderSlice": 52, "maskBorderWidth": 52, "maskBorderOutset": 52, "maskBorderRepeat": 52, "maskBorder": 52, "maskType": 52, "textDecorationStyle": 52, "textDecorationSkip": 52, "textDecorationLine": 52, "textDecorationColor": 52, "filter": 52, "fontFeatureSettings": 47, "breakAfter": 52, "breakBefore": 52, "breakInside": 52, "columnCount": 52, "columnFill": 52, "columnGap": 52, "columnRule": 52, "columnRuleColor": 52, "columnRuleStyle": 52, "columnRuleWidth": 52, "columns": 52, "columnSpan": 52, "columnWidth": 52 }, "safari": { "flex": 8, "flexBasis": 8, "flexDirection": 8, "flexGrow": 8, "flexFlow": 8, "flexShrink": 8, "flexWrap": 8, "alignContent": 8, "alignItems": 8, "alignSelf": 8, "justifyContent": 8, "order": 8, "transition": 6, "transitionDelay": 6, "transitionDuration": 6, "transitionProperty": 6, "transitionTimingFunction": 6, "transform": 8, "transformOrigin": 8, "transformOriginX": 8, "transformOriginY": 8, "backfaceVisibility": 8, "perspective": 8, "perspectiveOrigin": 8, "transformStyle": 8, "transformOriginZ": 8, "animation": 8, "animationDelay": 8, "animationDirection": 8, "animationFillMode": 8, "animationDuration": 8, "animationIterationCount": 8, "animationName": 8, "animationPlayState": 8, "animationTimingFunction": 8, "appearance": 9.1, "userSelect": 9.1, "backdropFilter": 9.1, "fontKerning": 9.1, "scrollSnapType": 9.1, "scrollSnapPointsX": 9.1, "scrollSnapPointsY": 9.1, "scrollSnapDestination": 9.1, "scrollSnapCoordinate": 9.1, "textEmphasisPosition": 7, "textEmphasis": 7, "textEmphasisStyle": 7, "textEmphasisColor": 7, "boxDecorationBreak": 9.1, "clipPath": 9.1, "maskImage": 9.1, "maskMode": 9.1, "maskRepeat": 9.1, "maskPosition": 9.1, "maskClip": 9.1, "maskOrigin": 9.1, "maskSize": 9.1, "maskComposite": 9.1, "mask": 9.1, "maskBorderSource": 9.1, "maskBorderMode": 9.1, "maskBorderSlice": 9.1, "maskBorderWidth": 9.1, "maskBorderOutset": 9.1, "maskBorderRepeat": 9.1, "maskBorder": 9.1, "maskType": 9.1, "textDecorationStyle": 9.1, "textDecorationSkip": 9.1, "textDecorationLine": 9.1, "textDecorationColor": 9.1, "shapeImageThreshold": 9.1, "shapeImageMargin": 9.1, "shapeImageOutside": 9.1, "filter": 9, "hyphens": 9.1, "flowInto": 9.1, "flowFrom": 9.1, "breakBefore": 8, "breakAfter": 8, "breakInside": 8, "regionFragment": 9.1, "columnCount": 8, "columnFill": 8, "columnGap": 8, "columnRule": 8, "columnRuleColor": 8, "columnRuleStyle": 8, "columnRuleWidth": 8, "columns": 8, "columnSpan": 8, "columnWidth": 8 }, "firefox": { "appearance": 47, "userSelect": 47, "boxSizing": 28, "textAlignLast": 47, "textDecorationStyle": 35, "textDecorationSkip": 35, "textDecorationLine": 35, "textDecorationColor": 35, "tabSize": 47, "hyphens": 42, "fontFeatureSettings": 33, "breakAfter": 47, "breakBefore": 47, "breakInside": 47, "columnCount": 47, "columnFill": 47, "columnGap": 47, "columnRule": 47, "columnRuleColor": 47, "columnRuleStyle": 47, "columnRuleWidth": 47, "columns": 47, "columnSpan": 47, "columnWidth": 47 }, "opera": { "flex": 16, "flexBasis": 16, "flexDirection": 16, "flexGrow": 16, "flexFlow": 16, "flexShrink": 16, "flexWrap": 16, "alignContent": 16, "alignItems": 16, "alignSelf": 16, "justifyContent": 16, "order": 16, "transform": 22, "transformOrigin": 22, "transformOriginX": 22, "transformOriginY": 22, "backfaceVisibility": 22, "perspective": 22, "perspectiveOrigin": 22, "transformStyle": 22, "transformOriginZ": 22, "animation": 29, "animationDelay": 29, "animationDirection": 29, "animationFillMode": 29, "animationDuration": 29, "animationIterationCount": 29, "animationName": 29, "animationPlayState": 29, "animationTimingFunction": 29, "appearance": 37, "userSelect": 37, "fontKerning": 19, "textEmphasisPosition": 37, "textEmphasis": 37, "textEmphasisStyle": 37, "textEmphasisColor": 37, "boxDecorationBreak": 37, "clipPath": 37, "maskImage": 37, "maskMode": 37, "maskRepeat": 37, "maskPosition": 37, "maskClip": 37, "maskOrigin": 37, "maskSize": 37, "maskComposite": 37, "mask": 37, "maskBorderSource": 37, "maskBorderMode": 37, "maskBorderSlice": 37, "maskBorderWidth": 37, "maskBorderOutset": 37, "maskBorderRepeat": 37, "maskBorder": 37, "maskType": 37, "filter": 37, "fontFeatureSettings": 37, "breakAfter": 37, "breakBefore": 37, "breakInside": 37, "columnCount": 37, "columnFill": 37, "columnGap": 37, "columnRule": 37, "columnRuleColor": 37, "columnRuleStyle": 37, "columnRuleWidth": 37, "columns": 37, "columnSpan": 37, "columnWidth": 37 }, "ie": { "gridRowStart": 11, "gridAutoColumns": 11, "gridRowGap": 11, "breakInside": 11, "transform": 9, "breakAfter": 11, "gridRowEnd": 11, "transformOrigin": 9, "gridColumnEnd": 11, "userSelect": 11, "transformOriginY": 9, "flexDirection": 10, "wrapThrough": 11, "flowFrom": 11, "gridColumnStart": 11, "regionFragment": 11, "flowInto": 11, "scrollSnapType": 11, "flexWrap": 10, "gridAutoFlow": 11, "wrapFlow": 11, "wrapMargin": 11, "gridTemplateAreas": 11, "gridTemplateRows": 11, "flexFlow": 10, "gridAutoRows": 11, "grid": 11, "gridRow": 11, "touchAction": 10, "gridColumnGap": 11, "gridGap": 11, "scrollSnapPointsY": 11, "scrollSnapDestination": 11, "scrollSnapPointsX": 11, "flex": 10, "transformOriginX": 9, "gridTemplateColumns": 11, "gridArea": 11, "gridTemplate": 11, "breakBefore": 11, "hyphens": 11, "scrollSnapCoordinate": 11, "gridColumn": 11, "textSizeAdjust": 11 }, "edge": { "userSelect": 14, "wrapFlow": 14, "wrapThrough": 14, "wrapMargin": 14, "scrollSnapType": 14, "scrollSnapPointsX": 14, "scrollSnapPointsY": 14, "scrollSnapDestination": 14, "scrollSnapCoordinate": 14, "hyphens": 14, "flowInto": 14, "flowFrom": 14, "breakBefore": 14, "breakAfter": 14, "breakInside": 14, "regionFragment": 14, "gridTemplateColumns": 14, "gridTemplateRows": 14, "gridTemplateAreas": 14, "gridTemplate": 14, "gridAutoColumns": 14, "gridAutoRows": 14, "gridAutoFlow": 14, "grid": 14, "gridRowStart": 14, "gridColumnStart": 14, "gridRowEnd": 14, "gridRow": 14, "gridColumn": 14, "gridColumnEnd": 14, "gridColumnGap": 14, "gridRowGap": 14, "gridArea": 14, "gridGap": 14 }, "ios_saf": { "flex": 8.1, "flexBasis": 8.1, "flexDirection": 8.1, "flexGrow": 8.1, "flexFlow": 8.1, "flexShrink": 8.1, "flexWrap": 8.1, "alignContent": 8.1, "alignItems": 8.1, "alignSelf": 8.1, "justifyContent": 8.1, "order": 8.1, "transition": 6, "transitionDelay": 6, "transitionDuration": 6, "transitionProperty": 6, "transitionTimingFunction": 6, "transform": 8.1, "transformOrigin": 8.1, "transformOriginX": 8.1, "transformOriginY": 8.1, "backfaceVisibility": 8.1, "perspective": 8.1, "perspectiveOrigin": 8.1, "transformStyle": 8.1, "transformOriginZ": 8.1, "animation": 8.1, "animationDelay": 8.1, "animationDirection": 8.1, "animationFillMode": 8.1, "animationDuration": 8.1, "animationIterationCount": 8.1, "animationName": 8.1, "animationPlayState": 8.1, "animationTimingFunction": 8.1, "appearance": 9.3, "userSelect": 9.3, "backdropFilter": 9.3, "fontKerning": 9.3, "scrollSnapType": 9.3, "scrollSnapPointsX": 9.3, "scrollSnapPointsY": 9.3, "scrollSnapDestination": 9.3, "scrollSnapCoordinate": 9.3, "boxDecorationBreak": 9.3, "clipPath": 9.3, "maskImage": 9.3, "maskMode": 9.3, "maskRepeat": 9.3, "maskPosition": 9.3, "maskClip": 9.3, "maskOrigin": 9.3, "maskSize": 9.3, "maskComposite": 9.3, "mask": 9.3, "maskBorderSource": 9.3, "maskBorderMode": 9.3, "maskBorderSlice": 9.3, "maskBorderWidth": 9.3, "maskBorderOutset": 9.3, "maskBorderRepeat": 9.3, "maskBorder": 9.3, "maskType": 9.3, "textSizeAdjust": 9.3, "textDecorationStyle": 9.3, "textDecorationSkip": 9.3, "textDecorationLine": 9.3, "textDecorationColor": 9.3, "shapeImageThreshold": 9.3, "shapeImageMargin": 9.3, "shapeImageOutside": 9.3, "filter": 9, "hyphens": 9.3, "flowInto": 9.3, "flowFrom": 9.3, "breakBefore": 8.1, "breakAfter": 8.1, "breakInside": 8.1, "regionFragment": 9.3, "columnCount": 8.1, "columnFill": 8.1, "columnGap": 8.1, "columnRule": 8.1, "columnRuleColor": 8.1, "columnRuleStyle": 8.1, "columnRuleWidth": 8.1, "columns": 8.1, "columnSpan": 8.1, "columnWidth": 8.1 }, "android": { "borderImage": 4.2, "borderImageOutset": 4.2, "borderImageRepeat": 4.2, "borderImageSlice": 4.2, "borderImageSource": 4.2, "borderImageWidth": 4.2, "flex": 4.2, "flexBasis": 4.2, "flexDirection": 4.2, "flexGrow": 4.2, "flexFlow": 4.2, "flexShrink": 4.2, "flexWrap": 4.2, "alignContent": 4.2, "alignItems": 4.2, "alignSelf": 4.2, "justifyContent": 4.2, "order": 4.2, "transition": 4.2, "transitionDelay": 4.2, "transitionDuration": 4.2, "transitionProperty": 4.2, "transitionTimingFunction": 4.2, "transform": 4.4, "transformOrigin": 4.4, "transformOriginX": 4.4, "transformOriginY": 4.4, "backfaceVisibility": 4.4, "perspective": 4.4, "perspectiveOrigin": 4.4, "transformStyle": 4.4, "transformOriginZ": 4.4, "animation": 4.4, "animationDelay": 4.4, "animationDirection": 4.4, "animationFillMode": 4.4, "animationDuration": 4.4, "animationIterationCount": 4.4, "animationName": 4.4, "animationPlayState": 4.4, "animationTimingFunction": 4.4, "appearance": 47, "userSelect": 47, "fontKerning": 4.4, "textEmphasisPosition": 47, "textEmphasis": 47, "textEmphasisStyle": 47, "textEmphasisColor": 47, "boxDecorationBreak": 47, "clipPath": 47, "maskImage": 47, "maskMode": 47, "maskRepeat": 47, "maskPosition": 47, "maskClip": 47, "maskOrigin": 47, "maskSize": 47, "maskComposite": 47, "mask": 47, "maskBorderSource": 47, "maskBorderMode": 47, "maskBorderSlice": 47, "maskBorderWidth": 47, "maskBorderOutset": 47, "maskBorderRepeat": 47, "maskBorder": 47, "maskType": 47, "filter": 47, "fontFeatureSettings": 47, "breakAfter": 47, "breakBefore": 47, "breakInside": 47, "columnCount": 47, "columnFill": 47, "columnGap": 47, "columnRule": 47, "columnRuleColor": 47, "columnRuleStyle": 47, "columnRuleWidth": 47, "columns": 47, "columnSpan": 47, "columnWidth": 47 }, "and_chr": { "appearance": 47, "userSelect": 47, "textEmphasisPosition": 47, "textEmphasis": 47, "textEmphasisStyle": 47, "textEmphasisColor": 47, "boxDecorationBreak": 47, "clipPath": 47, "maskImage": 47, "maskMode": 47, "maskRepeat": 47, "maskPosition": 47, "maskClip": 47, "maskOrigin": 47, "maskSize": 47, "maskComposite": 47, "mask": 47, "maskBorderSource": 47, "maskBorderMode": 47, "maskBorderSlice": 47, "maskBorderWidth": 47, "maskBorderOutset": 47, "maskBorderRepeat": 47, "maskBorder": 47, "maskType": 47, "textDecorationStyle": 47, "textDecorationSkip": 47, "textDecorationLine": 47, "textDecorationColor": 47, "filter": 47, "fontFeatureSettings": 47, "breakAfter": 47, "breakBefore": 47, "breakInside": 47, "columnCount": 47, "columnFill": 47, "columnGap": 47, "columnRule": 47, "columnRuleColor": 47, "columnRuleStyle": 47, "columnRuleWidth": 47, "columns": 47, "columnSpan": 47, "columnWidth": 47 }, "and_uc": { "flex": 9.9, "flexBasis": 9.9, "flexDirection": 9.9, "flexGrow": 9.9, "flexFlow": 9.9, "flexShrink": 9.9, "flexWrap": 9.9, "alignContent": 9.9, "alignItems": 9.9, "alignSelf": 9.9, "justifyContent": 9.9, "order": 9.9, "transition": 9.9, "transitionDelay": 9.9, "transitionDuration": 9.9, "transitionProperty": 9.9, "transitionTimingFunction": 9.9, "transform": 9.9, "transformOrigin": 9.9, "transformOriginX": 9.9, "transformOriginY": 9.9, "backfaceVisibility": 9.9, "perspective": 9.9, "perspectiveOrigin": 9.9, "transformStyle": 9.9, "transformOriginZ": 9.9, "animation": 9.9, "animationDelay": 9.9, "animationDirection": 9.9, "animationFillMode": 9.9, "animationDuration": 9.9, "animationIterationCount": 9.9, "animationName": 9.9, "animationPlayState": 9.9, "animationTimingFunction": 9.9, "appearance": 9.9, "userSelect": 9.9, "fontKerning": 9.9, "textEmphasisPosition": 9.9, "textEmphasis": 9.9, "textEmphasisStyle": 9.9, "textEmphasisColor": 9.9, "maskImage": 9.9, "maskMode": 9.9, "maskRepeat": 9.9, "maskPosition": 9.9, "maskClip": 9.9, "maskOrigin": 9.9, "maskSize": 9.9, "maskComposite": 9.9, "mask": 9.9, "maskBorderSource": 9.9, "maskBorderMode": 9.9, "maskBorderSlice": 9.9, "maskBorderWidth": 9.9, "maskBorderOutset": 9.9, "maskBorderRepeat": 9.9, "maskBorder": 9.9, "maskType": 9.9, "textSizeAdjust": 9.9, "filter": 9.9, "hyphens": 9.9, "flowInto": 9.9, "flowFrom": 9.9, "breakBefore": 9.9, "breakAfter": 9.9, "breakInside": 9.9, "regionFragment": 9.9, "fontFeatureSettings": 9.9, "columnCount": 9.9, "columnFill": 9.9, "columnGap": 9.9, "columnRule": 9.9, "columnRuleColor": 9.9, "columnRuleStyle": 9.9, "columnRuleWidth": 9.9, "columns": 9.9, "columnSpan": 9.9, "columnWidth": 9.9 }, "op_mini": { "borderImage": 5, "borderImageOutset": 5, "borderImageRepeat": 5, "borderImageSlice": 5, "borderImageSource": 5, "borderImageWidth": 5, "tabSize": 5, "objectFit": 5, "objectPosition": 5 } };
 module.exports = exports["default"];
-},{}],133:[function(require,module,exports){
+},{}],136:[function(require,module,exports){
 // leight polyfill for Object.assign
 "use strict";
 
@@ -17209,11 +17318,11 @@ exports["default"] = function (base) {
 };
 
 module.exports = exports["default"];
-},{}],134:[function(require,module,exports){
-arguments[4][119][0].apply(exports,arguments)
-},{"dup":119}],135:[function(require,module,exports){
-arguments[4][120][0].apply(exports,arguments)
-},{"dup":120}],136:[function(require,module,exports){
+},{}],137:[function(require,module,exports){
+arguments[4][122][0].apply(exports,arguments)
+},{"dup":122}],138:[function(require,module,exports){
+arguments[4][123][0].apply(exports,arguments)
+},{"dup":123}],139:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -17307,7 +17416,7 @@ exports['default'] = function (userAgent) {
 };
 
 module.exports = exports['default'];
-},{"bowser":6}],137:[function(require,module,exports){
+},{"bowser":6}],140:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -17328,9 +17437,9 @@ exports['default'] = function (_ref) {
 };
 
 module.exports = exports['default'];
-},{}],138:[function(require,module,exports){
-arguments[4][122][0].apply(exports,arguments)
-},{"dup":122}],139:[function(require,module,exports){
+},{}],141:[function(require,module,exports){
+arguments[4][125][0].apply(exports,arguments)
+},{"dup":125}],142:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -17383,7 +17492,7 @@ var invariant = function(condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 
-},{}],140:[function(require,module,exports){
+},{}],143:[function(require,module,exports){
 'use strict';
 
 var v4 = '(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])){3}';
@@ -17405,7 +17514,7 @@ ip.v6 = function (opts) {
 	return opts.exact ? new RegExp('^' + v6 + '$') : new RegExp(v6, 'g');
 };
 
-},{}],141:[function(require,module,exports){
+},{}],144:[function(require,module,exports){
 /**
  * Determine if an object is Buffer
  *
@@ -17424,7 +17533,7 @@ module.exports = function (obj) {
     ))
 }
 
-},{}],142:[function(require,module,exports){
+},{}],145:[function(require,module,exports){
 'use strict';
 var numberIsNan = require('number-is-nan');
 
@@ -17432,7 +17541,7 @@ module.exports = Number.isFinite || function (val) {
 	return !(typeof val !== 'number' || numberIsNan(val) || val === Infinity || val === -Infinity);
 };
 
-},{"number-is-nan":564}],143:[function(require,module,exports){
+},{"number-is-nan":563}],146:[function(require,module,exports){
 'use strict';
 
 var sort = require('./sort');
@@ -17478,7 +17587,7 @@ KDBush.prototype = {
 function defaultGetX(p) { return p[0]; }
 function defaultGetY(p) { return p[1]; }
 
-},{"./range":144,"./sort":145,"./within":146}],144:[function(require,module,exports){
+},{"./range":147,"./sort":148,"./within":149}],147:[function(require,module,exports){
 'use strict';
 
 module.exports = range;
@@ -17526,7 +17635,7 @@ function range(ids, coords, minX, minY, maxX, maxY, nodeSize) {
     return result;
 }
 
-},{}],145:[function(require,module,exports){
+},{}],148:[function(require,module,exports){
 'use strict';
 
 module.exports = sortKD;
@@ -17594,7 +17703,7 @@ function swap(arr, i, j) {
     arr[j] = tmp;
 }
 
-},{}],146:[function(require,module,exports){
+},{}],149:[function(require,module,exports){
 'use strict';
 
 module.exports = within;
@@ -17646,7 +17755,7 @@ function sqDist(ax, ay, bx, by) {
     return dx * dx + dy * dy;
 }
 
-},{}],147:[function(require,module,exports){
+},{}],150:[function(require,module,exports){
 // Source: http://jsfiddle.net/vWx8V/
 // http://stackoverflow.com/questions/5603195/full-list-of-javascript-keycodes
 
@@ -17793,7 +17902,7 @@ for (var alias in aliases) {
   codes[alias] = aliases[alias]
 }
 
-},{}],148:[function(require,module,exports){
+},{}],151:[function(require,module,exports){
 /**
  * lodash 3.2.0 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -17822,7 +17931,7 @@ function baseAssign(object, source) {
 
 module.exports = baseAssign;
 
-},{"lodash._basecopy":150,"lodash.keys":160}],149:[function(require,module,exports){
+},{"lodash._basecopy":153,"lodash.keys":163}],152:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -19611,7 +19720,7 @@ function constant(value) {
 module.exports = baseClone;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],150:[function(require,module,exports){
+},{}],153:[function(require,module,exports){
 /**
  * lodash 3.0.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -19645,7 +19754,7 @@ function baseCopy(source, props, object) {
 
 module.exports = baseCopy;
 
-},{}],151:[function(require,module,exports){
+},{}],154:[function(require,module,exports){
 /**
  * lodash 3.0.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -19712,7 +19821,7 @@ function identity(value) {
 
 module.exports = bindCallback;
 
-},{}],152:[function(require,module,exports){
+},{}],155:[function(require,module,exports){
 /**
  * lodash 3.1.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -19766,7 +19875,7 @@ function createAssigner(assigner) {
 
 module.exports = createAssigner;
 
-},{"lodash._bindcallback":151,"lodash._isiterateecall":154,"lodash.restparam":164}],153:[function(require,module,exports){
+},{"lodash._bindcallback":154,"lodash._isiterateecall":157,"lodash.restparam":167}],156:[function(require,module,exports){
 /**
  * lodash 3.9.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -19905,7 +20014,7 @@ function isNative(value) {
 
 module.exports = getNative;
 
-},{}],154:[function(require,module,exports){
+},{}],157:[function(require,module,exports){
 /**
  * lodash 3.0.9 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -20039,7 +20148,7 @@ function isObject(value) {
 
 module.exports = isIterateeCall;
 
-},{}],155:[function(require,module,exports){
+},{}],158:[function(require,module,exports){
 (function (global){
 /**
  * lodash 3.0.1 (Custom Build) <https://lodash.com/>
@@ -20102,7 +20211,7 @@ function checkGlobal(value) {
 module.exports = root;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],156:[function(require,module,exports){
+},{}],159:[function(require,module,exports){
 /**
  * lodash 4.0.6 (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -20498,7 +20607,7 @@ function toNumber(value) {
 
 module.exports = debounce;
 
-},{}],157:[function(require,module,exports){
+},{}],160:[function(require,module,exports){
 /**
  * lodash 3.0.8 (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -20743,7 +20852,7 @@ function isObjectLike(value) {
 
 module.exports = isArguments;
 
-},{}],158:[function(require,module,exports){
+},{}],161:[function(require,module,exports){
 /**
  * lodash 3.0.4 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -20925,7 +21034,7 @@ function isNative(value) {
 
 module.exports = isArray;
 
-},{}],159:[function(require,module,exports){
+},{}],162:[function(require,module,exports){
 /**
  * lodash 4.0.4 (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -21062,7 +21171,7 @@ function isPlainObject(value) {
 
 module.exports = isPlainObject;
 
-},{}],160:[function(require,module,exports){
+},{}],163:[function(require,module,exports){
 /**
  * lodash 3.1.2 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -21300,7 +21409,7 @@ function keysIn(object) {
 
 module.exports = keys;
 
-},{"lodash._getnative":153,"lodash.isarguments":157,"lodash.isarray":158}],161:[function(require,module,exports){
+},{"lodash._getnative":156,"lodash.isarguments":160,"lodash.isarray":161}],164:[function(require,module,exports){
 (function (global){
 /**
  * lodash (Custom Build) <https://lodash.com/>
@@ -21817,7 +21926,7 @@ function keysIn(object) {
 module.exports = keysIn;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],162:[function(require,module,exports){
+},{}],165:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -23102,7 +23211,7 @@ var merge = createAssigner(function(object, source, srcIndex) {
 
 module.exports = merge;
 
-},{"lodash._baseclone":149,"lodash._root":155,"lodash.isplainobject":159,"lodash.keysin":161,"lodash.rest":163}],163:[function(require,module,exports){
+},{"lodash._baseclone":152,"lodash._root":158,"lodash.isplainobject":162,"lodash.keysin":164,"lodash.rest":166}],166:[function(require,module,exports){
 /**
  * lodash (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -23449,7 +23558,7 @@ function toNumber(value) {
 
 module.exports = rest;
 
-},{}],164:[function(require,module,exports){
+},{}],167:[function(require,module,exports){
 /**
  * lodash 3.6.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -23518,7 +23627,7 @@ function restParam(func, start) {
 
 module.exports = restParam;
 
-},{}],165:[function(require,module,exports){
+},{}],168:[function(require,module,exports){
 /**
  * lodash 4.0.1 (Custom Build) <https://lodash.com/>
  * Build: `lodash modularize exports="npm" -o ./`
@@ -23620,7 +23729,7 @@ function isObject(value) {
 
 module.exports = throttle;
 
-},{"lodash.debounce":156}],166:[function(require,module,exports){
+},{"lodash.debounce":159}],169:[function(require,module,exports){
 var getNative = require('./_getNative'),
     root = require('./_root');
 
@@ -23629,7 +23738,7 @@ var DataView = getNative(root, 'DataView');
 
 module.exports = DataView;
 
-},{"./_getNative":239,"./_root":276}],167:[function(require,module,exports){
+},{"./_getNative":237,"./_root":276}],170:[function(require,module,exports){
 var hashClear = require('./_hashClear'),
     hashDelete = require('./_hashDelete'),
     hashGet = require('./_hashGet'),
@@ -23663,7 +23772,7 @@ Hash.prototype.set = hashSet;
 
 module.exports = Hash;
 
-},{"./_hashClear":245,"./_hashDelete":246,"./_hashGet":247,"./_hashHas":248,"./_hashSet":249}],168:[function(require,module,exports){
+},{"./_hashClear":244,"./_hashDelete":245,"./_hashGet":246,"./_hashHas":247,"./_hashSet":248}],171:[function(require,module,exports){
 var baseCreate = require('./_baseCreate'),
     baseLodash = require('./_baseLodash');
 
@@ -23693,7 +23802,7 @@ LazyWrapper.prototype.constructor = LazyWrapper;
 
 module.exports = LazyWrapper;
 
-},{"./_baseCreate":189,"./_baseLodash":209}],169:[function(require,module,exports){
+},{"./_baseCreate":192,"./_baseLodash":209}],172:[function(require,module,exports){
 var listCacheClear = require('./_listCacheClear'),
     listCacheDelete = require('./_listCacheDelete'),
     listCacheGet = require('./_listCacheGet'),
@@ -23727,7 +23836,7 @@ ListCache.prototype.set = listCacheSet;
 
 module.exports = ListCache;
 
-},{"./_listCacheClear":261,"./_listCacheDelete":262,"./_listCacheGet":263,"./_listCacheHas":264,"./_listCacheSet":265}],170:[function(require,module,exports){
+},{"./_listCacheClear":261,"./_listCacheDelete":262,"./_listCacheGet":263,"./_listCacheHas":264,"./_listCacheSet":265}],173:[function(require,module,exports){
 var baseCreate = require('./_baseCreate'),
     baseLodash = require('./_baseLodash');
 
@@ -23751,7 +23860,7 @@ LodashWrapper.prototype.constructor = LodashWrapper;
 
 module.exports = LodashWrapper;
 
-},{"./_baseCreate":189,"./_baseLodash":209}],171:[function(require,module,exports){
+},{"./_baseCreate":192,"./_baseLodash":209}],174:[function(require,module,exports){
 var getNative = require('./_getNative'),
     root = require('./_root');
 
@@ -23760,7 +23869,7 @@ var Map = getNative(root, 'Map');
 
 module.exports = Map;
 
-},{"./_getNative":239,"./_root":276}],172:[function(require,module,exports){
+},{"./_getNative":237,"./_root":276}],175:[function(require,module,exports){
 var mapCacheClear = require('./_mapCacheClear'),
     mapCacheDelete = require('./_mapCacheDelete'),
     mapCacheGet = require('./_mapCacheGet'),
@@ -23794,7 +23903,7 @@ MapCache.prototype.set = mapCacheSet;
 
 module.exports = MapCache;
 
-},{"./_mapCacheClear":266,"./_mapCacheDelete":267,"./_mapCacheGet":268,"./_mapCacheHas":269,"./_mapCacheSet":270}],173:[function(require,module,exports){
+},{"./_mapCacheClear":266,"./_mapCacheDelete":267,"./_mapCacheGet":268,"./_mapCacheHas":269,"./_mapCacheSet":270}],176:[function(require,module,exports){
 var getNative = require('./_getNative'),
     root = require('./_root');
 
@@ -23803,7 +23912,7 @@ var Promise = getNative(root, 'Promise');
 
 module.exports = Promise;
 
-},{"./_getNative":239,"./_root":276}],174:[function(require,module,exports){
+},{"./_getNative":237,"./_root":276}],177:[function(require,module,exports){
 var root = require('./_root');
 
 /** Built-in value references. */
@@ -23811,7 +23920,7 @@ var Reflect = root.Reflect;
 
 module.exports = Reflect;
 
-},{"./_root":276}],175:[function(require,module,exports){
+},{"./_root":276}],178:[function(require,module,exports){
 var getNative = require('./_getNative'),
     root = require('./_root');
 
@@ -23820,7 +23929,7 @@ var Set = getNative(root, 'Set');
 
 module.exports = Set;
 
-},{"./_getNative":239,"./_root":276}],176:[function(require,module,exports){
+},{"./_getNative":237,"./_root":276}],179:[function(require,module,exports){
 var MapCache = require('./_MapCache'),
     setCacheAdd = require('./_setCacheAdd'),
     setCacheHas = require('./_setCacheHas');
@@ -23849,7 +23958,7 @@ SetCache.prototype.has = setCacheHas;
 
 module.exports = SetCache;
 
-},{"./_MapCache":172,"./_setCacheAdd":277,"./_setCacheHas":278}],177:[function(require,module,exports){
+},{"./_MapCache":175,"./_setCacheAdd":277,"./_setCacheHas":278}],180:[function(require,module,exports){
 var ListCache = require('./_ListCache'),
     stackClear = require('./_stackClear'),
     stackDelete = require('./_stackDelete'),
@@ -23877,7 +23986,7 @@ Stack.prototype.set = stackSet;
 
 module.exports = Stack;
 
-},{"./_ListCache":169,"./_stackClear":281,"./_stackDelete":282,"./_stackGet":283,"./_stackHas":284,"./_stackSet":285}],178:[function(require,module,exports){
+},{"./_ListCache":172,"./_stackClear":280,"./_stackDelete":281,"./_stackGet":282,"./_stackHas":283,"./_stackSet":284}],181:[function(require,module,exports){
 var root = require('./_root');
 
 /** Built-in value references. */
@@ -23885,7 +23994,7 @@ var Symbol = root.Symbol;
 
 module.exports = Symbol;
 
-},{"./_root":276}],179:[function(require,module,exports){
+},{"./_root":276}],182:[function(require,module,exports){
 var root = require('./_root');
 
 /** Built-in value references. */
@@ -23893,7 +24002,7 @@ var Uint8Array = root.Uint8Array;
 
 module.exports = Uint8Array;
 
-},{"./_root":276}],180:[function(require,module,exports){
+},{"./_root":276}],183:[function(require,module,exports){
 var getNative = require('./_getNative'),
     root = require('./_root');
 
@@ -23902,7 +24011,7 @@ var WeakMap = getNative(root, 'WeakMap');
 
 module.exports = WeakMap;
 
-},{"./_getNative":239,"./_root":276}],181:[function(require,module,exports){
+},{"./_getNative":237,"./_root":276}],184:[function(require,module,exports){
 /**
  * A faster alternative to `Function#apply`, this function invokes `func`
  * with the `this` binding of `thisArg` and the arguments of `args`.
@@ -23926,7 +24035,7 @@ function apply(func, thisArg, args) {
 
 module.exports = apply;
 
-},{}],182:[function(require,module,exports){
+},{}],185:[function(require,module,exports){
 var baseIndexOf = require('./_baseIndexOf');
 
 /**
@@ -23934,29 +24043,30 @@ var baseIndexOf = require('./_baseIndexOf');
  * specifying an index to search from.
  *
  * @private
- * @param {Array} array The array to search.
+ * @param {Array} [array] The array to search.
  * @param {*} target The value to search for.
  * @returns {boolean} Returns `true` if `target` is found, else `false`.
  */
 function arrayIncludes(array, value) {
-  return !!array.length && baseIndexOf(array, value, 0) > -1;
+  var length = array ? array.length : 0;
+  return !!length && baseIndexOf(array, value, 0) > -1;
 }
 
 module.exports = arrayIncludes;
 
-},{"./_baseIndexOf":201}],183:[function(require,module,exports){
+},{"./_baseIndexOf":200}],186:[function(require,module,exports){
 /**
  * This function is like `arrayIncludes` except that it accepts a comparator.
  *
  * @private
- * @param {Array} array The array to search.
+ * @param {Array} [array] The array to search.
  * @param {*} target The value to search for.
  * @param {Function} comparator The comparator invoked per element.
  * @returns {boolean} Returns `true` if `target` is found, else `false`.
  */
 function arrayIncludesWith(array, value, comparator) {
   var index = -1,
-      length = array.length;
+      length = array ? array.length : 0;
 
   while (++index < length) {
     if (comparator(value, array[index])) {
@@ -23968,19 +24078,19 @@ function arrayIncludesWith(array, value, comparator) {
 
 module.exports = arrayIncludesWith;
 
-},{}],184:[function(require,module,exports){
+},{}],187:[function(require,module,exports){
 /**
  * A specialized version of `_.map` for arrays without support for iteratee
  * shorthands.
  *
  * @private
- * @param {Array} array The array to iterate over.
+ * @param {Array} [array] The array to iterate over.
  * @param {Function} iteratee The function invoked per iteration.
  * @returns {Array} Returns the new mapped array.
  */
 function arrayMap(array, iteratee) {
   var index = -1,
-      length = array.length,
+      length = array ? array.length : 0,
       result = Array(length);
 
   while (++index < length) {
@@ -23991,7 +24101,7 @@ function arrayMap(array, iteratee) {
 
 module.exports = arrayMap;
 
-},{}],185:[function(require,module,exports){
+},{}],188:[function(require,module,exports){
 /**
  * Appends the elements of `values` to `array`.
  *
@@ -24013,13 +24123,13 @@ function arrayPush(array, values) {
 
 module.exports = arrayPush;
 
-},{}],186:[function(require,module,exports){
+},{}],189:[function(require,module,exports){
 /**
  * A specialized version of `_.reduce` for arrays without support for
  * iteratee shorthands.
  *
  * @private
- * @param {Array} array The array to iterate over.
+ * @param {Array} [array] The array to iterate over.
  * @param {Function} iteratee The function invoked per iteration.
  * @param {*} [accumulator] The initial value.
  * @param {boolean} [initAccum] Specify using the first element of `array` as
@@ -24028,7 +24138,7 @@ module.exports = arrayPush;
  */
 function arrayReduce(array, iteratee, accumulator, initAccum) {
   var index = -1,
-      length = array.length;
+      length = array ? array.length : 0;
 
   if (initAccum && length) {
     accumulator = array[++index];
@@ -24041,20 +24151,20 @@ function arrayReduce(array, iteratee, accumulator, initAccum) {
 
 module.exports = arrayReduce;
 
-},{}],187:[function(require,module,exports){
+},{}],190:[function(require,module,exports){
 /**
  * A specialized version of `_.some` for arrays without support for iteratee
  * shorthands.
  *
  * @private
- * @param {Array} array The array to iterate over.
+ * @param {Array} [array] The array to iterate over.
  * @param {Function} predicate The function invoked per iteration.
  * @returns {boolean} Returns `true` if any element passes the predicate check,
  *  else `false`.
  */
 function arraySome(array, predicate) {
   var index = -1,
-      length = array.length;
+      length = array ? array.length : 0;
 
   while (++index < length) {
     if (predicate(array[index], index, array)) {
@@ -24066,7 +24176,7 @@ function arraySome(array, predicate) {
 
 module.exports = arraySome;
 
-},{}],188:[function(require,module,exports){
+},{}],191:[function(require,module,exports){
 var eq = require('./eq');
 
 /**
@@ -24089,7 +24199,7 @@ function assocIndexOf(array, key) {
 
 module.exports = assocIndexOf;
 
-},{"./eq":290}],189:[function(require,module,exports){
+},{"./eq":289}],192:[function(require,module,exports){
 var isObject = require('./isObject');
 
 /** Built-in value references. */
@@ -24109,7 +24219,7 @@ function baseCreate(proto) {
 
 module.exports = baseCreate;
 
-},{"./isObject":304}],190:[function(require,module,exports){
+},{"./isObject":303}],193:[function(require,module,exports){
 var SetCache = require('./_SetCache'),
     arrayIncludes = require('./_arrayIncludes'),
     arrayIncludesWith = require('./_arrayIncludesWith'),
@@ -24178,50 +24288,7 @@ function baseDifference(array, values, iteratee, comparator) {
 
 module.exports = baseDifference;
 
-},{"./_SetCache":176,"./_arrayIncludes":182,"./_arrayIncludesWith":183,"./_arrayMap":184,"./_baseUnary":218,"./_cacheHas":220}],191:[function(require,module,exports){
-var baseForOwn = require('./_baseForOwn'),
-    createBaseEach = require('./_createBaseEach');
-
-/**
- * The base implementation of `_.forEach` without support for iteratee shorthands.
- *
- * @private
- * @param {Array|Object} collection The collection to iterate over.
- * @param {Function} iteratee The function invoked per iteration.
- * @returns {Array|Object} Returns `collection`.
- */
-var baseEach = createBaseEach(baseForOwn);
-
-module.exports = baseEach;
-
-},{"./_baseForOwn":196,"./_createBaseEach":225}],192:[function(require,module,exports){
-/**
- * The base implementation of methods like `_.find` and `_.findKey`, without
- * support for iteratee shorthands, which iterates over `collection` using
- * `eachFunc`.
- *
- * @private
- * @param {Array|Object} collection The collection to search.
- * @param {Function} predicate The function invoked per iteration.
- * @param {Function} eachFunc The function to iterate over `collection`.
- * @param {boolean} [retKey] Specify returning the key of the found element
- *  instead of the element itself.
- * @returns {*} Returns the found element or its key, else `undefined`.
- */
-function baseFind(collection, predicate, eachFunc, retKey) {
-  var result;
-  eachFunc(collection, function(value, key, collection) {
-    if (predicate(value, key, collection)) {
-      result = retKey ? key : value;
-      return false;
-    }
-  });
-  return result;
-}
-
-module.exports = baseFind;
-
-},{}],193:[function(require,module,exports){
+},{"./_SetCache":179,"./_arrayIncludes":185,"./_arrayIncludesWith":186,"./_arrayMap":187,"./_baseUnary":217,"./_cacheHas":219}],194:[function(require,module,exports){
 /**
  * The base implementation of `_.findIndex` and `_.findLastIndex` without
  * support for iteratee shorthands.
@@ -24229,12 +24296,13 @@ module.exports = baseFind;
  * @private
  * @param {Array} array The array to search.
  * @param {Function} predicate The function invoked per iteration.
+ * @param {number} fromIndex The index to search from.
  * @param {boolean} [fromRight] Specify iterating from right to left.
  * @returns {number} Returns the index of the matched value, else `-1`.
  */
-function baseFindIndex(array, predicate, fromRight) {
+function baseFindIndex(array, predicate, fromIndex, fromRight) {
   var length = array.length,
-      index = fromRight ? length : -1;
+      index = fromIndex + (fromRight ? 1 : -1);
 
   while ((fromRight ? index-- : ++index < length)) {
     if (predicate(array[index], index, array)) {
@@ -24246,7 +24314,7 @@ function baseFindIndex(array, predicate, fromRight) {
 
 module.exports = baseFindIndex;
 
-},{}],194:[function(require,module,exports){
+},{}],195:[function(require,module,exports){
 var arrayPush = require('./_arrayPush'),
     isFlattenable = require('./_isFlattenable');
 
@@ -24286,43 +24354,7 @@ function baseFlatten(array, depth, predicate, isStrict, result) {
 
 module.exports = baseFlatten;
 
-},{"./_arrayPush":185,"./_isFlattenable":252}],195:[function(require,module,exports){
-var createBaseFor = require('./_createBaseFor');
-
-/**
- * The base implementation of `baseForOwn` which iterates over `object`
- * properties returned by `keysFunc` and invokes `iteratee` for each property.
- * Iteratee functions may exit iteration early by explicitly returning `false`.
- *
- * @private
- * @param {Object} object The object to iterate over.
- * @param {Function} iteratee The function invoked per iteration.
- * @param {Function} keysFunc The function to get the keys of `object`.
- * @returns {Object} Returns `object`.
- */
-var baseFor = createBaseFor();
-
-module.exports = baseFor;
-
-},{"./_createBaseFor":226}],196:[function(require,module,exports){
-var baseFor = require('./_baseFor'),
-    keys = require('./keys');
-
-/**
- * The base implementation of `_.forOwn` without support for iteratee shorthands.
- *
- * @private
- * @param {Object} object The object to iterate over.
- * @param {Function} iteratee The function invoked per iteration.
- * @returns {Object} Returns `object`.
- */
-function baseForOwn(object, iteratee) {
-  return object && baseFor(object, iteratee, keys);
-}
-
-module.exports = baseForOwn;
-
-},{"./_baseFor":195,"./keys":310}],197:[function(require,module,exports){
+},{"./_arrayPush":188,"./_isFlattenable":251}],196:[function(require,module,exports){
 var castPath = require('./_castPath'),
     isKey = require('./_isKey'),
     toKey = require('./_toKey');
@@ -24349,7 +24381,7 @@ function baseGet(object, path) {
 
 module.exports = baseGet;
 
-},{"./_castPath":222,"./_isKey":255,"./_toKey":287}],198:[function(require,module,exports){
+},{"./_castPath":221,"./_isKey":254,"./_toKey":286}],197:[function(require,module,exports){
 var arrayPush = require('./_arrayPush'),
     isArray = require('./isArray');
 
@@ -24371,7 +24403,7 @@ function baseGetAllKeys(object, keysFunc, symbolsFunc) {
 
 module.exports = baseGetAllKeys;
 
-},{"./_arrayPush":185,"./isArray":298}],199:[function(require,module,exports){
+},{"./_arrayPush":188,"./isArray":298}],198:[function(require,module,exports){
 var getPrototype = require('./_getPrototype');
 
 /** Used for built-in method references. */
@@ -24384,7 +24416,7 @@ var hasOwnProperty = objectProto.hasOwnProperty;
  * The base implementation of `_.has` without support for deep paths.
  *
  * @private
- * @param {Object} object The object to query.
+ * @param {Object} [object] The object to query.
  * @param {Array|string} key The key to check.
  * @returns {boolean} Returns `true` if `key` exists, else `false`.
  */
@@ -24392,28 +24424,29 @@ function baseHas(object, key) {
   // Avoid a bug in IE 10-11 where objects with a [[Prototype]] of `null`,
   // that are composed entirely of index properties, return `false` for
   // `hasOwnProperty` checks of them.
-  return hasOwnProperty.call(object, key) ||
-    (typeof object == 'object' && key in object && getPrototype(object) === null);
+  return object != null &&
+    (hasOwnProperty.call(object, key) ||
+      (typeof object == 'object' && key in object && getPrototype(object) === null));
 }
 
 module.exports = baseHas;
 
-},{"./_getPrototype":240}],200:[function(require,module,exports){
+},{"./_getPrototype":238}],199:[function(require,module,exports){
 /**
  * The base implementation of `_.hasIn` without support for deep paths.
  *
  * @private
- * @param {Object} object The object to query.
+ * @param {Object} [object] The object to query.
  * @param {Array|string} key The key to check.
  * @returns {boolean} Returns `true` if `key` exists, else `false`.
  */
 function baseHasIn(object, key) {
-  return key in Object(object);
+  return object != null && key in Object(object);
 }
 
 module.exports = baseHasIn;
 
-},{}],201:[function(require,module,exports){
+},{}],200:[function(require,module,exports){
 var indexOfNaN = require('./_indexOfNaN');
 
 /**
@@ -24442,7 +24475,7 @@ function baseIndexOf(array, value, fromIndex) {
 
 module.exports = baseIndexOf;
 
-},{"./_indexOfNaN":251}],202:[function(require,module,exports){
+},{"./_indexOfNaN":250}],201:[function(require,module,exports){
 var SetCache = require('./_SetCache'),
     arrayIncludes = require('./_arrayIncludes'),
     arrayIncludesWith = require('./_arrayIncludesWith'),
@@ -24518,7 +24551,7 @@ function baseIntersection(arrays, iteratee, comparator) {
 
 module.exports = baseIntersection;
 
-},{"./_SetCache":176,"./_arrayIncludes":182,"./_arrayIncludesWith":183,"./_arrayMap":184,"./_baseUnary":218,"./_cacheHas":220}],203:[function(require,module,exports){
+},{"./_SetCache":179,"./_arrayIncludes":185,"./_arrayIncludesWith":186,"./_arrayMap":187,"./_baseUnary":217,"./_cacheHas":219}],202:[function(require,module,exports){
 var baseIsEqualDeep = require('./_baseIsEqualDeep'),
     isObject = require('./isObject'),
     isObjectLike = require('./isObjectLike');
@@ -24550,7 +24583,7 @@ function baseIsEqual(value, other, customizer, bitmask, stack) {
 
 module.exports = baseIsEqual;
 
-},{"./_baseIsEqualDeep":204,"./isObject":304,"./isObjectLike":305}],204:[function(require,module,exports){
+},{"./_baseIsEqualDeep":203,"./isObject":303,"./isObjectLike":304}],203:[function(require,module,exports){
 var Stack = require('./_Stack'),
     equalArrays = require('./_equalArrays'),
     equalByTag = require('./_equalByTag'),
@@ -24634,7 +24667,7 @@ function baseIsEqualDeep(object, other, equalFunc, customizer, bitmask, stack) {
 
 module.exports = baseIsEqualDeep;
 
-},{"./_Stack":177,"./_equalArrays":230,"./_equalByTag":231,"./_equalObjects":232,"./_getTag":243,"./_isHostObject":253,"./isArray":298,"./isTypedArray":309}],205:[function(require,module,exports){
+},{"./_Stack":180,"./_equalArrays":228,"./_equalByTag":229,"./_equalObjects":230,"./_getTag":241,"./_isHostObject":252,"./isArray":298,"./isTypedArray":308}],204:[function(require,module,exports){
 var Stack = require('./_Stack'),
     baseIsEqual = require('./_baseIsEqual');
 
@@ -24698,7 +24731,56 @@ function baseIsMatch(object, source, matchData, customizer) {
 
 module.exports = baseIsMatch;
 
-},{"./_Stack":177,"./_baseIsEqual":203}],206:[function(require,module,exports){
+},{"./_Stack":180,"./_baseIsEqual":202}],205:[function(require,module,exports){
+var isFunction = require('./isFunction'),
+    isHostObject = require('./_isHostObject'),
+    isMasked = require('./_isMasked'),
+    isObject = require('./isObject'),
+    toSource = require('./_toSource');
+
+/**
+ * Used to match `RegExp`
+ * [syntax characters](http://ecma-international.org/ecma-262/6.0/#sec-patterns).
+ */
+var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
+
+/** Used to detect host constructors (Safari). */
+var reIsHostCtor = /^\[object .+?Constructor\]$/;
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/** Used to resolve the decompiled source of functions. */
+var funcToString = Function.prototype.toString;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/** Used to detect if a method is native. */
+var reIsNative = RegExp('^' +
+  funcToString.call(hasOwnProperty).replace(reRegExpChar, '\\$&')
+  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
+);
+
+/**
+ * The base implementation of `_.isNative` without bad shim checks.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a native function,
+ *  else `false`.
+ */
+function baseIsNative(value) {
+  if (!isObject(value) || isMasked(value)) {
+    return false;
+  }
+  var pattern = (isFunction(value) || isHostObject(value)) ? reIsNative : reIsHostCtor;
+  return pattern.test(toSource(value));
+}
+
+module.exports = baseIsNative;
+
+},{"./_isHostObject":252,"./_isMasked":257,"./_toSource":287,"./isFunction":301,"./isObject":303}],206:[function(require,module,exports){
 var baseMatches = require('./_baseMatches'),
     baseMatchesProperty = require('./_baseMatchesProperty'),
     identity = require('./identity'),
@@ -24731,7 +24813,7 @@ function baseIteratee(value) {
 
 module.exports = baseIteratee;
 
-},{"./_baseMatches":210,"./_baseMatchesProperty":211,"./identity":295,"./isArray":298,"./property":316}],207:[function(require,module,exports){
+},{"./_baseMatches":210,"./_baseMatchesProperty":211,"./identity":295,"./isArray":298,"./property":315}],207:[function(require,module,exports){
 /* Built-in method references for those with the same name as other `lodash` methods. */
 var nativeKeys = Object.keys;
 
@@ -24787,7 +24869,7 @@ if (enumerate && !propertyIsEnumerable.call({ 'valueOf': 1 }, 'valueOf')) {
 
 module.exports = baseKeysIn;
 
-},{"./_Reflect":174,"./_iteratorToArray":260}],209:[function(require,module,exports){
+},{"./_Reflect":177,"./_iteratorToArray":260}],209:[function(require,module,exports){
 /**
  * The function whose prototype chain sequence wrappers inherit from.
  *
@@ -24823,7 +24905,7 @@ function baseMatches(source) {
 
 module.exports = baseMatches;
 
-},{"./_baseIsMatch":205,"./_getMatchData":238,"./_matchesStrictComparable":272}],211:[function(require,module,exports){
+},{"./_baseIsMatch":204,"./_getMatchData":236,"./_matchesStrictComparable":272}],211:[function(require,module,exports){
 var baseIsEqual = require('./_baseIsEqual'),
     get = require('./get'),
     hasIn = require('./hasIn'),
@@ -24858,7 +24940,7 @@ function baseMatchesProperty(path, srcValue) {
 
 module.exports = baseMatchesProperty;
 
-},{"./_baseIsEqual":203,"./_isKey":255,"./_isStrictComparable":259,"./_matchesStrictComparable":272,"./_toKey":287,"./get":293,"./hasIn":294}],212:[function(require,module,exports){
+},{"./_baseIsEqual":202,"./_isKey":254,"./_isStrictComparable":259,"./_matchesStrictComparable":272,"./_toKey":286,"./get":293,"./hasIn":294}],212:[function(require,module,exports){
 var arrayReduce = require('./_arrayReduce');
 
 /**
@@ -24882,7 +24964,7 @@ function basePick(object, props) {
 
 module.exports = basePick;
 
-},{"./_arrayReduce":186}],213:[function(require,module,exports){
+},{"./_arrayReduce":189}],213:[function(require,module,exports){
 /**
  * The base implementation of `_.property` without support for deep paths.
  *
@@ -24916,7 +24998,7 @@ function basePropertyDeep(path) {
 
 module.exports = basePropertyDeep;
 
-},{"./_baseGet":197}],215:[function(require,module,exports){
+},{"./_baseGet":196}],215:[function(require,module,exports){
 /**
  * The base implementation of `_.times` without support for iteratee shorthands
  * or max array length checks.
@@ -24939,26 +25021,6 @@ function baseTimes(n, iteratee) {
 module.exports = baseTimes;
 
 },{}],216:[function(require,module,exports){
-var arrayMap = require('./_arrayMap');
-
-/**
- * The base implementation of `_.toPairs` and `_.toPairsIn` which creates an array
- * of key-value pairs for `object` corresponding to the property names of `props`.
- *
- * @private
- * @param {Object} object The object to query.
- * @param {Array} props The property names to get values for.
- * @returns {Object} Returns the key-value pairs.
- */
-function baseToPairs(object, props) {
-  return arrayMap(props, function(key) {
-    return [key, object[key]];
-  });
-}
-
-module.exports = baseToPairs;
-
-},{"./_arrayMap":184}],217:[function(require,module,exports){
 var Symbol = require('./_Symbol'),
     isSymbol = require('./isSymbol');
 
@@ -24991,7 +25053,7 @@ function baseToString(value) {
 
 module.exports = baseToString;
 
-},{"./_Symbol":178,"./isSymbol":308}],218:[function(require,module,exports){
+},{"./_Symbol":181,"./isSymbol":307}],217:[function(require,module,exports){
 /**
  * The base implementation of `_.unary` without support for storing wrapper metadata.
  *
@@ -25007,7 +25069,7 @@ function baseUnary(func) {
 
 module.exports = baseUnary;
 
-},{}],219:[function(require,module,exports){
+},{}],218:[function(require,module,exports){
 var SetCache = require('./_SetCache'),
     arrayIncludes = require('./_arrayIncludes'),
     arrayIncludesWith = require('./_arrayIncludesWith'),
@@ -25081,7 +25143,7 @@ function baseUniq(array, iteratee, comparator) {
 
 module.exports = baseUniq;
 
-},{"./_SetCache":176,"./_arrayIncludes":182,"./_arrayIncludesWith":183,"./_cacheHas":220,"./_createSet":228,"./_setToArray":279}],220:[function(require,module,exports){
+},{"./_SetCache":179,"./_arrayIncludes":185,"./_arrayIncludesWith":186,"./_cacheHas":219,"./_createSet":227,"./_setToArray":279}],219:[function(require,module,exports){
 /**
  * Checks if a cache value for `key` exists.
  *
@@ -25096,7 +25158,7 @@ function cacheHas(cache, key) {
 
 module.exports = cacheHas;
 
-},{}],221:[function(require,module,exports){
+},{}],220:[function(require,module,exports){
 var isArrayLikeObject = require('./isArrayLikeObject');
 
 /**
@@ -25112,7 +25174,7 @@ function castArrayLikeObject(value) {
 
 module.exports = castArrayLikeObject;
 
-},{"./isArrayLikeObject":300}],222:[function(require,module,exports){
+},{"./isArrayLikeObject":300}],221:[function(require,module,exports){
 var isArray = require('./isArray'),
     stringToPath = require('./_stringToPath');
 
@@ -25129,7 +25191,7 @@ function castPath(value) {
 
 module.exports = castPath;
 
-},{"./_stringToPath":286,"./isArray":298}],223:[function(require,module,exports){
+},{"./_stringToPath":285,"./isArray":298}],222:[function(require,module,exports){
 /**
  * Checks if `value` is a global object.
  *
@@ -25143,7 +25205,7 @@ function checkGlobal(value) {
 
 module.exports = checkGlobal;
 
-},{}],224:[function(require,module,exports){
+},{}],223:[function(require,module,exports){
 /**
  * Copies the values of `source` to `array`.
  *
@@ -25165,68 +25227,47 @@ function copyArray(source, array) {
 
 module.exports = copyArray;
 
-},{}],225:[function(require,module,exports){
-var isArrayLike = require('./isArrayLike');
+},{}],224:[function(require,module,exports){
+var root = require('./_root');
+
+/** Used to detect overreaching core-js shims. */
+var coreJsData = root['__core-js_shared__'];
+
+module.exports = coreJsData;
+
+},{"./_root":276}],225:[function(require,module,exports){
+var baseIteratee = require('./_baseIteratee'),
+    isArrayLike = require('./isArrayLike'),
+    keys = require('./keys');
 
 /**
- * Creates a `baseEach` or `baseEachRight` function.
+ * Creates a `_.find` or `_.findLast` function.
  *
  * @private
- * @param {Function} eachFunc The function to iterate over a collection.
- * @param {boolean} [fromRight] Specify iterating from right to left.
- * @returns {Function} Returns the new base function.
+ * @param {Function} findIndexFunc The function to find the collection index.
+ * @returns {Function} Returns the new find function.
  */
-function createBaseEach(eachFunc, fromRight) {
-  return function(collection, iteratee) {
-    if (collection == null) {
-      return collection;
-    }
+function createFind(findIndexFunc) {
+  return function(collection, predicate, fromIndex) {
+    var iterable = Object(collection);
+    predicate = baseIteratee(predicate, 3);
     if (!isArrayLike(collection)) {
-      return eachFunc(collection, iteratee);
+      var props = keys(collection);
     }
-    var length = collection.length,
-        index = fromRight ? length : -1,
-        iterable = Object(collection);
-
-    while ((fromRight ? index-- : ++index < length)) {
-      if (iteratee(iterable[index], index, iterable) === false) {
-        break;
+    var index = findIndexFunc(props || collection, function(value, key) {
+      if (props) {
+        key = value;
+        value = iterable[key];
       }
-    }
-    return collection;
+      return predicate(value, key, iterable);
+    }, fromIndex);
+    return index > -1 ? collection[props ? props[index] : index] : undefined;
   };
 }
 
-module.exports = createBaseEach;
+module.exports = createFind;
 
-},{"./isArrayLike":299}],226:[function(require,module,exports){
-/**
- * Creates a base function for methods like `_.forIn` and `_.forOwn`.
- *
- * @private
- * @param {boolean} [fromRight] Specify iterating from right to left.
- * @returns {Function} Returns the new base function.
- */
-function createBaseFor(fromRight) {
-  return function(object, iteratee, keysFunc) {
-    var index = -1,
-        iterable = Object(object),
-        props = keysFunc(object),
-        length = props.length;
-
-    while (length--) {
-      var key = props[fromRight ? length : ++index];
-      if (iteratee(iterable[key], key, iterable) === false) {
-        break;
-      }
-    }
-    return object;
-  };
-}
-
-module.exports = createBaseFor;
-
-},{}],227:[function(require,module,exports){
+},{"./_baseIteratee":206,"./isArrayLike":299,"./keys":309}],226:[function(require,module,exports){
 var LodashWrapper = require('./_LodashWrapper'),
     baseFlatten = require('./_baseFlatten'),
     getData = require('./_getData'),
@@ -25313,7 +25354,7 @@ function createFlow(fromRight) {
 
 module.exports = createFlow;
 
-},{"./_LodashWrapper":170,"./_baseFlatten":194,"./_getData":234,"./_getFuncName":235,"./_isLaziable":257,"./isArray":298,"./rest":317}],228:[function(require,module,exports){
+},{"./_LodashWrapper":173,"./_baseFlatten":195,"./_getData":232,"./_getFuncName":233,"./_isLaziable":256,"./isArray":298,"./rest":316}],227:[function(require,module,exports){
 var Set = require('./_Set'),
     noop = require('./noop'),
     setToArray = require('./_setToArray');
@@ -25334,39 +25375,7 @@ var createSet = !(Set && (1 / setToArray(new Set([,-0]))[1]) == INFINITY) ? noop
 
 module.exports = createSet;
 
-},{"./_Set":175,"./_setToArray":279,"./noop":313}],229:[function(require,module,exports){
-var baseToPairs = require('./_baseToPairs'),
-    getTag = require('./_getTag'),
-    mapToArray = require('./_mapToArray'),
-    setToPairs = require('./_setToPairs');
-
-/** `Object#toString` result references. */
-var mapTag = '[object Map]',
-    setTag = '[object Set]';
-
-/**
- * Creates a `_.toPairs` or `_.toPairsIn` function.
- *
- * @private
- * @param {Function} keysFunc The function to get the keys of a given object.
- * @returns {Function} Returns the new pairs function.
- */
-function createToPairs(keysFunc) {
-  return function(object) {
-    var tag = getTag(object);
-    if (tag == mapTag) {
-      return mapToArray(object);
-    }
-    if (tag == setTag) {
-      return setToPairs(object);
-    }
-    return baseToPairs(object, keysFunc(object));
-  };
-}
-
-module.exports = createToPairs;
-
-},{"./_baseToPairs":216,"./_getTag":243,"./_mapToArray":271,"./_setToPairs":280}],230:[function(require,module,exports){
+},{"./_Set":178,"./_setToArray":279,"./noop":312}],228:[function(require,module,exports){
 var SetCache = require('./_SetCache'),
     arraySome = require('./_arraySome');
 
@@ -25449,7 +25458,7 @@ function equalArrays(array, other, equalFunc, customizer, bitmask, stack) {
 
 module.exports = equalArrays;
 
-},{"./_SetCache":176,"./_arraySome":187}],231:[function(require,module,exports){
+},{"./_SetCache":179,"./_arraySome":190}],229:[function(require,module,exports){
 var Symbol = require('./_Symbol'),
     Uint8Array = require('./_Uint8Array'),
     equalArrays = require('./_equalArrays'),
@@ -25565,7 +25574,7 @@ function equalByTag(object, other, tag, equalFunc, customizer, bitmask, stack) {
 
 module.exports = equalByTag;
 
-},{"./_Symbol":178,"./_Uint8Array":179,"./_equalArrays":230,"./_mapToArray":271,"./_setToArray":279}],232:[function(require,module,exports){
+},{"./_Symbol":181,"./_Uint8Array":182,"./_equalArrays":228,"./_mapToArray":271,"./_setToArray":279}],230:[function(require,module,exports){
 var baseHas = require('./_baseHas'),
     keys = require('./keys');
 
@@ -25650,7 +25659,7 @@ function equalObjects(object, other, equalFunc, customizer, bitmask, stack) {
 
 module.exports = equalObjects;
 
-},{"./_baseHas":199,"./keys":310}],233:[function(require,module,exports){
+},{"./_baseHas":198,"./keys":309}],231:[function(require,module,exports){
 var baseGetAllKeys = require('./_baseGetAllKeys'),
     getSymbolsIn = require('./_getSymbolsIn'),
     keysIn = require('./keysIn');
@@ -25669,7 +25678,7 @@ function getAllKeysIn(object) {
 
 module.exports = getAllKeysIn;
 
-},{"./_baseGetAllKeys":198,"./_getSymbolsIn":242,"./keysIn":311}],234:[function(require,module,exports){
+},{"./_baseGetAllKeys":197,"./_getSymbolsIn":240,"./keysIn":310}],232:[function(require,module,exports){
 var metaMap = require('./_metaMap'),
     noop = require('./noop');
 
@@ -25686,7 +25695,7 @@ var getData = !metaMap ? noop : function(func) {
 
 module.exports = getData;
 
-},{"./_metaMap":273,"./noop":313}],235:[function(require,module,exports){
+},{"./_metaMap":273,"./noop":312}],233:[function(require,module,exports){
 var realNames = require('./_realNames');
 
 /** Used for built-in method references. */
@@ -25719,7 +25728,7 @@ function getFuncName(func) {
 
 module.exports = getFuncName;
 
-},{"./_realNames":275}],236:[function(require,module,exports){
+},{"./_realNames":275}],234:[function(require,module,exports){
 var baseProperty = require('./_baseProperty');
 
 /**
@@ -25737,7 +25746,7 @@ var getLength = baseProperty('length');
 
 module.exports = getLength;
 
-},{"./_baseProperty":213}],237:[function(require,module,exports){
+},{"./_baseProperty":213}],235:[function(require,module,exports){
 var isKeyable = require('./_isKeyable');
 
 /**
@@ -25757,9 +25766,9 @@ function getMapData(map, key) {
 
 module.exports = getMapData;
 
-},{"./_isKeyable":256}],238:[function(require,module,exports){
+},{"./_isKeyable":255}],236:[function(require,module,exports){
 var isStrictComparable = require('./_isStrictComparable'),
-    toPairs = require('./toPairs');
+    keys = require('./keys');
 
 /**
  * Gets the property names, values, and compare flags of `object`.
@@ -25769,19 +25778,23 @@ var isStrictComparable = require('./_isStrictComparable'),
  * @returns {Array} Returns the match data of `object`.
  */
 function getMatchData(object) {
-  var result = toPairs(object),
+  var result = keys(object),
       length = result.length;
 
   while (length--) {
-    result[length][2] = isStrictComparable(result[length][1]);
+    var key = result[length],
+        value = object[key];
+
+    result[length] = [key, value, isStrictComparable(value)];
   }
   return result;
 }
 
 module.exports = getMatchData;
 
-},{"./_isStrictComparable":259,"./toPairs":321}],239:[function(require,module,exports){
-var isNative = require('./isNative');
+},{"./_isStrictComparable":259,"./keys":309}],237:[function(require,module,exports){
+var baseIsNative = require('./_baseIsNative'),
+    getValue = require('./_getValue');
 
 /**
  * Gets the native function at `key` of `object`.
@@ -25792,13 +25805,13 @@ var isNative = require('./isNative');
  * @returns {*} Returns the function if it's native, else `undefined`.
  */
 function getNative(object, key) {
-  var value = object[key];
-  return isNative(value) ? value : undefined;
+  var value = getValue(object, key);
+  return baseIsNative(value) ? value : undefined;
 }
 
 module.exports = getNative;
 
-},{"./isNative":303}],240:[function(require,module,exports){
+},{"./_baseIsNative":205,"./_getValue":242}],238:[function(require,module,exports){
 /* Built-in method references for those with the same name as other `lodash` methods. */
 var nativeGetPrototype = Object.getPrototypeOf;
 
@@ -25815,7 +25828,9 @@ function getPrototype(value) {
 
 module.exports = getPrototype;
 
-},{}],241:[function(require,module,exports){
+},{}],239:[function(require,module,exports){
+var stubArray = require('./stubArray');
+
 /** Built-in value references. */
 var getOwnPropertySymbols = Object.getOwnPropertySymbols;
 
@@ -25834,14 +25849,12 @@ function getSymbols(object) {
 
 // Fallback for IE < 11.
 if (!getOwnPropertySymbols) {
-  getSymbols = function() {
-    return [];
-  };
+  getSymbols = stubArray;
 }
 
 module.exports = getSymbols;
 
-},{}],242:[function(require,module,exports){
+},{"./stubArray":317}],240:[function(require,module,exports){
 var arrayPush = require('./_arrayPush'),
     getPrototype = require('./_getPrototype'),
     getSymbols = require('./_getSymbols');
@@ -25868,7 +25881,7 @@ var getSymbolsIn = !getOwnPropertySymbols ? getSymbols : function(object) {
 
 module.exports = getSymbolsIn;
 
-},{"./_arrayPush":185,"./_getPrototype":240,"./_getSymbols":241}],243:[function(require,module,exports){
+},{"./_arrayPush":188,"./_getPrototype":238,"./_getSymbols":239}],241:[function(require,module,exports){
 var DataView = require('./_DataView'),
     Map = require('./_Map'),
     Promise = require('./_Promise'),
@@ -25940,7 +25953,22 @@ if ((DataView && getTag(new DataView(new ArrayBuffer(1))) != dataViewTag) ||
 
 module.exports = getTag;
 
-},{"./_DataView":166,"./_Map":171,"./_Promise":173,"./_Set":175,"./_WeakMap":180,"./_toSource":288}],244:[function(require,module,exports){
+},{"./_DataView":169,"./_Map":174,"./_Promise":176,"./_Set":178,"./_WeakMap":183,"./_toSource":287}],242:[function(require,module,exports){
+/**
+ * Gets the value at `key` of `object`.
+ *
+ * @private
+ * @param {Object} [object] The object to query.
+ * @param {string} key The key of the property to get.
+ * @returns {*} Returns the property value.
+ */
+function getValue(object, key) {
+  return object == null ? undefined : object[key];
+}
+
+module.exports = getValue;
+
+},{}],243:[function(require,module,exports){
 var castPath = require('./_castPath'),
     isArguments = require('./isArguments'),
     isArray = require('./isArray'),
@@ -25983,7 +26011,7 @@ function hasPath(object, path, hasFunc) {
 
 module.exports = hasPath;
 
-},{"./_castPath":222,"./_isIndex":254,"./_isKey":255,"./_toKey":287,"./isArguments":297,"./isArray":298,"./isLength":302,"./isString":307}],245:[function(require,module,exports){
+},{"./_castPath":221,"./_isIndex":253,"./_isKey":254,"./_toKey":286,"./isArguments":297,"./isArray":298,"./isLength":302,"./isString":306}],244:[function(require,module,exports){
 var nativeCreate = require('./_nativeCreate');
 
 /**
@@ -25999,7 +26027,7 @@ function hashClear() {
 
 module.exports = hashClear;
 
-},{"./_nativeCreate":274}],246:[function(require,module,exports){
+},{"./_nativeCreate":274}],245:[function(require,module,exports){
 /**
  * Removes `key` and its value from the hash.
  *
@@ -26016,7 +26044,7 @@ function hashDelete(key) {
 
 module.exports = hashDelete;
 
-},{}],247:[function(require,module,exports){
+},{}],246:[function(require,module,exports){
 var nativeCreate = require('./_nativeCreate');
 
 /** Used to stand-in for `undefined` hash values. */
@@ -26048,7 +26076,7 @@ function hashGet(key) {
 
 module.exports = hashGet;
 
-},{"./_nativeCreate":274}],248:[function(require,module,exports){
+},{"./_nativeCreate":274}],247:[function(require,module,exports){
 var nativeCreate = require('./_nativeCreate');
 
 /** Used for built-in method references. */
@@ -26073,7 +26101,7 @@ function hashHas(key) {
 
 module.exports = hashHas;
 
-},{"./_nativeCreate":274}],249:[function(require,module,exports){
+},{"./_nativeCreate":274}],248:[function(require,module,exports){
 var nativeCreate = require('./_nativeCreate');
 
 /** Used to stand-in for `undefined` hash values. */
@@ -26097,7 +26125,7 @@ function hashSet(key, value) {
 
 module.exports = hashSet;
 
-},{"./_nativeCreate":274}],250:[function(require,module,exports){
+},{"./_nativeCreate":274}],249:[function(require,module,exports){
 var baseTimes = require('./_baseTimes'),
     isArguments = require('./isArguments'),
     isArray = require('./isArray'),
@@ -26123,7 +26151,7 @@ function indexKeys(object) {
 
 module.exports = indexKeys;
 
-},{"./_baseTimes":215,"./isArguments":297,"./isArray":298,"./isLength":302,"./isString":307}],251:[function(require,module,exports){
+},{"./_baseTimes":215,"./isArguments":297,"./isArray":298,"./isLength":302,"./isString":306}],250:[function(require,module,exports){
 /**
  * Gets the index at which the first occurrence of `NaN` is found in `array`.
  *
@@ -26135,7 +26163,7 @@ module.exports = indexKeys;
  */
 function indexOfNaN(array, fromIndex, fromRight) {
   var length = array.length,
-      index = fromIndex + (fromRight ? 0 : -1);
+      index = fromIndex + (fromRight ? 1 : -1);
 
   while ((fromRight ? index-- : ++index < length)) {
     var other = array[index];
@@ -26148,7 +26176,7 @@ function indexOfNaN(array, fromIndex, fromRight) {
 
 module.exports = indexOfNaN;
 
-},{}],252:[function(require,module,exports){
+},{}],251:[function(require,module,exports){
 var isArguments = require('./isArguments'),
     isArray = require('./isArray');
 
@@ -26165,7 +26193,7 @@ function isFlattenable(value) {
 
 module.exports = isFlattenable;
 
-},{"./isArguments":297,"./isArray":298}],253:[function(require,module,exports){
+},{"./isArguments":297,"./isArray":298}],252:[function(require,module,exports){
 /**
  * Checks if `value` is a host object in IE < 9.
  *
@@ -26187,7 +26215,7 @@ function isHostObject(value) {
 
 module.exports = isHostObject;
 
-},{}],254:[function(require,module,exports){
+},{}],253:[function(require,module,exports){
 /** Used as references for various `Number` constants. */
 var MAX_SAFE_INTEGER = 9007199254740991;
 
@@ -26211,7 +26239,7 @@ function isIndex(value, length) {
 
 module.exports = isIndex;
 
-},{}],255:[function(require,module,exports){
+},{}],254:[function(require,module,exports){
 var isArray = require('./isArray'),
     isSymbol = require('./isSymbol');
 
@@ -26242,7 +26270,7 @@ function isKey(value, object) {
 
 module.exports = isKey;
 
-},{"./isArray":298,"./isSymbol":308}],256:[function(require,module,exports){
+},{"./isArray":298,"./isSymbol":307}],255:[function(require,module,exports){
 /**
  * Checks if `value` is suitable for use as unique object key.
  *
@@ -26259,7 +26287,7 @@ function isKeyable(value) {
 
 module.exports = isKeyable;
 
-},{}],257:[function(require,module,exports){
+},{}],256:[function(require,module,exports){
 var LazyWrapper = require('./_LazyWrapper'),
     getData = require('./_getData'),
     getFuncName = require('./_getFuncName'),
@@ -26289,7 +26317,29 @@ function isLaziable(func) {
 
 module.exports = isLaziable;
 
-},{"./_LazyWrapper":168,"./_getData":234,"./_getFuncName":235,"./wrapperLodash":324}],258:[function(require,module,exports){
+},{"./_LazyWrapper":171,"./_getData":232,"./_getFuncName":233,"./wrapperLodash":323}],257:[function(require,module,exports){
+var coreJsData = require('./_coreJsData');
+
+/** Used to detect methods masquerading as native. */
+var maskSrcKey = (function() {
+  var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || '');
+  return uid ? ('Symbol(src)_1.' + uid) : '';
+}());
+
+/**
+ * Checks if `func` has its source masked.
+ *
+ * @private
+ * @param {Function} func The function to check.
+ * @returns {boolean} Returns `true` if `func` is masked, else `false`.
+ */
+function isMasked(func) {
+  return !!maskSrcKey && (maskSrcKey in func);
+}
+
+module.exports = isMasked;
+
+},{"./_coreJsData":224}],258:[function(require,module,exports){
 /** Used for built-in method references. */
 var objectProto = Object.prototype;
 
@@ -26326,7 +26376,7 @@ function isStrictComparable(value) {
 
 module.exports = isStrictComparable;
 
-},{"./isObject":304}],260:[function(require,module,exports){
+},{"./isObject":303}],260:[function(require,module,exports){
 /**
  * Converts `iterator` to an array.
  *
@@ -26396,7 +26446,7 @@ function listCacheDelete(key) {
 
 module.exports = listCacheDelete;
 
-},{"./_assocIndexOf":188}],263:[function(require,module,exports){
+},{"./_assocIndexOf":191}],263:[function(require,module,exports){
 var assocIndexOf = require('./_assocIndexOf');
 
 /**
@@ -26417,7 +26467,7 @@ function listCacheGet(key) {
 
 module.exports = listCacheGet;
 
-},{"./_assocIndexOf":188}],264:[function(require,module,exports){
+},{"./_assocIndexOf":191}],264:[function(require,module,exports){
 var assocIndexOf = require('./_assocIndexOf');
 
 /**
@@ -26435,7 +26485,7 @@ function listCacheHas(key) {
 
 module.exports = listCacheHas;
 
-},{"./_assocIndexOf":188}],265:[function(require,module,exports){
+},{"./_assocIndexOf":191}],265:[function(require,module,exports){
 var assocIndexOf = require('./_assocIndexOf');
 
 /**
@@ -26462,7 +26512,7 @@ function listCacheSet(key, value) {
 
 module.exports = listCacheSet;
 
-},{"./_assocIndexOf":188}],266:[function(require,module,exports){
+},{"./_assocIndexOf":191}],266:[function(require,module,exports){
 var Hash = require('./_Hash'),
     ListCache = require('./_ListCache'),
     Map = require('./_Map');
@@ -26484,7 +26534,7 @@ function mapCacheClear() {
 
 module.exports = mapCacheClear;
 
-},{"./_Hash":167,"./_ListCache":169,"./_Map":171}],267:[function(require,module,exports){
+},{"./_Hash":170,"./_ListCache":172,"./_Map":174}],267:[function(require,module,exports){
 var getMapData = require('./_getMapData');
 
 /**
@@ -26502,7 +26552,7 @@ function mapCacheDelete(key) {
 
 module.exports = mapCacheDelete;
 
-},{"./_getMapData":237}],268:[function(require,module,exports){
+},{"./_getMapData":235}],268:[function(require,module,exports){
 var getMapData = require('./_getMapData');
 
 /**
@@ -26520,7 +26570,7 @@ function mapCacheGet(key) {
 
 module.exports = mapCacheGet;
 
-},{"./_getMapData":237}],269:[function(require,module,exports){
+},{"./_getMapData":235}],269:[function(require,module,exports){
 var getMapData = require('./_getMapData');
 
 /**
@@ -26538,7 +26588,7 @@ function mapCacheHas(key) {
 
 module.exports = mapCacheHas;
 
-},{"./_getMapData":237}],270:[function(require,module,exports){
+},{"./_getMapData":235}],270:[function(require,module,exports){
 var getMapData = require('./_getMapData');
 
 /**
@@ -26558,7 +26608,7 @@ function mapCacheSet(key, value) {
 
 module.exports = mapCacheSet;
 
-},{"./_getMapData":237}],271:[function(require,module,exports){
+},{"./_getMapData":235}],271:[function(require,module,exports){
 /**
  * Converts `map` to its key-value pairs.
  *
@@ -26608,7 +26658,7 @@ var metaMap = WeakMap && new WeakMap;
 
 module.exports = metaMap;
 
-},{"./_WeakMap":180}],274:[function(require,module,exports){
+},{"./_WeakMap":183}],274:[function(require,module,exports){
 var getNative = require('./_getNative');
 
 /* Built-in method references that are verified to be native. */
@@ -26616,7 +26666,7 @@ var nativeCreate = getNative(Object, 'create');
 
 module.exports = nativeCreate;
 
-},{"./_getNative":239}],275:[function(require,module,exports){
+},{"./_getNative":237}],275:[function(require,module,exports){
 /** Used to lookup unminified function names. */
 var realNames = {};
 
@@ -26626,48 +26676,22 @@ module.exports = realNames;
 (function (global){
 var checkGlobal = require('./_checkGlobal');
 
-/** Used to determine if values are of the language type `Object`. */
-var objectTypes = {
-  'function': true,
-  'object': true
-};
-
-/** Detect free variable `exports`. */
-var freeExports = (objectTypes[typeof exports] && exports && !exports.nodeType)
-  ? exports
-  : undefined;
-
-/** Detect free variable `module`. */
-var freeModule = (objectTypes[typeof module] && module && !module.nodeType)
-  ? module
-  : undefined;
-
 /** Detect free variable `global` from Node.js. */
-var freeGlobal = checkGlobal(freeExports && freeModule && typeof global == 'object' && global);
+var freeGlobal = checkGlobal(typeof global == 'object' && global);
 
 /** Detect free variable `self`. */
-var freeSelf = checkGlobal(objectTypes[typeof self] && self);
-
-/** Detect free variable `window`. */
-var freeWindow = checkGlobal(objectTypes[typeof window] && window);
+var freeSelf = checkGlobal(typeof self == 'object' && self);
 
 /** Detect `this` as the global object. */
-var thisGlobal = checkGlobal(objectTypes[typeof this] && this);
+var thisGlobal = checkGlobal(typeof this == 'object' && this);
 
-/**
- * Used as a reference to the global object.
- *
- * The `this` value is used if it's the global object to avoid Greasemonkey's
- * restricted `window` object, otherwise the `window` object is used.
- */
-var root = freeGlobal ||
-  ((freeWindow !== (thisGlobal && thisGlobal.window)) && freeWindow) ||
-    freeSelf || thisGlobal || Function('return this')();
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || thisGlobal || Function('return this')();
 
 module.exports = root;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_checkGlobal":223}],277:[function(require,module,exports){
+},{"./_checkGlobal":222}],277:[function(require,module,exports){
 /** Used to stand-in for `undefined` hash values. */
 var HASH_UNDEFINED = '__lodash_hash_undefined__';
 
@@ -26725,26 +26749,6 @@ function setToArray(set) {
 module.exports = setToArray;
 
 },{}],280:[function(require,module,exports){
-/**
- * Converts `set` to its value-value pairs.
- *
- * @private
- * @param {Object} set The set to convert.
- * @returns {Array} Returns the value-value pairs.
- */
-function setToPairs(set) {
-  var index = -1,
-      result = Array(set.size);
-
-  set.forEach(function(value) {
-    result[++index] = [value, value];
-  });
-  return result;
-}
-
-module.exports = setToPairs;
-
-},{}],281:[function(require,module,exports){
 var ListCache = require('./_ListCache');
 
 /**
@@ -26760,7 +26764,7 @@ function stackClear() {
 
 module.exports = stackClear;
 
-},{"./_ListCache":169}],282:[function(require,module,exports){
+},{"./_ListCache":172}],281:[function(require,module,exports){
 /**
  * Removes `key` and its value from the stack.
  *
@@ -26776,7 +26780,7 @@ function stackDelete(key) {
 
 module.exports = stackDelete;
 
-},{}],283:[function(require,module,exports){
+},{}],282:[function(require,module,exports){
 /**
  * Gets the stack value for `key`.
  *
@@ -26792,7 +26796,7 @@ function stackGet(key) {
 
 module.exports = stackGet;
 
-},{}],284:[function(require,module,exports){
+},{}],283:[function(require,module,exports){
 /**
  * Checks if a stack value for `key` exists.
  *
@@ -26808,7 +26812,7 @@ function stackHas(key) {
 
 module.exports = stackHas;
 
-},{}],285:[function(require,module,exports){
+},{}],284:[function(require,module,exports){
 var ListCache = require('./_ListCache'),
     MapCache = require('./_MapCache');
 
@@ -26836,12 +26840,12 @@ function stackSet(key, value) {
 
 module.exports = stackSet;
 
-},{"./_ListCache":169,"./_MapCache":172}],286:[function(require,module,exports){
+},{"./_ListCache":172,"./_MapCache":175}],285:[function(require,module,exports){
 var memoize = require('./memoize'),
     toString = require('./toString');
 
 /** Used to match property names within property paths. */
-var rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]/g;
+var rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(\.|\[\])(?:\4|$))/g;
 
 /** Used to match backslashes in property paths. */
 var reEscapeChar = /\\(\\)?/g;
@@ -26863,7 +26867,7 @@ var stringToPath = memoize(function(string) {
 
 module.exports = stringToPath;
 
-},{"./memoize":312,"./toString":322}],287:[function(require,module,exports){
+},{"./memoize":311,"./toString":321}],286:[function(require,module,exports){
 var isSymbol = require('./isSymbol');
 
 /** Used as references for various `Number` constants. */
@@ -26886,7 +26890,7 @@ function toKey(value) {
 
 module.exports = toKey;
 
-},{"./isSymbol":308}],288:[function(require,module,exports){
+},{"./isSymbol":307}],287:[function(require,module,exports){
 /** Used to resolve the decompiled source of functions. */
 var funcToString = Function.prototype.toString;
 
@@ -26911,7 +26915,7 @@ function toSource(func) {
 
 module.exports = toSource;
 
-},{}],289:[function(require,module,exports){
+},{}],288:[function(require,module,exports){
 var LazyWrapper = require('./_LazyWrapper'),
     LodashWrapper = require('./_LodashWrapper'),
     copyArray = require('./_copyArray');
@@ -26936,7 +26940,7 @@ function wrapperClone(wrapper) {
 
 module.exports = wrapperClone;
 
-},{"./_LazyWrapper":168,"./_LodashWrapper":170,"./_copyArray":224}],290:[function(require,module,exports){
+},{"./_LazyWrapper":171,"./_LodashWrapper":173,"./_copyArray":223}],289:[function(require,module,exports){
 /**
  * Performs a
  * [`SameValueZero`](http://ecma-international.org/ecma-262/6.0/#sec-samevaluezero)
@@ -26975,12 +26979,9 @@ function eq(value, other) {
 
 module.exports = eq;
 
-},{}],291:[function(require,module,exports){
-var baseEach = require('./_baseEach'),
-    baseFind = require('./_baseFind'),
-    baseFindIndex = require('./_baseFindIndex'),
-    baseIteratee = require('./_baseIteratee'),
-    isArray = require('./isArray');
+},{}],290:[function(require,module,exports){
+var createFind = require('./_createFind'),
+    findIndex = require('./findIndex');
 
 /**
  * Iterates over elements of `collection`, returning the first element
@@ -26994,6 +26995,7 @@ var baseEach = require('./_baseEach'),
  * @param {Array|Object} collection The collection to search.
  * @param {Array|Function|Object|string} [predicate=_.identity]
  *  The function invoked per iteration.
+ * @param {number} [fromIndex=0] The index to search from.
  * @returns {*} Returns the matched element, else `undefined`.
  * @example
  *
@@ -27018,18 +27020,69 @@ var baseEach = require('./_baseEach'),
  * _.find(users, 'active');
  * // => object for 'barney'
  */
-function find(collection, predicate) {
-  predicate = baseIteratee(predicate, 3);
-  if (isArray(collection)) {
-    var index = baseFindIndex(collection, predicate);
-    return index > -1 ? collection[index] : undefined;
-  }
-  return baseFind(collection, predicate, baseEach);
-}
+var find = createFind(findIndex);
 
 module.exports = find;
 
-},{"./_baseEach":191,"./_baseFind":192,"./_baseFindIndex":193,"./_baseIteratee":206,"./isArray":298}],292:[function(require,module,exports){
+},{"./_createFind":225,"./findIndex":291}],291:[function(require,module,exports){
+var baseFindIndex = require('./_baseFindIndex'),
+    baseIteratee = require('./_baseIteratee'),
+    toInteger = require('./toInteger');
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max;
+
+/**
+ * This method is like `_.find` except that it returns the index of the first
+ * element `predicate` returns truthy for instead of the element itself.
+ *
+ * @static
+ * @memberOf _
+ * @since 1.1.0
+ * @category Array
+ * @param {Array} array The array to search.
+ * @param {Array|Function|Object|string} [predicate=_.identity]
+ *  The function invoked per iteration.
+ * @param {number} [fromIndex=0] The index to search from.
+ * @returns {number} Returns the index of the found element, else `-1`.
+ * @example
+ *
+ * var users = [
+ *   { 'user': 'barney',  'active': false },
+ *   { 'user': 'fred',    'active': false },
+ *   { 'user': 'pebbles', 'active': true }
+ * ];
+ *
+ * _.findIndex(users, function(o) { return o.user == 'barney'; });
+ * // => 0
+ *
+ * // The `_.matches` iteratee shorthand.
+ * _.findIndex(users, { 'user': 'fred', 'active': false });
+ * // => 1
+ *
+ * // The `_.matchesProperty` iteratee shorthand.
+ * _.findIndex(users, ['active', false]);
+ * // => 0
+ *
+ * // The `_.property` iteratee shorthand.
+ * _.findIndex(users, 'active');
+ * // => 2
+ */
+function findIndex(array, predicate, fromIndex) {
+  var length = array ? array.length : 0;
+  if (!length) {
+    return -1;
+  }
+  var index = fromIndex == null ? 0 : toInteger(fromIndex);
+  if (index < 0) {
+    index = nativeMax(length + index, 0);
+  }
+  return baseFindIndex(array, baseIteratee(predicate, 3), index);
+}
+
+module.exports = findIndex;
+
+},{"./_baseFindIndex":194,"./_baseIteratee":206,"./toInteger":319}],292:[function(require,module,exports){
 var createFlow = require('./_createFlow');
 
 /**
@@ -27049,7 +27102,7 @@ var createFlow = require('./_createFlow');
  *   return n * n;
  * }
  *
- * var addSquare = _.flowRight(square, _.add);
+ * var addSquare = _.flowRight([square, _.add]);
  * addSquare(1, 2);
  * // => 9
  */
@@ -27057,7 +27110,7 @@ var flowRight = createFlow(true);
 
 module.exports = flowRight;
 
-},{"./_createFlow":227}],293:[function(require,module,exports){
+},{"./_createFlow":226}],293:[function(require,module,exports){
 var baseGet = require('./_baseGet');
 
 /**
@@ -27092,7 +27145,7 @@ function get(object, path, defaultValue) {
 
 module.exports = get;
 
-},{"./_baseGet":197}],294:[function(require,module,exports){
+},{"./_baseGet":196}],294:[function(require,module,exports){
 var baseHasIn = require('./_baseHasIn'),
     hasPath = require('./_hasPath');
 
@@ -27128,7 +27181,7 @@ function hasIn(object, path) {
 
 module.exports = hasIn;
 
-},{"./_baseHasIn":200,"./_hasPath":244}],295:[function(require,module,exports){
+},{"./_baseHasIn":199,"./_hasPath":243}],295:[function(require,module,exports){
 /**
  * This method returns the first argument given to it.
  *
@@ -27142,7 +27195,7 @@ module.exports = hasIn;
  *
  * var object = { 'user': 'fred' };
  *
- * _.identity(object) === object;
+ * console.log(_.identity(object) === object);
  * // => true
  */
 function identity(value) {
@@ -27171,7 +27224,7 @@ var arrayMap = require('./_arrayMap'),
  * @returns {Array} Returns the new array of intersecting values.
  * @example
  *
- * _.intersection([2, 1], [4, 2], [1, 2]);
+ * _.intersection([2, 1], [2, 3]);
  * // => [2]
  */
 var intersection = rest(function(arrays) {
@@ -27183,7 +27236,7 @@ var intersection = rest(function(arrays) {
 
 module.exports = intersection;
 
-},{"./_arrayMap":184,"./_baseIntersection":202,"./_castArrayLikeObject":221,"./rest":317}],297:[function(require,module,exports){
+},{"./_arrayMap":187,"./_baseIntersection":201,"./_castArrayLikeObject":220,"./rest":316}],297:[function(require,module,exports){
 var isArrayLikeObject = require('./isArrayLikeObject');
 
 /** `Object#toString` result references. */
@@ -27297,7 +27350,7 @@ function isArrayLike(value) {
 
 module.exports = isArrayLike;
 
-},{"./_getLength":236,"./isFunction":301,"./isLength":302}],300:[function(require,module,exports){
+},{"./_getLength":234,"./isFunction":301,"./isLength":302}],300:[function(require,module,exports){
 var isArrayLike = require('./isArrayLike'),
     isObjectLike = require('./isObjectLike');
 
@@ -27332,7 +27385,7 @@ function isArrayLikeObject(value) {
 
 module.exports = isArrayLikeObject;
 
-},{"./isArrayLike":299,"./isObjectLike":305}],301:[function(require,module,exports){
+},{"./isArrayLike":299,"./isObjectLike":304}],301:[function(require,module,exports){
 var isObject = require('./isObject');
 
 /** `Object#toString` result references. */
@@ -27377,7 +27430,7 @@ function isFunction(value) {
 
 module.exports = isFunction;
 
-},{"./isObject":304}],302:[function(require,module,exports){
+},{"./isObject":303}],302:[function(require,module,exports){
 /** Used as references for various `Number` constants. */
 var MAX_SAFE_INTEGER = 9007199254740991;
 
@@ -27416,64 +27469,6 @@ function isLength(value) {
 module.exports = isLength;
 
 },{}],303:[function(require,module,exports){
-var isFunction = require('./isFunction'),
-    isHostObject = require('./_isHostObject'),
-    isObject = require('./isObject'),
-    toSource = require('./_toSource');
-
-/**
- * Used to match `RegExp`
- * [syntax characters](http://ecma-international.org/ecma-262/6.0/#sec-patterns).
- */
-var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
-
-/** Used to detect host constructors (Safari). */
-var reIsHostCtor = /^\[object .+?Constructor\]$/;
-
-/** Used for built-in method references. */
-var objectProto = Object.prototype;
-
-/** Used to resolve the decompiled source of functions. */
-var funcToString = Function.prototype.toString;
-
-/** Used to check objects for own properties. */
-var hasOwnProperty = objectProto.hasOwnProperty;
-
-/** Used to detect if a method is native. */
-var reIsNative = RegExp('^' +
-  funcToString.call(hasOwnProperty).replace(reRegExpChar, '\\$&')
-  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
-);
-
-/**
- * Checks if `value` is a native function.
- *
- * @static
- * @memberOf _
- * @since 3.0.0
- * @category Lang
- * @param {*} value The value to check.
- * @returns {boolean} Returns `true` if `value` is a native function,
- *  else `false`.
- * @example
- *
- * _.isNative(Array.prototype.push);
- * // => true
- *
- * _.isNative(_);
- * // => false
- */
-function isNative(value) {
-  if (!isObject(value)) {
-    return false;
-  }
-  var pattern = (isFunction(value) || isHostObject(value)) ? reIsNative : reIsHostCtor;
-  return pattern.test(toSource(value));
-}
-
-module.exports = isNative;
-
-},{"./_isHostObject":253,"./_toSource":288,"./isFunction":301,"./isObject":304}],304:[function(require,module,exports){
 /**
  * Checks if `value` is the
  * [language type](http://www.ecma-international.org/ecma-262/6.0/#sec-ecmascript-language-types)
@@ -27506,7 +27501,7 @@ function isObject(value) {
 
 module.exports = isObject;
 
-},{}],305:[function(require,module,exports){
+},{}],304:[function(require,module,exports){
 /**
  * Checks if `value` is object-like. A value is object-like if it's not `null`
  * and has a `typeof` result of "object".
@@ -27537,7 +27532,7 @@ function isObjectLike(value) {
 
 module.exports = isObjectLike;
 
-},{}],306:[function(require,module,exports){
+},{}],305:[function(require,module,exports){
 var getPrototype = require('./_getPrototype'),
     isHostObject = require('./_isHostObject'),
     isObjectLike = require('./isObjectLike');
@@ -27609,7 +27604,7 @@ function isPlainObject(value) {
 
 module.exports = isPlainObject;
 
-},{"./_getPrototype":240,"./_isHostObject":253,"./isObjectLike":305}],307:[function(require,module,exports){
+},{"./_getPrototype":238,"./_isHostObject":252,"./isObjectLike":304}],306:[function(require,module,exports){
 var isArray = require('./isArray'),
     isObjectLike = require('./isObjectLike');
 
@@ -27651,7 +27646,7 @@ function isString(value) {
 
 module.exports = isString;
 
-},{"./isArray":298,"./isObjectLike":305}],308:[function(require,module,exports){
+},{"./isArray":298,"./isObjectLike":304}],307:[function(require,module,exports){
 var isObjectLike = require('./isObjectLike');
 
 /** `Object#toString` result references. */
@@ -27692,7 +27687,7 @@ function isSymbol(value) {
 
 module.exports = isSymbol;
 
-},{"./isObjectLike":305}],309:[function(require,module,exports){
+},{"./isObjectLike":304}],308:[function(require,module,exports){
 var isLength = require('./isLength'),
     isObjectLike = require('./isObjectLike');
 
@@ -27774,7 +27769,7 @@ function isTypedArray(value) {
 
 module.exports = isTypedArray;
 
-},{"./isLength":302,"./isObjectLike":305}],310:[function(require,module,exports){
+},{"./isLength":302,"./isObjectLike":304}],309:[function(require,module,exports){
 var baseHas = require('./_baseHas'),
     baseKeys = require('./_baseKeys'),
     indexKeys = require('./_indexKeys'),
@@ -27832,7 +27827,7 @@ function keys(object) {
 
 module.exports = keys;
 
-},{"./_baseHas":199,"./_baseKeys":207,"./_indexKeys":250,"./_isIndex":254,"./_isPrototype":258,"./isArrayLike":299}],311:[function(require,module,exports){
+},{"./_baseHas":198,"./_baseKeys":207,"./_indexKeys":249,"./_isIndex":253,"./_isPrototype":258,"./isArrayLike":299}],310:[function(require,module,exports){
 var baseKeysIn = require('./_baseKeysIn'),
     indexKeys = require('./_indexKeys'),
     isIndex = require('./_isIndex'),
@@ -27889,7 +27884,7 @@ function keysIn(object) {
 
 module.exports = keysIn;
 
-},{"./_baseKeysIn":208,"./_indexKeys":250,"./_isIndex":254,"./_isPrototype":258}],312:[function(require,module,exports){
+},{"./_baseKeysIn":208,"./_indexKeys":249,"./_isIndex":253,"./_isPrototype":258}],311:[function(require,module,exports){
 var MapCache = require('./_MapCache');
 
 /** Used as the `TypeError` message for "Functions" methods. */
@@ -27964,10 +27959,9 @@ memoize.Cache = MapCache;
 
 module.exports = memoize;
 
-},{"./_MapCache":172}],313:[function(require,module,exports){
+},{"./_MapCache":175}],312:[function(require,module,exports){
 /**
- * A no-operation function that returns `undefined` regardless of the
- * arguments it receives.
+ * A method that returns `undefined`.
  *
  * @static
  * @memberOf _
@@ -27975,10 +27969,8 @@ module.exports = memoize;
  * @category Util
  * @example
  *
- * var object = { 'user': 'fred' };
- *
- * _.noop(object) === undefined;
- * // => true
+ * _.times(2, _.noop);
+ * // => [undefined, undefined]
  */
 function noop() {
   // No operation performed.
@@ -27986,7 +27978,7 @@ function noop() {
 
 module.exports = noop;
 
-},{}],314:[function(require,module,exports){
+},{}],313:[function(require,module,exports){
 var arrayMap = require('./_arrayMap'),
     baseDifference = require('./_baseDifference'),
     baseFlatten = require('./_baseFlatten'),
@@ -28024,7 +28016,7 @@ var omit = rest(function(object, props) {
 
 module.exports = omit;
 
-},{"./_arrayMap":184,"./_baseDifference":190,"./_baseFlatten":194,"./_basePick":212,"./_getAllKeysIn":233,"./_toKey":287,"./rest":317}],315:[function(require,module,exports){
+},{"./_arrayMap":187,"./_baseDifference":193,"./_baseFlatten":195,"./_basePick":212,"./_getAllKeysIn":231,"./_toKey":286,"./rest":316}],314:[function(require,module,exports){
 var arrayMap = require('./_arrayMap'),
     baseFlatten = require('./_baseFlatten'),
     basePick = require('./_basePick'),
@@ -28054,7 +28046,7 @@ var pick = rest(function(object, props) {
 
 module.exports = pick;
 
-},{"./_arrayMap":184,"./_baseFlatten":194,"./_basePick":212,"./_toKey":287,"./rest":317}],316:[function(require,module,exports){
+},{"./_arrayMap":187,"./_baseFlatten":195,"./_basePick":212,"./_toKey":286,"./rest":316}],315:[function(require,module,exports){
 var baseProperty = require('./_baseProperty'),
     basePropertyDeep = require('./_basePropertyDeep'),
     isKey = require('./_isKey'),
@@ -28088,7 +28080,7 @@ function property(path) {
 
 module.exports = property;
 
-},{"./_baseProperty":213,"./_basePropertyDeep":214,"./_isKey":255,"./_toKey":287}],317:[function(require,module,exports){
+},{"./_baseProperty":213,"./_basePropertyDeep":214,"./_isKey":254,"./_toKey":286}],316:[function(require,module,exports){
 var apply = require('./_apply'),
     toInteger = require('./toInteger');
 
@@ -28154,7 +28146,32 @@ function rest(func, start) {
 
 module.exports = rest;
 
-},{"./_apply":181,"./toInteger":319}],318:[function(require,module,exports){
+},{"./_apply":184,"./toInteger":319}],317:[function(require,module,exports){
+/**
+ * A method that returns a new empty array.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.13.0
+ * @category Util
+ * @returns {Array} Returns the new empty array.
+ * @example
+ *
+ * var arrays = _.times(2, _.stubArray);
+ *
+ * console.log(arrays);
+ * // => [[], []]
+ *
+ * console.log(arrays[0] === arrays[1]);
+ * // => false
+ */
+function stubArray() {
+  return [];
+}
+
+module.exports = stubArray;
+
+},{}],318:[function(require,module,exports){
 var toNumber = require('./toNumber');
 
 /** Used as references for various `Number` constants. */
@@ -28204,7 +28221,7 @@ var toFinite = require('./toFinite');
 /**
  * Converts `value` to an integer.
  *
- * **Note:** This function is loosely based on
+ * **Note:** This method is loosely based on
  * [`ToInteger`](http://www.ecma-international.org/ecma-262/6.0/#sec-tointeger).
  *
  * @static
@@ -28305,39 +28322,7 @@ function toNumber(value) {
 
 module.exports = toNumber;
 
-},{"./isFunction":301,"./isObject":304,"./isSymbol":308}],321:[function(require,module,exports){
-var createToPairs = require('./_createToPairs'),
-    keys = require('./keys');
-
-/**
- * Creates an array of own enumerable string keyed-value pairs for `object`
- * which can be consumed by `_.fromPairs`. If `object` is a map or set, its
- * entries are returned.
- *
- * @static
- * @memberOf _
- * @since 4.0.0
- * @alias entries
- * @category Object
- * @param {Object} object The object to query.
- * @returns {Array} Returns the key-value pairs.
- * @example
- *
- * function Foo() {
- *   this.a = 1;
- *   this.b = 2;
- * }
- *
- * Foo.prototype.c = 3;
- *
- * _.toPairs(new Foo);
- * // => [['a', 1], ['b', 2]] (iteration order is not guaranteed)
- */
-var toPairs = createToPairs(keys);
-
-module.exports = toPairs;
-
-},{"./_createToPairs":229,"./keys":310}],322:[function(require,module,exports){
+},{"./isFunction":301,"./isObject":303,"./isSymbol":307}],321:[function(require,module,exports){
 var baseToString = require('./_baseToString');
 
 /**
@@ -28367,7 +28352,7 @@ function toString(value) {
 
 module.exports = toString;
 
-},{"./_baseToString":217}],323:[function(require,module,exports){
+},{"./_baseToString":216}],322:[function(require,module,exports){
 var baseFlatten = require('./_baseFlatten'),
     baseUniq = require('./_baseUniq'),
     isArrayLikeObject = require('./isArrayLikeObject'),
@@ -28386,8 +28371,8 @@ var baseFlatten = require('./_baseFlatten'),
  * @returns {Array} Returns the new array of combined values.
  * @example
  *
- * _.union([2, 1], [4, 2], [1, 2]);
- * // => [2, 1, 4]
+ * _.union([2], [1, 2]);
+ * // => [2, 1]
  */
 var union = rest(function(arrays) {
   return baseUniq(baseFlatten(arrays, 1, isArrayLikeObject, true));
@@ -28395,7 +28380,7 @@ var union = rest(function(arrays) {
 
 module.exports = union;
 
-},{"./_baseFlatten":194,"./_baseUniq":219,"./isArrayLikeObject":300,"./rest":317}],324:[function(require,module,exports){
+},{"./_baseFlatten":195,"./_baseUniq":218,"./isArrayLikeObject":300,"./rest":316}],323:[function(require,module,exports){
 var LazyWrapper = require('./_LazyWrapper'),
     LodashWrapper = require('./_LodashWrapper'),
     baseLodash = require('./_baseLodash'),
@@ -28484,19 +28469,21 @@ var hasOwnProperty = objectProto.hasOwnProperty;
  * `isArrayBuffer`, `isArrayLike`, `isArrayLikeObject`, `isBoolean`,
  * `isBuffer`, `isDate`, `isElement`, `isEmpty`, `isEqual`, `isEqualWith`,
  * `isError`, `isFinite`, `isFunction`, `isInteger`, `isLength`, `isMap`,
- * `isMatch`, `isMatchWith`, `isNaN`, `isNative`, `isNil`, `isNull`, `isNumber`,
- * `isObject`, `isObjectLike`, `isPlainObject`, `isRegExp`, `isSafeInteger`,
- * `isSet`, `isString`, `isUndefined`, `isTypedArray`, `isWeakMap`, `isWeakSet`,
- * `join`, `kebabCase`, `last`, `lastIndexOf`, `lowerCase`, `lowerFirst`,
- * `lt`, `lte`, `max`, `maxBy`, `mean`, `meanBy`, `min`, `minBy`, `multiply`,
- * `noConflict`, `noop`, `now`, `nth`, `pad`, `padEnd`, `padStart`, `parseInt`,
- * `pop`, `random`, `reduce`, `reduceRight`, `repeat`, `result`, `round`,
- * `runInContext`, `sample`, `shift`, `size`, `snakeCase`, `some`, `sortedIndex`,
- * `sortedIndexBy`, `sortedLastIndex`, `sortedLastIndexBy`, `startCase`,
- * `startsWith`, `subtract`, `sum`, `sumBy`, `template`, `times`, `toFinite`,
- * `toInteger`, `toJSON`, `toLength`, `toLower`, `toNumber`, `toSafeInteger`,
- * `toString`, `toUpper`, `trim`, `trimEnd`, `trimStart`, `truncate`, `unescape`,
- * `uniqueId`, `upperCase`, `upperFirst`, `value`, and `words`
+ * `isMatch`, `isMatchWith`, `isNaN`, `isNative`, `isNil`, `isNull`,
+ * `isNumber`, `isObject`, `isObjectLike`, `isPlainObject`, `isRegExp`,
+ * `isSafeInteger`, `isSet`, `isString`, `isUndefined`, `isTypedArray`,
+ * `isWeakMap`, `isWeakSet`, `join`, `kebabCase`, `last`, `lastIndexOf`,
+ * `lowerCase`, `lowerFirst`, `lt`, `lte`, `max`, `maxBy`, `mean`, `meanBy`,
+ * `min`, `minBy`, `multiply`, `noConflict`, `noop`, `now`, `nth`, `pad`,
+ * `padEnd`, `padStart`, `parseInt`, `pop`, `random`, `reduce`, `reduceRight`,
+ * `repeat`, `result`, `round`, `runInContext`, `sample`, `shift`, `size`,
+ * `snakeCase`, `some`, `sortedIndex`, `sortedIndexBy`, `sortedLastIndex`,
+ * `sortedLastIndexBy`, `startCase`, `startsWith`, `stubArray`, `stubFalse`,
+ * `stubObject`, `stubString`, `stubTrue`, `subtract`, `sum`, `sumBy`,
+ * `template`, `times`, `toFinite`, `toInteger`, `toJSON`, `toLength`,
+ * `toLower`, `toNumber`, `toSafeInteger`, `toString`, `toUpper`, `trim`,
+ * `trimEnd`, `trimStart`, `truncate`, `unescape`, `uniqueId`, `upperCase`,
+ * `upperFirst`, `value`, and `words`
  *
  * @name _
  * @constructor
@@ -28542,7 +28529,7 @@ lodash.prototype.constructor = lodash;
 
 module.exports = lodash;
 
-},{"./_LazyWrapper":168,"./_LodashWrapper":170,"./_baseLodash":209,"./_wrapperClone":289,"./isArray":298,"./isObjectLike":305}],325:[function(require,module,exports){
+},{"./_LazyWrapper":171,"./_LodashWrapper":173,"./_baseLodash":209,"./_wrapperClone":288,"./isArray":298,"./isObjectLike":304}],324:[function(require,module,exports){
 'use strict';
 
 function createFunction(parameters, defaultType) {
@@ -28709,7 +28696,7 @@ module.exports['piecewise-constant'] = function(parameters) {
     return createFunction(parameters, 'interval');
 };
 
-},{}],326:[function(require,module,exports){
+},{}],325:[function(require,module,exports){
 'use strict';
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -28833,7 +28820,7 @@ function isWebGLSupported(failIfMajorPerformanceCaveat) {
     }
 }
 
-},{}],327:[function(require,module,exports){
+},{}],326:[function(require,module,exports){
 
 var path = require('path');
 
@@ -28895,7 +28882,7 @@ module.exports = {
 
 module.exports.util = "float evaluate_zoom_function_1(const vec4 values, const float t) {\n    if (t < 1.0) {\n        return mix(values[0], values[1], t);\n    } else if (t < 2.0) {\n        return mix(values[1], values[2], t - 1.0);\n    } else {\n        return mix(values[2], values[3], t - 2.0);\n    }\n}\nvec4 evaluate_zoom_function_4(const vec4 value0, const vec4 value1, const vec4 value2, const vec4 value3, const float t) {\n    if (t < 1.0) {\n        return mix(value0, value1, t);\n    } else if (t < 2.0) {\n        return mix(value1, value2, t - 1.0);\n    } else {\n        return mix(value2, value3, t - 2.0);\n    }\n}\n";
 
-},{"path":566}],328:[function(require,module,exports){
+},{"path":565}],327:[function(require,module,exports){
 'use strict';
 
 var format = require('util').format;
@@ -28913,7 +28900,7 @@ function ValidationError(key, value /*, message, ...*/) {
 
 module.exports = ValidationError;
 
-},{"util":825}],329:[function(require,module,exports){
+},{"util":874}],328:[function(require,module,exports){
 'use strict';
 
 module.exports = function (output) {
@@ -28926,7 +28913,7 @@ module.exports = function (output) {
     return output;
 };
 
-},{}],330:[function(require,module,exports){
+},{}],329:[function(require,module,exports){
 'use strict';
 
 module.exports = function getType(val) {
@@ -28945,7 +28932,7 @@ module.exports = function getType(val) {
     }
 };
 
-},{}],331:[function(require,module,exports){
+},{}],330:[function(require,module,exports){
 'use strict';
 
 // Turn jsonlint-lines-primitives objects into primitive objects
@@ -28957,7 +28944,7 @@ module.exports = function unbundle(value) {
     }
 };
 
-},{}],332:[function(require,module,exports){
+},{}],331:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29024,7 +29011,7 @@ module.exports = function validate(options) {
     }
 };
 
-},{"../error/validation_error":328,"../util/extend":329,"../util/get_type":330,"./validate_array":333,"./validate_boolean":334,"./validate_color":335,"./validate_constants":336,"./validate_enum":337,"./validate_filter":338,"./validate_function":339,"./validate_layer":341,"./validate_number":343,"./validate_object":344,"./validate_source":346,"./validate_string":347}],333:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/extend":328,"../util/get_type":329,"./validate_array":332,"./validate_boolean":333,"./validate_color":334,"./validate_constants":335,"./validate_enum":336,"./validate_filter":337,"./validate_function":338,"./validate_layer":340,"./validate_number":342,"./validate_object":343,"./validate_source":345,"./validate_string":346}],332:[function(require,module,exports){
 'use strict';
 
 var getType = require('../util/get_type');
@@ -29078,7 +29065,7 @@ module.exports = function validateArray(options) {
     return errors;
 };
 
-},{"../error/validation_error":328,"../util/get_type":330,"./validate":332}],334:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329,"./validate":331}],333:[function(require,module,exports){
 'use strict';
 
 var getType = require('../util/get_type');
@@ -29096,7 +29083,7 @@ module.exports = function validateBoolean(options) {
     return [];
 };
 
-},{"../error/validation_error":328,"../util/get_type":330}],335:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329}],334:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29119,7 +29106,7 @@ module.exports = function validateColor(options) {
     return [];
 };
 
-},{"../error/validation_error":328,"../util/get_type":330,"csscolorparser":12}],336:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329,"csscolorparser":12}],335:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29153,7 +29140,7 @@ module.exports = function validateConstants(options) {
 
 };
 
-},{"../error/validation_error":328,"../util/get_type":330}],337:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329}],336:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29171,7 +29158,7 @@ module.exports = function validateEnum(options) {
     return errors;
 };
 
-},{"../error/validation_error":328,"../util/unbundle_jsonlint":331}],338:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/unbundle_jsonlint":330}],337:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29276,7 +29263,7 @@ module.exports = function validateFilter(options) {
     return errors;
 };
 
-},{"../error/validation_error":328,"../util/get_type":330,"../util/unbundle_jsonlint":331,"./validate_enum":337}],339:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329,"../util/unbundle_jsonlint":330,"./validate_enum":336}],338:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29400,7 +29387,7 @@ module.exports = function validateFunction(options) {
 
 };
 
-},{"../error/validation_error":328,"../util/get_type":330,"./validate":332,"./validate_array":333,"./validate_number":343,"./validate_object":344}],340:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329,"./validate":331,"./validate_array":332,"./validate_number":342,"./validate_object":343}],339:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29424,7 +29411,7 @@ module.exports = function(options) {
     return errors;
 };
 
-},{"../error/validation_error":328,"./validate_string":347}],341:[function(require,module,exports){
+},{"../error/validation_error":327,"./validate_string":346}],340:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29537,7 +29524,7 @@ module.exports = function validateLayer(options) {
     return errors;
 };
 
-},{"../error/validation_error":328,"../util/extend":329,"../util/unbundle_jsonlint":331,"./validate_filter":338,"./validate_layout_property":342,"./validate_object":344,"./validate_paint_property":345}],342:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/extend":328,"../util/unbundle_jsonlint":330,"./validate_filter":337,"./validate_layout_property":341,"./validate_object":343,"./validate_paint_property":344}],341:[function(require,module,exports){
 'use strict';
 
 var validate = require('./validate');
@@ -29576,7 +29563,7 @@ module.exports = function validateLayoutProperty(options) {
 
 };
 
-},{"../error/validation_error":328,"./validate":332}],343:[function(require,module,exports){
+},{"../error/validation_error":327,"./validate":331}],342:[function(require,module,exports){
 'use strict';
 
 var getType = require('../util/get_type');
@@ -29603,7 +29590,7 @@ module.exports = function validateNumber(options) {
     return [];
 };
 
-},{"../error/validation_error":328,"../util/get_type":330}],344:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329}],343:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29656,7 +29643,7 @@ module.exports = function validateObject(options) {
     return errors;
 };
 
-},{"../error/validation_error":328,"../util/get_type":330,"./validate":332}],345:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329,"./validate":331}],344:[function(require,module,exports){
 'use strict';
 
 var validate = require('./validate');
@@ -29696,7 +29683,7 @@ module.exports = function validatePaintProperty(options) {
 
 };
 
-},{"../error/validation_error":328,"./validate":332}],346:[function(require,module,exports){
+},{"../error/validation_error":327,"./validate":331}],345:[function(require,module,exports){
 'use strict';
 
 var ValidationError = require('../error/validation_error');
@@ -29773,7 +29760,7 @@ module.exports = function validateSource(options) {
     }
 };
 
-},{"../error/validation_error":328,"../util/unbundle_jsonlint":331,"./validate_enum":337,"./validate_object":344}],347:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/unbundle_jsonlint":330,"./validate_enum":336,"./validate_object":343}],346:[function(require,module,exports){
 'use strict';
 
 var getType = require('../util/get_type');
@@ -29791,7 +29778,7 @@ module.exports = function validateString(options) {
     return [];
 };
 
-},{"../error/validation_error":328,"../util/get_type":330}],348:[function(require,module,exports){
+},{"../error/validation_error":327,"../util/get_type":329}],347:[function(require,module,exports){
 'use strict';
 
 var validateConstants = require('./validate/validate_constants');
@@ -29861,13 +29848,13 @@ function wrapCleanErrors(inner) {
 
 module.exports = validateStyleMin;
 
-},{"../reference/latest.min":350,"./validate/validate":332,"./validate/validate_constants":336,"./validate/validate_filter":338,"./validate/validate_glyphs_url":340,"./validate/validate_layer":341,"./validate/validate_layout_property":342,"./validate/validate_paint_property":345,"./validate/validate_source":346}],349:[function(require,module,exports){
+},{"../reference/latest.min":349,"./validate/validate":331,"./validate/validate_constants":335,"./validate/validate_filter":337,"./validate/validate_glyphs_url":339,"./validate/validate_layer":340,"./validate/validate_layout_property":341,"./validate/validate_paint_property":344,"./validate/validate_source":345}],348:[function(require,module,exports){
 module.exports = require('./v8.json');
 
-},{"./v8.json":351}],350:[function(require,module,exports){
+},{"./v8.json":350}],349:[function(require,module,exports){
 module.exports = require('./v8.min.json');
 
-},{"./v8.min.json":352}],351:[function(require,module,exports){
+},{"./v8.min.json":351}],350:[function(require,module,exports){
 module.exports={
   "$version": 8,
   "$root": {
@@ -31266,11 +31253,11 @@ module.exports={
   }
 }
 
-},{}],352:[function(require,module,exports){
+},{}],351:[function(require,module,exports){
 module.exports={"$version":8,"$root":{"version":{"required":true,"type":"enum","values":[8]},"name":{"type":"string"},"metadata":{"type":"*"},"center":{"type":"array","value":"number"},"zoom":{"type":"number"},"bearing":{"type":"number","default":0,"period":360,"units":"degrees"},"pitch":{"type":"number","default":0,"units":"degrees"},"sources":{"required":true,"type":"sources"},"sprite":{"type":"string"},"glyphs":{"type":"string"},"transition":{"type":"transition"},"layers":{"required":true,"type":"array","value":"layer"}},"sources":{"*":{"type":"source"}},"source":["source_tile","source_geojson","source_video","source_image"],"source_tile":{"type":{"required":true,"type":"enum","values":["vector","raster"]},"url":{"type":"string"},"tiles":{"type":"array","value":"string"},"minzoom":{"type":"number","default":0},"maxzoom":{"type":"number","default":22},"tileSize":{"type":"number","default":512,"units":"pixels"},"*":{"type":"*"}},"source_geojson":{"type":{"required":true,"type":"enum","values":["geojson"]},"data":{"type":"*"},"maxzoom":{"type":"number","default":14},"buffer":{"type":"number","default":64},"tolerance":{"type":"number","default":3},"cluster":{"type":"boolean","default":false},"clusterRadius":{"type":"number","default":400},"clusterMaxZoom":{"type":"number"}},"source_video":{"type":{"required":true,"type":"enum","values":["video"]},"urls":{"required":true,"type":"array","value":"string"},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}}},"source_image":{"type":{"required":true,"type":"enum","values":["image"]},"url":{"required":true,"type":"string"},"coordinates":{"required":true,"type":"array","length":4,"value":{"type":"array","length":2,"value":"number"}}},"layer":{"id":{"type":"string","required":true},"type":{"type":"enum","values":["fill","line","symbol","circle","raster","background"]},"metadata":{"type":"*"},"ref":{"type":"string"},"source":{"type":"string"},"source-layer":{"type":"string"},"minzoom":{"type":"number","minimum":0,"maximum":22},"maxzoom":{"type":"number","minimum":0,"maximum":22},"interactive":{"type":"boolean","default":false},"filter":{"type":"filter"},"layout":{"type":"layout"},"paint":{"type":"paint"},"paint.*":{"type":"paint"}},"layout":["layout_fill","layout_line","layout_circle","layout_symbol","layout_raster","layout_background"],"layout_background":{"visibility":{"type":"enum","function":"piecewise-constant","values":["visible","none"],"default":"visible"}},"layout_fill":{"visibility":{"type":"enum","function":"piecewise-constant","values":["visible","none"],"default":"visible"}},"layout_circle":{"visibility":{"type":"enum","function":"piecewise-constant","values":["visible","none"],"default":"visible"}},"layout_line":{"line-cap":{"type":"enum","function":"piecewise-constant","values":["butt","round","square"],"default":"butt"},"line-join":{"type":"enum","function":"piecewise-constant","values":["bevel","round","miter"],"default":"miter"},"line-miter-limit":{"type":"number","default":2,"function":"interpolated","requires":[{"line-join":"miter"}]},"line-round-limit":{"type":"number","default":1.05,"function":"interpolated","requires":[{"line-join":"round"}]},"visibility":{"type":"enum","function":"piecewise-constant","values":["visible","none"],"default":"visible"}},"layout_symbol":{"symbol-placement":{"type":"enum","function":"piecewise-constant","values":["point","line"],"default":"point"},"symbol-spacing":{"type":"number","default":250,"minimum":1,"function":"interpolated","units":"pixels","requires":[{"symbol-placement":"line"}]},"symbol-avoid-edges":{"type":"boolean","function":"piecewise-constant","default":false},"icon-allow-overlap":{"type":"boolean","function":"piecewise-constant","default":false,"requires":["icon-image"]},"icon-ignore-placement":{"type":"boolean","function":"piecewise-constant","default":false,"requires":["icon-image"]},"icon-optional":{"type":"boolean","function":"piecewise-constant","default":false,"requires":["icon-image","text-field"]},"icon-rotation-alignment":{"type":"enum","function":"piecewise-constant","values":["map","viewport"],"default":"viewport","requires":["icon-image"]},"icon-size":{"type":"number","default":1,"minimum":0,"function":"interpolated","requires":["icon-image"]},"icon-image":{"type":"string","function":"piecewise-constant","tokens":true},"icon-rotate":{"type":"number","default":0,"period":360,"function":"interpolated","units":"degrees","requires":["icon-image"]},"icon-padding":{"type":"number","default":2,"minimum":0,"function":"interpolated","units":"pixels","requires":["icon-image"]},"icon-keep-upright":{"type":"boolean","function":"piecewise-constant","default":false,"requires":["icon-image",{"icon-rotation-alignment":"map"},{"symbol-placement":"line"}]},"icon-offset":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","requires":["icon-image"]},"text-rotation-alignment":{"type":"enum","function":"piecewise-constant","values":["map","viewport"],"default":"viewport","requires":["text-field"]},"text-field":{"type":"string","function":"piecewise-constant","default":"","tokens":true},"text-font":{"type":"array","value":"string","function":"piecewise-constant","default":["Open Sans Regular","Arial Unicode MS Regular"],"requires":["text-field"]},"text-size":{"type":"number","default":16,"minimum":0,"units":"pixels","function":"interpolated","requires":["text-field"]},"text-max-width":{"type":"number","default":10,"minimum":0,"units":"em","function":"interpolated","requires":["text-field"]},"text-line-height":{"type":"number","default":1.2,"units":"em","function":"interpolated","requires":["text-field"]},"text-letter-spacing":{"type":"number","default":0,"units":"em","function":"interpolated","requires":["text-field"]},"text-justify":{"type":"enum","function":"piecewise-constant","values":["left","center","right"],"default":"center","requires":["text-field"]},"text-anchor":{"type":"enum","function":"piecewise-constant","values":["center","left","right","top","bottom","top-left","top-right","bottom-left","bottom-right"],"default":"center","requires":["text-field"]},"text-max-angle":{"type":"number","default":45,"units":"degrees","function":"interpolated","requires":["text-field",{"symbol-placement":"line"}]},"text-rotate":{"type":"number","default":0,"period":360,"units":"degrees","function":"interpolated","requires":["text-field"]},"text-padding":{"type":"number","default":2,"minimum":0,"units":"pixels","function":"interpolated","requires":["text-field"]},"text-keep-upright":{"type":"boolean","function":"piecewise-constant","default":true,"requires":["text-field",{"text-rotation-alignment":"map"},{"symbol-placement":"line"}]},"text-transform":{"type":"enum","function":"piecewise-constant","values":["none","uppercase","lowercase"],"default":"none","requires":["text-field"]},"text-offset":{"type":"array","value":"number","units":"ems","function":"interpolated","length":2,"default":[0,0],"requires":["text-field"]},"text-allow-overlap":{"type":"boolean","function":"piecewise-constant","default":false,"requires":["text-field"]},"text-ignore-placement":{"type":"boolean","function":"piecewise-constant","default":false,"requires":["text-field"]},"text-optional":{"type":"boolean","function":"piecewise-constant","default":false,"requires":["text-field","icon-image"]},"visibility":{"type":"enum","function":"piecewise-constant","values":["visible","none"],"default":"visible"}},"layout_raster":{"visibility":{"type":"enum","function":"piecewise-constant","values":["visible","none"],"default":"visible"}},"filter":{"type":"array","value":"*"},"filter_operator":{"type":"enum","values":["==","!=",">",">=","<","<=","in","!in","all","any","none","has","!has"]},"geometry_type":{"type":"enum","values":["Point","LineString","Polygon"]},"color_operation":{"type":"enum","values":["lighten","saturate","spin","fade","mix"]},"function":{"stops":{"type":"array","required":true,"value":"function_stop"},"base":{"type":"number","default":1,"minimum":0},"property":{"type":"string","default":"$zoom"},"type":{"type":"enum","values":["exponential","interval","categorical"],"default":"exponential"}},"function_stop":{"type":"array","minimum":0,"maximum":22,"value":["number","color"],"length":2},"paint":["paint_fill","paint_line","paint_circle","paint_symbol","paint_raster","paint_background"],"paint_fill":{"fill-antialias":{"type":"boolean","function":"piecewise-constant","default":true},"fill-opacity":{"type":"number","function":"interpolated","default":1,"minimum":0,"maximum":1,"transition":true},"fill-color":{"type":"color","default":"#000000","function":"interpolated","transition":true,"requires":[{"!":"fill-pattern"}]},"fill-outline-color":{"type":"color","function":"interpolated","transition":true,"requires":[{"!":"fill-pattern"},{"fill-antialias":true}]},"fill-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","transition":true,"units":"pixels"},"fill-translate-anchor":{"type":"enum","function":"piecewise-constant","values":["map","viewport"],"default":"map","requires":["fill-translate"]},"fill-pattern":{"type":"string","function":"piecewise-constant","transition":true}},"paint_line":{"line-opacity":{"type":"number","function":"interpolated","default":1,"minimum":0,"maximum":1,"transition":true},"line-color":{"type":"color","default":"#000000","function":"interpolated","transition":true,"requires":[{"!":"line-pattern"}]},"line-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","transition":true,"units":"pixels"},"line-translate-anchor":{"type":"enum","function":"piecewise-constant","values":["map","viewport"],"default":"map","requires":["line-translate"]},"line-width":{"type":"number","default":1,"minimum":0,"function":"interpolated","transition":true,"units":"pixels"},"line-gap-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","transition":true,"units":"pixels"},"line-offset":{"type":"number","default":0,"function":"interpolated","transition":true,"units":"pixels"},"line-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","transition":true,"units":"pixels"},"line-dasharray":{"type":"array","value":"number","function":"piecewise-constant","minimum":0,"transition":true,"units":"line widths","requires":[{"!":"line-pattern"}]},"line-pattern":{"type":"string","function":"piecewise-constant","transition":true}},"paint_circle":{"circle-radius":{"type":"number","default":5,"minimum":0,"function":"interpolated","transition":true,"units":"pixels"},"circle-color":{"type":"color","default":"#000000","function":"interpolated","transition":true},"circle-blur":{"type":"number","default":0,"function":"interpolated","transition":true},"circle-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","transition":true},"circle-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","transition":true,"units":"pixels"},"circle-translate-anchor":{"type":"enum","function":"piecewise-constant","values":["map","viewport"],"default":"map","requires":["circle-translate"]}},"paint_symbol":{"icon-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","transition":true,"requires":["icon-image"]},"icon-color":{"type":"color","default":"#000000","function":"interpolated","transition":true,"requires":["icon-image"]},"icon-halo-color":{"type":"color","default":"rgba(0, 0, 0, 0)","function":"interpolated","transition":true,"requires":["icon-image"]},"icon-halo-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","transition":true,"units":"pixels","requires":["icon-image"]},"icon-halo-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","transition":true,"units":"pixels","requires":["icon-image"]},"icon-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","transition":true,"units":"pixels","requires":["icon-image"]},"icon-translate-anchor":{"type":"enum","function":"piecewise-constant","values":["map","viewport"],"default":"map","requires":["icon-image","icon-translate"]},"text-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","transition":true,"requires":["text-field"]},"text-color":{"type":"color","default":"#000000","function":"interpolated","transition":true,"requires":["text-field"]},"text-halo-color":{"type":"color","default":"rgba(0, 0, 0, 0)","function":"interpolated","transition":true,"requires":["text-field"]},"text-halo-width":{"type":"number","default":0,"minimum":0,"function":"interpolated","transition":true,"units":"pixels","requires":["text-field"]},"text-halo-blur":{"type":"number","default":0,"minimum":0,"function":"interpolated","transition":true,"units":"pixels","requires":["text-field"]},"text-translate":{"type":"array","value":"number","length":2,"default":[0,0],"function":"interpolated","transition":true,"units":"pixels","requires":["text-field"]},"text-translate-anchor":{"type":"enum","function":"piecewise-constant","values":["map","viewport"],"default":"map","requires":["text-field","text-translate"]}},"paint_raster":{"raster-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","transition":true},"raster-hue-rotate":{"type":"number","default":0,"period":360,"function":"interpolated","transition":true,"units":"degrees"},"raster-brightness-min":{"type":"number","function":"interpolated","default":0,"minimum":0,"maximum":1,"transition":true},"raster-brightness-max":{"type":"number","function":"interpolated","default":1,"minimum":0,"maximum":1,"transition":true},"raster-saturation":{"type":"number","default":0,"minimum":-1,"maximum":1,"function":"interpolated","transition":true},"raster-contrast":{"type":"number","default":0,"minimum":-1,"maximum":1,"function":"interpolated","transition":true},"raster-fade-duration":{"type":"number","default":300,"minimum":0,"function":"interpolated","transition":true,"units":"milliseconds"}},"paint_background":{"background-color":{"type":"color","default":"#000000","function":"interpolated","transition":true,"requires":[{"!":"background-pattern"}]},"background-pattern":{"type":"string","function":"piecewise-constant","transition":true},"background-opacity":{"type":"number","default":1,"minimum":0,"maximum":1,"function":"interpolated","transition":true}},"transition":{"duration":{"type":"number","default":300,"minimum":0,"units":"milliseconds"},"delay":{"type":"number","default":0,"minimum":0,"units":"milliseconds"}}}
-},{}],353:[function(require,module,exports){
+},{}],352:[function(require,module,exports){
 var css = ".mapboxgl-map {\n  font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;\n  overflow: hidden;\n  position: relative;\n  -webkit-tap-highlight-color: rgba(0,0,0,0);\n}\n.mapboxgl-canvas-container.mapboxgl-interactive,\n.mapboxgl-ctrl-nav-compass {\n  cursor: -webkit-grab;\n  cursor: -moz-grab;\n  cursor: grab;\n}\n.mapboxgl-canvas-container.mapboxgl-interactive:active,\n.mapboxgl-ctrl-nav-compass:active {\n  cursor: -webkit-grabbing;\n  cursor: -moz-grabbing;\n  cursor: grabbing;\n}\n.mapboxgl-ctrl-top-left,\n.mapboxgl-ctrl-top-right,\n.mapboxgl-ctrl-bottom-left,\n.mapboxgl-ctrl-bottom-right {\n  position: absolute;\n}\n.mapboxgl-ctrl-top-left {\n  top: 0;\n  left: 0;\n}\n.mapboxgl-ctrl-top-right {\n  top: 0;\n  right: 0;\n}\n.mapboxgl-ctrl-bottom-left {\n  bottom: 0;\n  left: 0;\n}\n.mapboxgl-ctrl-bottom-right {\n  right: 0;\n  bottom: 0;\n}\n.mapboxgl-ctrl {\n  clear: both;\n}\n.mapboxgl-ctrl-top-left .mapboxgl-ctrl {\n  margin: 10px 0 0 10px;\n  float: left;\n}\n.mapboxgl-ctrl-top-right .mapboxgl-ctrl {\n  margin: 10px 10px 0 0;\n  float: right;\n}\n.mapboxgl-ctrl-bottom-left .mapboxgl-ctrl {\n  margin: 0 0 10px 10px;\n  float: left;\n}\n.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl {\n  margin: 0 10px 10px 0;\n  float: right;\n}\n.mapboxgl-ctrl-group {\n  border-radius: 4px;\n  -moz-box-shadow: 0px 0px 2px rgba(0,0,0,0.1);\n  -webkit-box-shadow: 0px 0px 2px rgba(0,0,0,0.1);\n  box-shadow: 0px 0px 0px 2px rgba(0,0,0,0.1);\n  overflow: hidden;\n  background: #fff;\n}\n.mapboxgl-ctrl-group > button {\n  width: 30px;\n  height: 30px;\n  display: block;\n  padding: 0;\n  outline: none;\n  border: none;\n  border-bottom: 1px solid #ddd;\n  box-sizing: border-box;\n  background-color: rgba(0,0,0,0);\n  cursor: pointer;\n}\n/* https://bugzilla.mozilla.org/show_bug.cgi?id=140562 */\n.mapboxgl-ctrl > button::-moz-focus-inner {\n  border: 0;\n  padding: 0;\n}\n.mapboxgl-ctrl > button:last-child {\n  border-bottom: 0;\n}\n.mapboxgl-ctrl > button:hover {\n  background-color: rgba(0,0,0,0.05);\n}\n.mapboxgl-ctrl-icon,\n.mapboxgl-ctrl-icon > div.arrow {\n  speak: none;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n.mapboxgl-ctrl-icon.mapboxgl-ctrl-zoom-out {\n  padding: 5px;\n  background-image: url(\"data:image/svg+xml;charset=utf8,%3Csvg%20viewBox%3D%270%200%2020%2020%27%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%3E%0A%20%20%3Cpath%20style%3D%27fill%3A%23333333%3B%27%20d%3D%27m%207%2C9%20c%20-0.554%2C0%20-1%2C0.446%20-1%2C1%200%2C0.554%200.446%2C1%201%2C1%20l%206%2C0%20c%200.554%2C0%201%2C-0.446%201%2C-1%200%2C-0.554%20-0.446%2C-1%20-1%2C-1%20z%27%20%2F%3E%0A%3C%2Fsvg%3E%0A\");\n}\n.mapboxgl-ctrl-icon.mapboxgl-ctrl-zoom-in {\n  padding: 5px;\n  background-image: url(\"data:image/svg+xml;charset=utf8,%3Csvg%20viewBox%3D%270%200%2020%2020%27%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%3E%0A%20%20%3Cpath%20style%3D%27fill%3A%23333333%3B%27%20d%3D%27M%2010%206%20C%209.446%206%209%206.4459904%209%207%20L%209%209%20L%207%209%20C%206.446%209%206%209.446%206%2010%20C%206%2010.554%206.446%2011%207%2011%20L%209%2011%20L%209%2013%20C%209%2013.55401%209.446%2014%2010%2014%20C%2010.554%2014%2011%2013.55401%2011%2013%20L%2011%2011%20L%2013%2011%20C%2013.554%2011%2014%2010.554%2014%2010%20C%2014%209.446%2013.554%209%2013%209%20L%2011%209%20L%2011%207%20C%2011%206.4459904%2010.554%206%2010%206%20z%27%20%2F%3E%0A%3C%2Fsvg%3E%0A\");\n}\n.mapboxgl-ctrl-icon.mapboxgl-ctrl-geolocate {\n  padding: 5px;\n  background-image: url(\"data:image/svg+xml;charset=utf8,%3Csvg%20viewBox%3D%270%200%2020%2020%27%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%3E%3Cpath%20style%3D%27fill%3A%23333333%3B%27%20d%3D%27M13%2C7%20L10.5%2C11.75%20L10.25%2C10%20z%20M13.888%2C6.112%20C13.615%2C5.84%2013.382%2C6.076%2012.5%2C6.5%20C10.14%2C7.634%206%2C10%206%2C10%20L9.5%2C10.5%20L10%2C14%20C10%2C14%2012.366%2C9.86%2013.5%2C7.5%20C13.924%2C6.617%2014.16%2C6.385%2013.888%2C6.112%27%2F%3E%3C%2Fsvg%3E\");\n}\n.mapboxgl-ctrl-icon.mapboxgl-ctrl-compass > div.arrow {\n  width: 20px;\n  height: 20px;\n  margin: 5px;\n  background-image: url(\"data:image/svg+xml;charset=utf8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2020%2020%27%3E%0A%09%3Cpolygon%20fill%3D%27%23333333%27%20points%3D%276%2C9%2010%2C1%2014%2C9%27%2F%3E%0A%09%3Cpolygon%20fill%3D%27%23CCCCCC%27%20points%3D%276%2C11%2010%2C19%2014%2C11%20%27%2F%3E%0A%3C%2Fsvg%3E\");\n  background-repeat: no-repeat;\n}\n.mapboxgl-ctrl.mapboxgl-ctrl-attrib {\n  padding: 0 5px;\n  background-color: rgba(255,255,255,0.5);\n  margin: 0;\n}\n.mapboxgl-ctrl-attrib a {\n  color: rgba(0,0,0,0.75);\n  text-decoration: none;\n}\n.mapboxgl-ctrl-attrib a:hover {\n  color: inherit;\n  text-decoration: underline;\n}\n.mapboxgl-ctrl-attrib .mapbox-improve-map {\n  font-weight: bold;\n  margin-left: 2px;\n}\n.mapboxgl-popup {\n  position: absolute;\n  top: 0;\n  left: 0;\n  display: -webkit-flex;\n  display: flex;\n  will-change: transform;\n  pointer-events: none;\n}\n.mapboxgl-popup-anchor-top,\n.mapboxgl-popup-anchor-top-left,\n.mapboxgl-popup-anchor-top-right {\n  -webkit-flex-direction: column;\n  flex-direction: column;\n}\n.mapboxgl-popup-anchor-bottom,\n.mapboxgl-popup-anchor-bottom-left,\n.mapboxgl-popup-anchor-bottom-right {\n  -webkit-flex-direction: column-reverse;\n  flex-direction: column-reverse;\n}\n.mapboxgl-popup-anchor-left {\n  -webkit-flex-direction: row;\n  flex-direction: row;\n}\n.mapboxgl-popup-anchor-right {\n  -webkit-flex-direction: row-reverse;\n  flex-direction: row-reverse;\n}\n.mapboxgl-popup-tip {\n  width: 0;\n  height: 0;\n  border: 10px solid transparent;\n  z-index: 1;\n}\n.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {\n  -webkit-align-self: center;\n  align-self: center;\n  border-top: none;\n  border-bottom-color: #fff;\n}\n.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip {\n  -webkit-align-self: flex-start;\n  align-self: flex-start;\n  border-top: none;\n  border-left: none;\n  border-bottom-color: #fff;\n}\n.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {\n  -webkit-align-self: flex-end;\n  align-self: flex-end;\n  border-top: none;\n  border-right: none;\n  border-bottom-color: #fff;\n}\n.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {\n  -webkit-align-self: center;\n  align-self: center;\n  border-bottom: none;\n  border-top-color: #fff;\n}\n.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip {\n  -webkit-align-self: flex-start;\n  align-self: flex-start;\n  border-bottom: none;\n  border-left: none;\n  border-top-color: #fff;\n}\n.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip {\n  -webkit-align-self: flex-end;\n  align-self: flex-end;\n  border-bottom: none;\n  border-right: none;\n  border-top-color: #fff;\n}\n.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {\n  -webkit-align-self: center;\n  align-self: center;\n  border-left: none;\n  border-right-color: #fff;\n}\n.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {\n  -webkit-align-self: center;\n  align-self: center;\n  border-right: none;\n  border-left-color: #fff;\n}\n.mapboxgl-popup-close-button {\n  position: absolute;\n  right: 0;\n  top: 0;\n  border: none;\n  border-radius: 0 3px 0 0;\n  cursor: pointer;\n  background-color: rgba(0,0,0,0);\n}\n.mapboxgl-popup-close-button:hover {\n  background-color: rgba(0,0,0,0.05);\n}\n.mapboxgl-popup-content {\n  position: relative;\n  background: #fff;\n  border-radius: 3px;\n  box-shadow: 0 1px 2px rgba(0,0,0,0.10);\n  padding: 10px 10px 15px;\n  pointer-events: auto;\n}\n.mapboxgl-popup-anchor-top-left .mapboxgl-popup-content {\n  border-top-left-radius: 0;\n}\n.mapboxgl-popup-anchor-top-right .mapboxgl-popup-content {\n  border-top-right-radius: 0;\n}\n.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-content {\n  border-bottom-left-radius: 0;\n}\n.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-content {\n  border-bottom-right-radius: 0;\n}\n.mapboxgl-crosshair,\n.mapboxgl-crosshair .mapboxgl-interactive,\n.mapboxgl-crosshair .mapboxgl-interactive:active {\n  cursor: crosshair;\n}\n.mapboxgl-boxzoom {\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 0;\n  height: 0;\n  background: #fff;\n  border: 2px dotted #202020;\n  opacity: 0.5;\n}\n@media print {\n  .mapbox-improve-map {\n    display: none;\n  }\n}\n"; (require("browserify-css").createStyle(css, { "href": "node_modules/mapbox-gl/dist/mapbox-gl.css"})); module.exports = css;
-},{"browserify-css":7}],354:[function(require,module,exports){
+},{"browserify-css":7}],353:[function(require,module,exports){
 'use strict';
 
 var featureFilter = require('feature-filter');
@@ -31814,7 +31801,7 @@ function createGetUniform(attribute, stopOffset) {
     };
 }
 
-},{"../render/vertex_array_object":381,"../util/struct_array":456,"../util/util":458,"./bucket/circle_bucket":355,"./bucket/fill_bucket":356,"./bucket/line_bucket":357,"./bucket/symbol_bucket":358,"./buffer":359,"assert":4,"feature-filter":47}],355:[function(require,module,exports){
+},{"../render/vertex_array_object":380,"../util/struct_array":455,"../util/util":457,"./bucket/circle_bucket":354,"./bucket/fill_bucket":355,"./bucket/line_bucket":356,"./bucket/symbol_bucket":357,"./buffer":358,"assert":4,"feature-filter":50}],354:[function(require,module,exports){
 'use strict';
 
 var Bucket = require('../bucket');
@@ -31917,7 +31904,7 @@ CircleBucket.prototype.addFeature = function(feature) {
     this.populatePaintArrays('circle', globalProperties, feature.properties, startGroup, startIndex);
 };
 
-},{"../../util/util":458,"../bucket":354,"../load_geometry":361}],356:[function(require,module,exports){
+},{"../../util/util":457,"../bucket":353,"../load_geometry":360}],355:[function(require,module,exports){
 'use strict';
 
 var Bucket = require('../bucket');
@@ -32022,7 +32009,7 @@ FillBucket.prototype.addPolygon = function(polygon) {
     }
 };
 
-},{"../../util/classify_rings":447,"../../util/util":458,"../bucket":354,"../load_geometry":361,"earcut":18}],357:[function(require,module,exports){
+},{"../../util/classify_rings":446,"../../util/util":457,"../bucket":353,"../load_geometry":360,"earcut":20}],356:[function(require,module,exports){
 'use strict';
 
 var Bucket = require('../bucket');
@@ -32451,7 +32438,7 @@ LineBucket.prototype.addPieSliceVertex = function(currentVertex, distance, extru
     }
 };
 
-},{"../../util/util":458,"../bucket":354,"../load_geometry":361}],358:[function(require,module,exports){
+},{"../../util/util":457,"../bucket":353,"../load_geometry":360}],357:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -33013,7 +33000,7 @@ function SymbolInstance(anchor, line, shapedText, shapedIcon, layout, addToBuffe
     }
 }
 
-},{"../../symbol/anchor":411,"../../symbol/clip_line":413,"../../symbol/collision_feature":415,"../../symbol/get_anchors":417,"../../symbol/mergelines":420,"../../symbol/quads":421,"../../symbol/resolve_text":422,"../../symbol/shaping":423,"../../util/token":457,"../../util/util":458,"../bucket":354,"../load_geometry":361,"point-geometry":569}],359:[function(require,module,exports){
+},{"../../symbol/anchor":410,"../../symbol/clip_line":412,"../../symbol/collision_feature":414,"../../symbol/get_anchors":416,"../../symbol/mergelines":419,"../../symbol/quads":420,"../../symbol/resolve_text":421,"../../symbol/shaping":422,"../../util/token":456,"../../util/util":457,"../bucket":353,"../load_geometry":360,"point-geometry":569}],358:[function(require,module,exports){
 'use strict';
 
 module.exports = Buffer;
@@ -33130,7 +33117,7 @@ Buffer.ELEMENT_ATTRIBUTE_TYPE = 'Uint16';
  */
 Buffer.VERTEX_ATTRIBUTE_ALIGNMENT = 4;
 
-},{}],360:[function(require,module,exports){
+},{}],359:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -33431,7 +33418,7 @@ function offsetLine(rings, offset) {
     return newRings;
 }
 
-},{"../util/dictionary_coder":449,"../util/intersection_tests":453,"../util/struct_array":456,"../util/util":458,"../util/vectortile_to_geojson":459,"./bucket":354,"./load_geometry":361,"feature-filter":47,"grid-index":68,"pbf":568,"point-geometry":569,"vector-tile":826}],361:[function(require,module,exports){
+},{"../util/dictionary_coder":448,"../util/intersection_tests":452,"../util/struct_array":455,"../util/util":457,"../util/vectortile_to_geojson":458,"./bucket":353,"./load_geometry":360,"feature-filter":50,"grid-index":71,"pbf":567,"point-geometry":569,"vector-tile":875}],360:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -33468,7 +33455,7 @@ module.exports = function loadGeometry(feature) {
     return geometry;
 };
 
-},{"../util/util":458,"./bucket":354}],362:[function(require,module,exports){
+},{"../util/util":457,"./bucket":353}],361:[function(require,module,exports){
 'use strict';
 
 module.exports = Coordinate;
@@ -33547,7 +33534,7 @@ Coordinate.prototype = {
     }
 };
 
-},{}],363:[function(require,module,exports){
+},{}],362:[function(require,module,exports){
 'use strict';
 
 module.exports = LngLat;
@@ -33641,7 +33628,7 @@ LngLat.convert = function (input) {
     return input;
 };
 
-},{"../util/util":458}],364:[function(require,module,exports){
+},{"../util/util":457}],363:[function(require,module,exports){
 'use strict';
 
 module.exports = LngLatBounds;
@@ -33815,7 +33802,7 @@ LngLatBounds.convert = function (input) {
     return new LngLatBounds(input);
 };
 
-},{"./lng_lat":363}],365:[function(require,module,exports){
+},{"./lng_lat":362}],364:[function(require,module,exports){
 'use strict';
 
 var LngLat = require('./lng_lat'),
@@ -34255,7 +34242,7 @@ Transform.prototype = {
     }
 };
 
-},{"../data/bucket":354,"../source/tile_coord":389,"../util/interpolate":452,"../util/util":458,"./coordinate":362,"./lng_lat":363,"gl-matrix":58,"point-geometry":569}],366:[function(require,module,exports){
+},{"../data/bucket":353,"../source/tile_coord":388,"../util/interpolate":451,"../util/util":457,"./coordinate":361,"./lng_lat":362,"gl-matrix":61,"point-geometry":569}],365:[function(require,module,exports){
 'use strict';
 
 // Font data From Hershey Simplex Font
@@ -34388,7 +34375,7 @@ module.exports = function textVertices(text, left, baseline, scale) {
     return strokes;
 };
 
-},{}],367:[function(require,module,exports){
+},{}],366:[function(require,module,exports){
 'use strict';
 
 // jshint -W079
@@ -34428,7 +34415,7 @@ Object.defineProperty(mapboxgl, 'accessToken', {
     set: function(token) { config.ACCESS_TOKEN = token; }
 });
 
-},{"./geo/lng_lat":363,"./geo/lng_lat_bounds":364,"./source/geojson_source":382,"./source/image_source":384,"./source/video_source":392,"./style/style":398,"./ui/control/attribution":427,"./ui/control/control":428,"./ui/control/geolocate":429,"./ui/control/navigation":430,"./ui/map":439,"./ui/popup":440,"./util/ajax":442,"./util/browser":443,"./util/config":448,"./util/evented":450,"./util/util":458,"point-geometry":569}],368:[function(require,module,exports){
+},{"./geo/lng_lat":362,"./geo/lng_lat_bounds":363,"./source/geojson_source":381,"./source/image_source":383,"./source/video_source":391,"./style/style":397,"./ui/control/attribution":426,"./ui/control/control":427,"./ui/control/geolocate":428,"./ui/control/navigation":429,"./ui/map":438,"./ui/popup":439,"./util/ajax":441,"./util/browser":442,"./util/config":447,"./util/evented":449,"./util/util":457,"point-geometry":569}],367:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -34448,7 +34435,7 @@ module.exports = function(uniforms) {
     return pragmas;
 };
 
-},{"assert":4}],369:[function(require,module,exports){
+},{"assert":4}],368:[function(require,module,exports){
 'use strict';
 
 var TilePyramid = require('../source/tile_pyramid');
@@ -34540,7 +34527,7 @@ function drawBackground(painter, source, layer) {
     gl.stencilFunc(gl.EQUAL, 0x80, 0x80);
 }
 
-},{"../source/pixels_to_tile_units":385,"../source/tile_pyramid":390,"../util/util":458,"./create_uniform_pragmas":368}],370:[function(require,module,exports){
+},{"../source/pixels_to_tile_units":384,"../source/tile_pyramid":389,"../util/util":457,"./create_uniform_pragmas":367}],369:[function(require,module,exports){
 'use strict';
 
 var browser = require('../util/browser');
@@ -34600,7 +34587,7 @@ function drawCircles(painter, source, layer, coords) {
     }
 }
 
-},{"../util/browser":443}],371:[function(require,module,exports){
+},{"../util/browser":442}],370:[function(require,module,exports){
 'use strict';
 
 module.exports = drawCollisionDebug;
@@ -34635,7 +34622,7 @@ function drawCollisionDebug(painter, source, layer, coords) {
     }
 }
 
-},{}],372:[function(require,module,exports){
+},{}],371:[function(require,module,exports){
 'use strict';
 
 var textVertices = require('../lib/debugtext');
@@ -34696,7 +34683,7 @@ function drawDebugTile(painter, source, coord) {
     gl.drawArrays(gl.LINES, 0, debugTextBuffer.length);
 }
 
-},{"../data/bucket":354,"../data/buffer":359,"../lib/debugtext":366,"../util/browser":443,"./vertex_array_object":381,"gl-matrix":58}],373:[function(require,module,exports){
+},{"../data/bucket":353,"../data/buffer":358,"../lib/debugtext":365,"../util/browser":442,"./vertex_array_object":380,"gl-matrix":61}],372:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -34895,7 +34882,7 @@ function setPattern(image, opacity, tile, coord, painter, program) {
     painter.spriteAtlas.bind(gl, true);
 }
 
-},{"../source/pixels_to_tile_units":385,"../util/util":458}],374:[function(require,module,exports){
+},{"../source/pixels_to_tile_units":384,"../util/util":457}],373:[function(require,module,exports){
 'use strict';
 
 var browser = require('../util/browser');
@@ -35061,7 +35048,7 @@ module.exports = function drawLine(painter, source, layer, coords) {
 
 };
 
-},{"../source/pixels_to_tile_units":385,"../util/browser":443,"../util/util":458,"gl-matrix":58}],375:[function(require,module,exports){
+},{"../source/pixels_to_tile_units":384,"../util/browser":442,"../util/util":457,"gl-matrix":61}],374:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -35207,7 +35194,7 @@ function getOpacities(tile, parentTile, layer, transform) {
     return opacity;
 }
 
-},{"../util/struct_array":456,"../util/util":458}],376:[function(require,module,exports){
+},{"../util/struct_array":455,"../util/util":457}],375:[function(require,module,exports){
 'use strict';
 
 var browser = require('../util/browser');
@@ -35412,7 +35399,7 @@ function drawSymbol(painter, layer, posMatrix, tile, bucket, bufferGroups, isTex
     }
 }
 
-},{"../source/pixels_to_tile_units":385,"../util/browser":443,"../util/util":458,"./draw_collision_debug":371}],377:[function(require,module,exports){
+},{"../source/pixels_to_tile_units":384,"../util/browser":442,"../util/util":457,"./draw_collision_debug":370}],376:[function(require,module,exports){
 'use strict';
 
 module.exports = FrameHistory;
@@ -35484,7 +35471,7 @@ FrameHistory.prototype.bind = function(gl) {
     }
 };
 
-},{}],378:[function(require,module,exports){
+},{}],377:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -35631,7 +35618,7 @@ LineAtlas.prototype.bind = function(gl) {
     }
 };
 
-},{"../util/util":458}],379:[function(require,module,exports){
+},{"../util/util":457}],378:[function(require,module,exports){
 'use strict';
 
 var browser = require('../util/browser');
@@ -35972,7 +35959,7 @@ Painter.prototype.showOverdrawInspector = function(enabled) {
     }
 };
 
-},{"../data/bucket":354,"../data/buffer":359,"../source/pixels_to_tile_units":385,"../source/tile_pyramid":390,"../util/browser":443,"../util/struct_array":456,"../util/util":458,"./create_uniform_pragmas":368,"./draw_background":369,"./draw_circle":370,"./draw_debug":372,"./draw_fill":373,"./draw_line":374,"./draw_raster":375,"./draw_symbol":376,"./frame_history":377,"./painter/use_program":380,"./vertex_array_object":381,"gl-matrix":58}],380:[function(require,module,exports){
+},{"../data/bucket":353,"../data/buffer":358,"../source/pixels_to_tile_units":384,"../source/tile_pyramid":389,"../util/browser":442,"../util/struct_array":455,"../util/util":457,"./create_uniform_pragmas":367,"./draw_background":368,"./draw_circle":369,"./draw_debug":371,"./draw_fill":372,"./draw_line":373,"./draw_raster":374,"./draw_symbol":375,"./frame_history":376,"./painter/use_program":379,"./vertex_array_object":380,"gl-matrix":61}],379:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -36070,7 +36057,7 @@ function applyPragmas(source, pragmas) {
     return source;
 }
 
-},{"../../util/util":458,"assert":4,"mapbox-gl-shaders":327}],381:[function(require,module,exports){
+},{"../../util/util":457,"assert":4,"mapbox-gl-shaders":326}],380:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -36170,7 +36157,7 @@ VertexArrayObject.prototype.destroy = function(gl) {
     }
 };
 
-},{"../util/util":458,"assert":4}],382:[function(require,module,exports){
+},{"../util/util":457,"assert":4}],381:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -36404,7 +36391,7 @@ GeoJSONSource.prototype = util.inherit(Evented, /** @lends GeoJSONSource.prototy
     }
 });
 
-},{"../data/bucket":354,"../util/evented":450,"../util/util":458,"./source":387,"./tile_pyramid":390,"resolve-url":810}],383:[function(require,module,exports){
+},{"../data/bucket":353,"../util/evented":449,"../util/util":457,"./source":386,"./tile_pyramid":389,"resolve-url":859}],382:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -36480,7 +36467,7 @@ FeatureWrapper.prototype.bbox = function() {
 
 FeatureWrapper.prototype.toGeoJSON = VectorTileFeature.prototype.toGeoJSON;
 
-},{"../data/bucket":354,"point-geometry":569,"vector-tile":826}],384:[function(require,module,exports){
+},{"../data/bucket":353,"point-geometry":569,"vector-tile":875}],383:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -36643,7 +36630,7 @@ ImageSource.prototype = util.inherit(Evented, /** @lends ImageSource.prototype *
     }
 });
 
-},{"../data/bucket":354,"../data/buffer":359,"../geo/lng_lat":363,"../render/draw_raster":375,"../render/vertex_array_object":381,"../util/ajax":442,"../util/evented":450,"../util/util":458,"./tile":388,"./tile_coord":389,"point-geometry":569}],385:[function(require,module,exports){
+},{"../data/bucket":353,"../data/buffer":358,"../geo/lng_lat":362,"../render/draw_raster":374,"../render/vertex_array_object":380,"../util/ajax":441,"../util/evented":449,"../util/util":457,"./tile":387,"./tile_coord":388,"point-geometry":569}],384:[function(require,module,exports){
 'use strict';
 
 var Bucket = require('../data/bucket');
@@ -36668,7 +36655,7 @@ module.exports = function(tile, pixelValue, z) {
 };
 
 
-},{"../data/bucket":354}],386:[function(require,module,exports){
+},{"../data/bucket":353}],385:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -36789,7 +36776,7 @@ RasterTileSource.prototype = util.inherit(Evented, {
     }
 });
 
-},{"../util/ajax":442,"../util/evented":450,"../util/mapbox":455,"../util/util":458,"./source":387}],387:[function(require,module,exports){
+},{"../util/ajax":441,"../util/evented":449,"../util/mapbox":454,"../util/util":457,"./source":386}],386:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -36984,7 +36971,7 @@ exports.is = function(source) {
     return false;
 };
 
-},{"../util/ajax":442,"../util/browser":443,"../util/mapbox":455,"../util/util":458,"./geojson_source":382,"./image_source":384,"./raster_tile_source":386,"./tile_coord":389,"./tile_pyramid":390,"./vector_tile_source":391,"./video_source":392}],388:[function(require,module,exports){
+},{"../util/ajax":441,"../util/browser":442,"../util/mapbox":454,"../util/util":457,"./geojson_source":381,"./image_source":383,"./raster_tile_source":385,"./tile_coord":388,"./tile_pyramid":389,"./vector_tile_source":390,"./video_source":391}],387:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -37170,7 +37157,7 @@ function unserializeBuckets(input, style) {
     return output;
 }
 
-},{"../data/bucket":354,"../data/feature_index":360,"../symbol/collision_box":414,"../symbol/collision_tile":416,"../util/util":458,"../util/vectortile_to_geojson":459,"feature-filter":47,"pbf":568,"vector-tile":826}],389:[function(require,module,exports){
+},{"../data/bucket":353,"../data/feature_index":359,"../symbol/collision_box":413,"../symbol/collision_tile":415,"../util/util":457,"../util/vectortile_to_geojson":458,"feature-filter":50,"pbf":567,"vector-tile":875}],388:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -37349,7 +37336,7 @@ TileCoord.cover = function(z, bounds, actualZ) {
     });
 };
 
-},{"../geo/coordinate":362,"assert":4}],390:[function(require,module,exports){
+},{"../geo/coordinate":361,"assert":4}],389:[function(require,module,exports){
 'use strict';
 
 var Tile = require('./tile');
@@ -37815,7 +37802,7 @@ function compareKeyZoom(a, b) {
     return (a % 32) - (b % 32);
 }
 
-},{"../data/bucket":354,"../geo/coordinate":362,"../util/lru_cache":454,"../util/util":458,"./tile":388,"./tile_coord":389,"point-geometry":569}],391:[function(require,module,exports){
+},{"../data/bucket":353,"../geo/coordinate":361,"../util/lru_cache":453,"../util/util":457,"./tile":387,"./tile_coord":388,"point-geometry":569}],390:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -37944,7 +37931,7 @@ VectorTileSource.prototype = util.inherit(Evented, {
     }
 });
 
-},{"../util/evented":450,"../util/mapbox":455,"../util/util":458,"./source":387}],392:[function(require,module,exports){
+},{"../util/evented":449,"../util/mapbox":454,"../util/util":457,"./source":386}],391:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -38135,7 +38122,7 @@ VideoSource.prototype = util.inherit(Evented, /** @lends VideoSource.prototype *
     }
 });
 
-},{"../data/bucket":354,"../data/buffer":359,"../geo/lng_lat":363,"../render/draw_raster":375,"../render/vertex_array_object":381,"../util/ajax":442,"../util/evented":450,"../util/util":458,"./tile":388,"./tile_coord":389,"point-geometry":569}],393:[function(require,module,exports){
+},{"../data/bucket":353,"../data/buffer":358,"../geo/lng_lat":362,"../render/draw_raster":374,"../render/vertex_array_object":380,"../util/ajax":441,"../util/evented":449,"../util/util":457,"./tile":387,"./tile_coord":388,"point-geometry":569}],392:[function(require,module,exports){
 'use strict';
 
 var Actor = require('../util/actor');
@@ -38378,7 +38365,7 @@ function createLayerFamilies(layers) {
     return families;
 }
 
-},{"../style/style_layer":401,"../util/actor":441,"../util/ajax":442,"../util/util":458,"./geojson_wrapper":383,"./worker_tile":394,"geojson-rewind":50,"geojson-vt":53,"pbf":568,"supercluster":815,"vector-tile":826,"vt-pbf":830}],394:[function(require,module,exports){
+},{"../style/style_layer":400,"../util/actor":440,"../util/ajax":441,"../util/util":457,"./geojson_wrapper":382,"./worker_tile":393,"geojson-rewind":53,"geojson-vt":56,"pbf":567,"supercluster":864,"vector-tile":875,"vt-pbf":879}],393:[function(require,module,exports){
 'use strict';
 
 var FeatureIndex = require('../data/feature_index');
@@ -38675,7 +38662,7 @@ function getLayerId(layer) {
     return layer.id;
 }
 
-},{"../data/bucket":354,"../data/feature_index":360,"../symbol/collision_box":414,"../symbol/collision_tile":416,"../util/dictionary_coder":449,"../util/util":458}],395:[function(require,module,exports){
+},{"../data/bucket":353,"../data/feature_index":359,"../symbol/collision_box":413,"../symbol/collision_tile":415,"../util/dictionary_coder":448,"../util/util":457}],394:[function(require,module,exports){
 'use strict';
 
 module.exports = AnimationLoop;
@@ -38707,7 +38694,7 @@ AnimationLoop.prototype.cancel = function(n) {
     });
 };
 
-},{}],396:[function(require,module,exports){
+},{}],395:[function(require,module,exports){
 'use strict';
 
 var Evented = require('../util/evented');
@@ -38788,7 +38775,7 @@ ImageSprite.prototype.getSpritePosition = function(name) {
     return new SpritePosition();
 };
 
-},{"../util/ajax":442,"../util/browser":443,"../util/evented":450,"../util/mapbox":455}],397:[function(require,module,exports){
+},{"../util/ajax":441,"../util/browser":442,"../util/evented":449,"../util/mapbox":454}],396:[function(require,module,exports){
 'use strict';
 
 var parseCSSColor = require('csscolorparser').parseCSSColor;
@@ -38836,7 +38823,7 @@ function colorDowngrade(color) {
 
 module.exports = parseColor;
 
-},{"../util/util":458,"csscolorparser":12}],398:[function(require,module,exports){
+},{"../util/util":457,"csscolorparser":12}],397:[function(require,module,exports){
 'use strict';
 
 var Evented = require('../util/evented');
@@ -39580,7 +39567,7 @@ Style.prototype = util.inherit(Evented, {
     }
 });
 
-},{"../render/line_atlas":378,"../source/source":387,"../symbol/glyph_source":419,"../symbol/sprite_atlas":424,"../util/ajax":442,"../util/browser":443,"../util/dispatcher":445,"../util/evented":450,"../util/mapbox":455,"../util/util":458,"./animation_loop":395,"./image_sprite":396,"./style_function":400,"./style_layer":401,"./style_spec":408,"./validate_style":410}],399:[function(require,module,exports){
+},{"../render/line_atlas":377,"../source/source":386,"../symbol/glyph_source":418,"../symbol/sprite_atlas":423,"../util/ajax":441,"../util/browser":442,"../util/dispatcher":444,"../util/evented":449,"../util/mapbox":454,"../util/util":457,"./animation_loop":394,"./image_sprite":395,"./style_function":399,"./style_layer":400,"./style_spec":407,"./validate_style":409}],398:[function(require,module,exports){
 'use strict';
 
 var MapboxGLFunction = require('./style_function');
@@ -39666,7 +39653,7 @@ function transitioned(calculate) {
     };
 }
 
-},{"../util/util":458,"./parse_color":397,"./style_function":400}],400:[function(require,module,exports){
+},{"../util/util":457,"./parse_color":396,"./style_function":399}],399:[function(require,module,exports){
 'use strict';
 
 var MapboxGLFunction = require('mapbox-gl-function');
@@ -39693,7 +39680,7 @@ exports['piecewise-constant'] = function(parameters) {
 
 exports.isFunctionDefinition = MapboxGLFunction.isFunctionDefinition;
 
-},{"mapbox-gl-function":325}],401:[function(require,module,exports){
+},{"mapbox-gl-function":324}],400:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -40030,7 +40017,7 @@ function getDeclarationValue(declaration) {
     return declaration.value;
 }
 
-},{"../util/evented":450,"../util/util":458,"./parse_color":397,"./style_declaration":399,"./style_layer/background_style_layer":402,"./style_layer/circle_style_layer":403,"./style_layer/fill_style_layer":404,"./style_layer/line_style_layer":405,"./style_layer/raster_style_layer":406,"./style_layer/symbol_style_layer":407,"./style_spec":408,"./style_transition":409,"./validate_style":410}],402:[function(require,module,exports){
+},{"../util/evented":449,"../util/util":457,"./parse_color":396,"./style_declaration":398,"./style_layer/background_style_layer":401,"./style_layer/circle_style_layer":402,"./style_layer/fill_style_layer":403,"./style_layer/line_style_layer":404,"./style_layer/raster_style_layer":405,"./style_layer/symbol_style_layer":406,"./style_spec":407,"./style_transition":408,"./validate_style":409}],401:[function(require,module,exports){
 'use strict';
 
 var util = require('../../util/util');
@@ -40044,7 +40031,7 @@ module.exports = BackgroundStyleLayer;
 
 BackgroundStyleLayer.prototype = util.inherit(StyleLayer, {});
 
-},{"../../util/util":458,"../style_layer":401}],403:[function(require,module,exports){
+},{"../../util/util":457,"../style_layer":400}],402:[function(require,module,exports){
 'use strict';
 
 var util = require('../../util/util');
@@ -40058,7 +40045,7 @@ module.exports = CircleStyleLayer;
 
 CircleStyleLayer.prototype = util.inherit(StyleLayer, {});
 
-},{"../../util/util":458,"../style_layer":401}],404:[function(require,module,exports){
+},{"../../util/util":457,"../style_layer":400}],403:[function(require,module,exports){
 'use strict';
 
 var util = require('../../util/util');
@@ -40114,7 +40101,7 @@ FillStyleLayer.prototype = util.inherit(StyleLayer, {
 
 module.exports = FillStyleLayer;
 
-},{"../../util/util":458,"../style_layer":401}],405:[function(require,module,exports){
+},{"../../util/util":457,"../style_layer":400}],404:[function(require,module,exports){
 'use strict';
 
 var util = require('../../util/util');
@@ -40148,7 +40135,7 @@ LineStyleLayer.prototype = util.inherit(StyleLayer, {
     }
 });
 
-},{"../../util/util":458,"../style_layer":401}],406:[function(require,module,exports){
+},{"../../util/util":457,"../style_layer":400}],405:[function(require,module,exports){
 'use strict';
 
 var util = require('../../util/util');
@@ -40162,7 +40149,7 @@ module.exports = RasterStyleLayer;
 
 RasterStyleLayer.prototype = util.inherit(StyleLayer, {});
 
-},{"../../util/util":458,"../style_layer":401}],407:[function(require,module,exports){
+},{"../../util/util":457,"../style_layer":400}],406:[function(require,module,exports){
 'use strict';
 
 var util = require('../../util/util');
@@ -40202,12 +40189,12 @@ SymbolStyleLayer.prototype = util.inherit(StyleLayer, {
 
 });
 
-},{"../../util/util":458,"../style_layer":401}],408:[function(require,module,exports){
+},{"../../util/util":457,"../style_layer":400}],407:[function(require,module,exports){
 'use strict';
 
 module.exports = require('mapbox-gl-style-spec/reference/latest');
 
-},{"mapbox-gl-style-spec/reference/latest":349}],409:[function(require,module,exports){
+},{"mapbox-gl-style-spec/reference/latest":348}],408:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -40293,7 +40280,7 @@ function interpZoomTransitioned(from, to, t) {
     }
 }
 
-},{"../util/interpolate":452,"../util/util":458}],410:[function(require,module,exports){
+},{"../util/interpolate":451,"../util/util":457}],409:[function(require,module,exports){
 'use strict';
 
 module.exports = require('mapbox-gl-style-spec/lib/validate_style.min');
@@ -40317,7 +40304,7 @@ module.exports.throwErrors = function throwErrors(emitter, errors) {
     }
 };
 
-},{"mapbox-gl-style-spec/lib/validate_style.min":348}],411:[function(require,module,exports){
+},{"mapbox-gl-style-spec/lib/validate_style.min":347}],410:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -40340,7 +40327,7 @@ Anchor.prototype.clone = function() {
     return new Anchor(this.x, this.y, this.angle, this.segment);
 };
 
-},{"point-geometry":569}],412:[function(require,module,exports){
+},{"point-geometry":569}],411:[function(require,module,exports){
 'use strict';
 
 module.exports = checkMaxAngle;
@@ -40420,7 +40407,7 @@ function checkMaxAngle(line, anchor, labelLength, windowSize, maxAngle) {
     return true;
 }
 
-},{}],413:[function(require,module,exports){
+},{}],412:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -40494,7 +40481,7 @@ function clipLine(lines, x1, y1, x2, y2) {
     return clippedLines;
 }
 
-},{"point-geometry":569}],414:[function(require,module,exports){
+},{"point-geometry":569}],413:[function(require,module,exports){
 'use strict';
 
 var StructArrayType = require('../util/struct_array');
@@ -40575,7 +40562,7 @@ util.extendAll(CollisionBoxArray.prototype.StructType.prototype, {
     }
 });
 
-},{"../util/struct_array":456,"../util/util":458,"point-geometry":569}],415:[function(require,module,exports){
+},{"../util/struct_array":455,"../util/util":457,"point-geometry":569}],414:[function(require,module,exports){
 'use strict';
 
 module.exports = CollisionFeature;
@@ -40709,7 +40696,7 @@ CollisionFeature.prototype._addLineCollisionBoxes = function(collisionBoxArray, 
     return bboxes;
 };
 
-},{}],416:[function(require,module,exports){
+},{}],415:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -41010,7 +40997,7 @@ CollisionTile.prototype.insertCollisionFeature = function(collisionFeature, minP
     }
 };
 
-},{"../data/bucket":354,"grid-index":68,"point-geometry":569}],417:[function(require,module,exports){
+},{"../data/bucket":353,"grid-index":71,"point-geometry":569}],416:[function(require,module,exports){
 'use strict';
 
 var interpolate = require('../util/interpolate');
@@ -41114,7 +41101,7 @@ function resample(line, offset, spacing, angleWindowSize, maxAngle, labelLength,
     return anchors;
 }
 
-},{"../symbol/anchor":411,"../util/interpolate":452,"./check_max_angle":412}],418:[function(require,module,exports){
+},{"../symbol/anchor":410,"../util/interpolate":451,"./check_max_angle":411}],417:[function(require,module,exports){
 'use strict';
 
 var ShelfPack = require('shelf-pack');
@@ -41281,7 +41268,7 @@ GlyphAtlas.prototype.updateTexture = function(gl) {
     }
 };
 
-},{"../util/util":458,"shelf-pack":812}],419:[function(require,module,exports){
+},{"../util/util":457,"shelf-pack":861}],418:[function(require,module,exports){
 'use strict';
 
 var normalizeURL = require('../util/mapbox').normalizeGlyphsURL;
@@ -41423,7 +41410,7 @@ function glyphUrl(fontstack, range, url, subdomains) {
         .replace('{range}', range);
 }
 
-},{"../symbol/glyph_atlas":418,"../util/ajax":442,"../util/glyphs":451,"../util/mapbox":455,"pbf":568}],420:[function(require,module,exports){
+},{"../symbol/glyph_atlas":417,"../util/ajax":441,"../util/glyphs":450,"../util/mapbox":454,"pbf":567}],419:[function(require,module,exports){
 'use strict';
 
 module.exports = function (features, textFeatures, geometries) {
@@ -41514,7 +41501,7 @@ module.exports = function (features, textFeatures, geometries) {
     };
 };
 
-},{}],421:[function(require,module,exports){
+},{}],420:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -41767,7 +41754,7 @@ function getSegmentGlyphs(glyphs, anchor, offset, line, segment, forward) {
     return placementScale;
 }
 
-},{"point-geometry":569}],422:[function(require,module,exports){
+},{"point-geometry":569}],421:[function(require,module,exports){
 'use strict';
 
 var resolveTokens = require('../util/token');
@@ -41810,7 +41797,7 @@ function resolveText(features, layoutProperties, codepoints) {
     return textFeatures;
 }
 
-},{"../util/token":457}],423:[function(require,module,exports){
+},{"../util/token":456}],422:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -41991,7 +41978,7 @@ function PositionedIcon(image, top, bottom, left, right) {
     this.right = right;
 }
 
-},{}],424:[function(require,module,exports){
+},{}],423:[function(require,module,exports){
 'use strict';
 
 var ShelfPack = require('shelf-pack');
@@ -42224,7 +42211,7 @@ function AtlasImage(rect, width, height, sdf, pixelRatio) {
     this.pixelRatio = pixelRatio;
 }
 
-},{"../util/browser":443,"../util/util":458,"shelf-pack":812}],425:[function(require,module,exports){
+},{"../util/browser":442,"../util/util":457,"shelf-pack":861}],424:[function(require,module,exports){
 'use strict';
 
 var DOM = require('../util/dom');
@@ -42368,7 +42355,7 @@ module.exports = function bindHandlers(map, options) {
     }
 };
 
-},{"../util/dom":446,"./handler/box_zoom":431,"./handler/dblclick_zoom":432,"./handler/drag_pan":433,"./handler/drag_rotate":434,"./handler/keyboard":435,"./handler/scroll_zoom":436,"./handler/touch_zoom_rotate":437,"point-geometry":569}],426:[function(require,module,exports){
+},{"../util/dom":445,"./handler/box_zoom":430,"./handler/dblclick_zoom":431,"./handler/drag_pan":432,"./handler/drag_rotate":433,"./handler/keyboard":434,"./handler/scroll_zoom":435,"./handler/touch_zoom_rotate":436,"point-geometry":569}],425:[function(require,module,exports){
 'use strict';
 
 var util = require('../util/util');
@@ -43147,7 +43134,7 @@ util.extend(Camera.prototype, /** @lends Map.prototype */{
  * @property {EventData} data Original event data
  */
 
-},{"../geo/lng_lat":363,"../geo/lng_lat_bounds":364,"../util/browser":443,"../util/interpolate":452,"../util/util":458,"point-geometry":569}],427:[function(require,module,exports){
+},{"../geo/lng_lat":362,"../geo/lng_lat_bounds":363,"../util/browser":442,"../util/interpolate":451,"../util/util":457,"point-geometry":569}],426:[function(require,module,exports){
 'use strict';
 
 var Control = require('./control');
@@ -43228,7 +43215,7 @@ Attribution.prototype = util.inherit(Control, {
     }
 });
 
-},{"../../util/dom":446,"../../util/util":458,"./control":428}],428:[function(require,module,exports){
+},{"../../util/dom":445,"../../util/util":457,"./control":427}],427:[function(require,module,exports){
 'use strict';
 
 var util = require('../../util/util');
@@ -43283,7 +43270,7 @@ Control.prototype = {
 
 util.extend(Control.prototype, Evented);
 
-},{"../../util/evented":450,"../../util/util":458}],429:[function(require,module,exports){
+},{"../../util/evented":449,"../../util/util":457}],428:[function(require,module,exports){
 'use strict';
 
 var Control = require('./control');
@@ -43382,7 +43369,7 @@ Geolocate.prototype = util.inherit(Control, {
   *
   */
 
-},{"../../util/browser":443,"../../util/dom":446,"../../util/util":458,"./control":428}],430:[function(require,module,exports){
+},{"../../util/browser":442,"../../util/dom":445,"../../util/util":457,"./control":427}],429:[function(require,module,exports){
 'use strict';
 
 var Control = require('./control');
@@ -43500,7 +43487,7 @@ function copyMouseEvent(e) {
 }
 
 
-},{"../../util/dom":446,"../../util/util":458,"./control":428}],431:[function(require,module,exports){
+},{"../../util/dom":445,"../../util/util":457,"./control":427}],430:[function(require,module,exports){
 'use strict';
 
 var DOM = require('../../util/dom'),
@@ -43676,7 +43663,7 @@ BoxZoomHandler.prototype = {
  * @property {EventData} data Original event data
  */
 
-},{"../../geo/lng_lat_bounds":364,"../../util/dom":446,"../../util/util":458}],432:[function(require,module,exports){
+},{"../../geo/lng_lat_bounds":363,"../../util/dom":445,"../../util/util":457}],431:[function(require,module,exports){
 'use strict';
 
 module.exports = DoubleClickZoomHandler;
@@ -43731,7 +43718,7 @@ DoubleClickZoomHandler.prototype = {
     }
 };
 
-},{}],433:[function(require,module,exports){
+},{}],432:[function(require,module,exports){
 'use strict';
 
 var DOM = require('../../util/dom'),
@@ -43961,7 +43948,7 @@ DragPanHandler.prototype = {
  * @property {EventData} data Original event data
  */
 
-},{"../../util/dom":446,"../../util/util":458}],434:[function(require,module,exports){
+},{"../../util/dom":445,"../../util/util":457}],433:[function(require,module,exports){
 'use strict';
 
 var DOM = require('../../util/dom'),
@@ -44205,7 +44192,7 @@ DragRotateHandler.prototype = {
  * @property {EventData} data Original event data
  */
 
-},{"../../util/dom":446,"../../util/util":458,"point-geometry":569}],435:[function(require,module,exports){
+},{"../../util/dom":445,"../../util/util":457,"point-geometry":569}],434:[function(require,module,exports){
 'use strict';
 
 module.exports = KeyboardHandler;
@@ -44331,7 +44318,7 @@ KeyboardHandler.prototype = {
     }
 };
 
-},{}],436:[function(require,module,exports){
+},{}],435:[function(require,module,exports){
 'use strict';
 
 var DOM = require('../../util/dom'),
@@ -44509,7 +44496,7 @@ ScrollZoomHandler.prototype = {
  * @property {EventData} data Original event data, if fired interactively
  */
 
-},{"../../util/browser":443,"../../util/dom":446,"../../util/util":458}],437:[function(require,module,exports){
+},{"../../util/browser":442,"../../util/dom":445,"../../util/util":457}],436:[function(require,module,exports){
 'use strict';
 
 var DOM = require('../../util/dom'),
@@ -44718,7 +44705,7 @@ TouchZoomRotateHandler.prototype = {
     }
 };
 
-},{"../../util/dom":446,"../../util/util":458}],438:[function(require,module,exports){
+},{"../../util/dom":445,"../../util/util":457}],437:[function(require,module,exports){
 'use strict';
 
 /*
@@ -44793,7 +44780,7 @@ Hash.prototype = {
     }
 };
 
-},{"../util/util":458}],439:[function(require,module,exports){
+},{"../util/util":457}],438:[function(require,module,exports){
 'use strict';
 
 var Canvas = require('../util/canvas');
@@ -46127,7 +46114,7 @@ function removeNode(node) {
    * @property {EventData} data Original event data, if fired interactively
    */
 
-},{"../geo/lng_lat":363,"../geo/lng_lat_bounds":364,"../geo/transform":365,"../render/painter":379,"../style/animation_loop":395,"../style/style":398,"../util/browser":443,"../util/canvas":444,"../util/dom":446,"../util/evented":450,"../util/util":458,"./bind_handlers":425,"./camera":426,"./control/attribution":427,"./hash":438,"point-geometry":569}],440:[function(require,module,exports){
+},{"../geo/lng_lat":362,"../geo/lng_lat_bounds":363,"../geo/transform":364,"../render/painter":378,"../style/animation_loop":394,"../style/style":397,"../util/browser":442,"../util/canvas":443,"../util/dom":445,"../util/evented":449,"../util/util":457,"./bind_handlers":424,"./camera":425,"./control/attribution":426,"./hash":437,"point-geometry":569}],439:[function(require,module,exports){
 'use strict';
 
 module.exports = Popup;
@@ -46359,7 +46346,7 @@ Popup.prototype = util.inherit(Evented, /** @lends Popup.prototype */{
     }
 });
 
-},{"../geo/lng_lat":363,"../util/dom":446,"../util/evented":450,"../util/util":458}],441:[function(require,module,exports){
+},{"../geo/lng_lat":362,"../util/dom":445,"../util/evented":449,"../util/util":457}],440:[function(require,module,exports){
 'use strict';
 
 module.exports = Actor;
@@ -46424,7 +46411,7 @@ Actor.prototype.postMessage = function(message, transferList) {
     this.target.postMessage(message, transferList);
 };
 
-},{}],442:[function(require,module,exports){
+},{}],441:[function(require,module,exports){
 'use strict';
 
 exports.getJSON = function(url, callback) {
@@ -46514,7 +46501,7 @@ exports.getVideo = function(urls, callback) {
     return video;
 };
 
-},{}],443:[function(require,module,exports){
+},{}],442:[function(require,module,exports){
 'use strict';
 
 /**
@@ -46609,7 +46596,7 @@ webpImgTest.src = 'data:image/webp;base64,UklGRh4AAABXRUJQVlA4TBEAAAAvAQAAAAfQ//
 
 exports.supportsGeolocation = !!navigator.geolocation;
 
-},{"mapbox-gl-js-supported":326}],444:[function(require,module,exports){
+},{"mapbox-gl-js-supported":325}],443:[function(require,module,exports){
 'use strict';
 
 var util = require('../util');
@@ -46653,7 +46640,7 @@ Canvas.prototype.getElement = function() {
     return this.canvas;
 };
 
-},{"../util":458,"mapbox-gl-js-supported":326}],445:[function(require,module,exports){
+},{"../util":457,"mapbox-gl-js-supported":325}],444:[function(require,module,exports){
 'use strict';
 
 var Actor = require('../actor');
@@ -46697,7 +46684,7 @@ Dispatcher.prototype = {
     }
 };
 
-},{"../../source/worker":393,"../actor":441,"webworkify":834}],446:[function(require,module,exports){
+},{"../../source/worker":392,"../actor":440,"webworkify":883}],445:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -46772,7 +46759,7 @@ exports.touchPos = function (el, e) {
     return points;
 };
 
-},{"point-geometry":569}],447:[function(require,module,exports){
+},{"point-geometry":569}],446:[function(require,module,exports){
 'use strict';
 
 var quickselect = require('quickselect');
@@ -46832,7 +46819,7 @@ function calculateSignedArea(ring) {
     return sum;
 }
 
-},{"quickselect":576}],448:[function(require,module,exports){
+},{"quickselect":576}],447:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -46840,7 +46827,7 @@ module.exports = {
     REQUIRE_ACCESS_TOKEN: true
 };
 
-},{}],449:[function(require,module,exports){
+},{}],448:[function(require,module,exports){
 'use strict';
 
 var assert = require('assert');
@@ -46867,7 +46854,7 @@ DictionaryCoder.prototype.decode = function(n) {
     return this._numberToString[n];
 };
 
-},{"assert":4}],450:[function(require,module,exports){
+},{"assert":4}],449:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -46975,7 +46962,7 @@ var Evented = {
 
 module.exports = Evented;
 
-},{"./util":458}],451:[function(require,module,exports){
+},{"./util":457}],450:[function(require,module,exports){
 'use strict';
 
 module.exports = Glyphs;
@@ -47010,7 +46997,7 @@ function readGlyph(tag, glyph, pbf) {
     else if (tag === 7) glyph.advance = pbf.readVarint();
 }
 
-},{}],452:[function(require,module,exports){
+},{}],451:[function(require,module,exports){
 'use strict';
 
 module.exports = interpolate;
@@ -47051,7 +47038,7 @@ interpolate.array = function(from, to, t) {
     });
 };
 
-},{}],453:[function(require,module,exports){
+},{}],452:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -47217,7 +47204,7 @@ function polygonContainsPoint(ring, p) {
     return c;
 }
 
-},{}],454:[function(require,module,exports){
+},{}],453:[function(require,module,exports){
 'use strict';
 
 module.exports = LRUCache;
@@ -47342,7 +47329,7 @@ LRUCache.prototype.setMaxSize = function(max) {
     return this;
 };
 
-},{}],455:[function(require,module,exports){
+},{}],454:[function(require,module,exports){
 'use strict';
 
 var config = require('./config');
@@ -47423,7 +47410,7 @@ module.exports.normalizeTileURL = function(url, sourceUrl, tileSize) {
     return url.replace(/\.((?:png|jpg)\d*)(?=$|\?)/, browser.devicePixelRatio >= 2 || tileSize === 512 ? '@2x.' + extension : '.' + extension);
 };
 
-},{"./browser":443,"./config":448}],456:[function(require,module,exports){
+},{"./browser":442,"./config":447}],455:[function(require,module,exports){
 'use strict';
 
 // Note: all "sizes" are measured in bytes
@@ -47746,7 +47733,7 @@ StructArray.prototype._refreshViews = function() {
     }
 };
 
-},{"assert":4}],457:[function(require,module,exports){
+},{"assert":4}],456:[function(require,module,exports){
 'use strict';
 
 module.exports = resolveTokens;
@@ -47765,7 +47752,7 @@ function resolveTokens(properties, text) {
     });
 }
 
-},{}],458:[function(require,module,exports){
+},{}],457:[function(require,module,exports){
 'use strict';
 
 var UnitBezier = require('unitbezier');
@@ -48243,7 +48230,7 @@ exports.warnOnce = function(message) {
     }
 };
 
-},{"../geo/coordinate":362,"unitbezier":820}],459:[function(require,module,exports){
+},{"../geo/coordinate":361,"unitbezier":869}],458:[function(require,module,exports){
 'use strict';
 
 module.exports = Feature;
@@ -48288,7 +48275,7 @@ Feature.prototype = {
     }
 };
 
-},{}],460:[function(require,module,exports){
+},{}],459:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -48635,7 +48622,7 @@ AppBar.contextTypes = {
 };
 exports.default = AppBar;
 }).call(this,require('_process'))
-},{"../IconButton":482,"../Paper":489,"../svg-icons/navigation/menu":548,"../utils/propTypes":559,"_process":570,"react":791,"simple-assign":813,"warning":833}],461:[function(require,module,exports){
+},{"../IconButton":481,"../Paper":488,"../svg-icons/navigation/menu":547,"../utils/propTypes":558,"_process":570,"react":840,"simple-assign":862,"warning":882}],460:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -48650,7 +48637,7 @@ var _AppBar2 = _interopRequireDefault(_AppBar);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _AppBar2.default;
-},{"./AppBar":460}],462:[function(require,module,exports){
+},{"./AppBar":459}],461:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -48813,7 +48800,7 @@ Avatar.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = Avatar;
-},{"react":791,"simple-assign":813}],463:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],462:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -48828,7 +48815,7 @@ var _Avatar2 = _interopRequireDefault(_Avatar);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _Avatar2.default;
-},{"./Avatar":462}],464:[function(require,module,exports){
+},{"./Avatar":461}],463:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49017,7 +49004,7 @@ Card.defaultProps = {
   actAsExpander: false
 };
 exports.default = Card;
-},{"../Paper":489,"./CardExpandable":466,"react":791,"simple-assign":813}],465:[function(require,module,exports){
+},{"../Paper":488,"./CardExpandable":465,"react":840,"simple-assign":862}],464:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49117,7 +49104,7 @@ CardActions.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = CardActions;
-},{"react":791,"simple-assign":813}],466:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],465:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49203,7 +49190,7 @@ CardExpandable.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = CardExpandable;
-},{"../IconButton":482,"../svg-icons/hardware/keyboard-arrow-down":543,"../svg-icons/hardware/keyboard-arrow-up":544,"react":791,"simple-assign":813}],467:[function(require,module,exports){
+},{"../IconButton":481,"../svg-icons/hardware/keyboard-arrow-down":542,"../svg-icons/hardware/keyboard-arrow-up":543,"react":840,"simple-assign":862}],466:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49395,7 +49382,7 @@ CardHeader.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = CardHeader;
-},{"../Avatar":463,"react":791,"simple-assign":813}],468:[function(require,module,exports){
+},{"../Avatar":462,"react":840,"simple-assign":862}],467:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49574,7 +49561,7 @@ CardMedia.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = CardMedia;
-},{"react":791,"simple-assign":813}],469:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],468:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49669,7 +49656,7 @@ CardText.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = CardText;
-},{"react":791,"simple-assign":813}],470:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],469:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49818,7 +49805,7 @@ CardTitle.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = CardTitle;
-},{"react":791,"simple-assign":813}],471:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],470:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49864,7 +49851,7 @@ exports.CardText = _CardText3.default;
 exports.CardActions = _CardActions3.default;
 exports.CardExpandable = _CardExpandable3.default;
 exports.default = _Card3.default;
-},{"./Card":464,"./CardActions":465,"./CardExpandable":466,"./CardHeader":467,"./CardMedia":468,"./CardText":469,"./CardTitle":470}],472:[function(require,module,exports){
+},{"./Card":463,"./CardActions":464,"./CardExpandable":465,"./CardHeader":466,"./CardMedia":467,"./CardText":468,"./CardTitle":469}],471:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50141,7 +50128,7 @@ Checkbox.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = Checkbox;
-},{"../internal/EnhancedSwitch":514,"../styles/transitions":536,"../svg-icons/toggle/check-box":550,"../svg-icons/toggle/check-box-outline-blank":549,"../utils/deprecatedPropType":556,"react":791,"simple-assign":813}],473:[function(require,module,exports){
+},{"../internal/EnhancedSwitch":513,"../styles/transitions":535,"../svg-icons/toggle/check-box":549,"../svg-icons/toggle/check-box-outline-blank":548,"../utils/deprecatedPropType":555,"react":840,"simple-assign":862}],472:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50156,7 +50143,7 @@ var _Checkbox2 = _interopRequireDefault(_Checkbox);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _Checkbox2.default;
-},{"./Checkbox":472}],474:[function(require,module,exports){
+},{"./Checkbox":471}],473:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50230,7 +50217,7 @@ Divider.defaultProps = defaultProps;
 Divider.contextTypes = contextTypes;
 
 exports.default = Divider;
-},{"react":791,"simple-assign":813}],475:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],474:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50245,7 +50232,7 @@ var _Divider2 = _interopRequireDefault(_Divider);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _Divider2.default;
-},{"./Divider":474}],476:[function(require,module,exports){
+},{"./Divider":473}],475:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50564,7 +50551,7 @@ FlatButton.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = FlatButton;
-},{"../internal/EnhancedButton":513,"../styles/transitions":536,"../utils/childUtils":554,"../utils/colorManipulator":555,"./FlatButtonLabel":477,"react":791,"simple-assign":813}],477:[function(require,module,exports){
+},{"../internal/EnhancedButton":512,"../styles/transitions":535,"../utils/childUtils":553,"../utils/colorManipulator":554,"./FlatButtonLabel":476,"react":840,"simple-assign":862}],476:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50641,7 +50628,7 @@ FlatButtonLabel.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = FlatButtonLabel;
-},{"react":791,"simple-assign":813}],478:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],477:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50656,7 +50643,7 @@ var _FlatButton2 = _interopRequireDefault(_FlatButton);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _FlatButton2.default;
-},{"./FlatButton":476}],479:[function(require,module,exports){
+},{"./FlatButton":475}],478:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50803,7 +50790,7 @@ FontIcon.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = FontIcon;
-},{"../styles/transitions":536,"react":791,"simple-assign":813}],480:[function(require,module,exports){
+},{"../styles/transitions":535,"react":840,"simple-assign":862}],479:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50818,7 +50805,7 @@ var _FontIcon2 = _interopRequireDefault(_FontIcon);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _FontIcon2.default;
-},{"./FontIcon":479}],481:[function(require,module,exports){
+},{"./FontIcon":478}],480:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -51136,7 +51123,7 @@ IconButton.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = IconButton;
-},{"../FontIcon":480,"../internal/EnhancedButton":513,"../internal/Tooltip":519,"../styles/transitions":536,"../utils/childUtils":554,"../utils/propTypes":559,"react":791,"simple-assign":813}],482:[function(require,module,exports){
+},{"../FontIcon":479,"../internal/EnhancedButton":512,"../internal/Tooltip":518,"../styles/transitions":535,"../utils/childUtils":553,"../utils/propTypes":558,"react":840,"simple-assign":862}],481:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -51151,7 +51138,7 @@ var _IconButton2 = _interopRequireDefault(_IconButton);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _IconButton2.default;
-},{"./IconButton":481}],483:[function(require,module,exports){
+},{"./IconButton":480}],482:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -51293,7 +51280,7 @@ List.contextTypes = {
 };
 exports.default = List;
 }).call(this,require('_process'))
-},{"../Subheader":495,"../utils/deprecatedPropType":556,"../utils/propTypes":559,"_process":570,"react":791,"simple-assign":813,"warning":833}],484:[function(require,module,exports){
+},{"../Subheader":494,"../utils/deprecatedPropType":555,"../utils/propTypes":558,"_process":570,"react":840,"simple-assign":862,"warning":882}],483:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -51967,7 +51954,7 @@ ListItem.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = ListItem;
-},{"../IconButton":482,"../internal/EnhancedButton":513,"../styles/transitions":536,"../svg-icons/navigation/expand-less":546,"../svg-icons/navigation/expand-more":547,"../utils/colorManipulator":555,"./NestedList":486,"react":791,"react-dom":588,"recompose/shallowEqual":528,"simple-assign":813}],485:[function(require,module,exports){
+},{"../IconButton":481,"../internal/EnhancedButton":512,"../styles/transitions":535,"../svg-icons/navigation/expand-less":545,"../svg-icons/navigation/expand-more":546,"../utils/colorManipulator":554,"./NestedList":485,"react":840,"react-dom":591,"recompose/shallowEqual":527,"simple-assign":862}],484:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52132,7 +52119,7 @@ var MakeSelectable = exports.MakeSelectable = function MakeSelectable(Component)
 };
 
 exports.default = MakeSelectable;
-},{"../utils/colorManipulator":555,"../utils/deprecatedPropType":556,"react":791,"simple-assign":813}],486:[function(require,module,exports){
+},{"../utils/colorManipulator":554,"../utils/deprecatedPropType":555,"react":840,"simple-assign":862}],485:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52215,7 +52202,7 @@ NestedList.defaultProps = {
   open: false
 };
 exports.default = NestedList;
-},{"./List":483,"react":791,"simple-assign":813}],487:[function(require,module,exports){
+},{"./List":482,"react":840,"simple-assign":862}],486:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52241,7 +52228,7 @@ exports.List = _List3.default;
 exports.ListItem = _ListItem3.default;
 exports.MakeSelectable = _MakeSelectable3.default;
 exports.default = _List3.default;
-},{"./List":483,"./ListItem":484,"./MakeSelectable":485}],488:[function(require,module,exports){
+},{"./List":482,"./ListItem":483,"./MakeSelectable":484}],487:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52372,7 +52359,7 @@ Paper.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = Paper;
-},{"../styles/transitions":536,"../utils/propTypes":559,"react":791,"simple-assign":813}],489:[function(require,module,exports){
+},{"../styles/transitions":535,"../utils/propTypes":558,"react":840,"simple-assign":862}],488:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52387,7 +52374,7 @@ var _Paper2 = _interopRequireDefault(_Paper);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _Paper2.default;
-},{"./Paper":488}],490:[function(require,module,exports){
+},{"./Paper":487}],489:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52824,7 +52811,7 @@ Popover.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = Popover;
-},{"../Paper":489,"../internal/RenderToLayer":516,"../utils/propTypes":559,"./PopoverAnimationDefault":491,"lodash.throttle":165,"react":791,"react-dom":588,"react-event-listener":589}],491:[function(require,module,exports){
+},{"../Paper":488,"../internal/RenderToLayer":515,"../utils/propTypes":558,"./PopoverAnimationDefault":490,"lodash.throttle":168,"react":840,"react-dom":591,"react-event-listener":593}],490:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52982,7 +52969,7 @@ PopoverDefaultAnimation.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = PopoverDefaultAnimation;
-},{"../Paper":489,"../styles/transitions":536,"../utils/propTypes":559,"react":791,"simple-assign":813}],492:[function(require,module,exports){
+},{"../Paper":488,"../styles/transitions":535,"../utils/propTypes":558,"react":840,"simple-assign":862}],491:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -53115,7 +53102,7 @@ PopoverAnimationVertical.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = PopoverAnimationVertical;
-},{"../Paper":489,"../styles/transitions":536,"../utils/propTypes":559,"react":791,"simple-assign":813}],493:[function(require,module,exports){
+},{"../Paper":488,"../styles/transitions":535,"../utils/propTypes":558,"react":840,"simple-assign":862}],492:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -53136,7 +53123,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 exports.Popover = _Popover3.default;
 exports.PopoverAnimationVertical = _PopoverAnimationVertical3.default;
 exports.default = _Popover3.default;
-},{"./Popover":490,"./PopoverAnimationVertical":492}],494:[function(require,module,exports){
+},{"./Popover":489,"./PopoverAnimationVertical":491}],493:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -53217,7 +53204,7 @@ Subheader.defaultProps = defaultProps;
 Subheader.contextTypes = contextTypes;
 
 exports.default = Subheader;
-},{"react":791,"simple-assign":813}],495:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],494:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -53232,7 +53219,7 @@ var _Subheader2 = _interopRequireDefault(_Subheader);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _Subheader2.default;
-},{"./Subheader":494}],496:[function(require,module,exports){
+},{"./Subheader":493}],495:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -53386,7 +53373,7 @@ SvgIcon.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = SvgIcon;
-},{"../styles/transitions":536,"react":791,"simple-assign":813}],497:[function(require,module,exports){
+},{"../styles/transitions":535,"react":840,"simple-assign":862}],496:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -53401,7 +53388,7 @@ var _SvgIcon2 = _interopRequireDefault(_SvgIcon);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _SvgIcon2.default;
-},{"./SvgIcon":496}],498:[function(require,module,exports){
+},{"./SvgIcon":495}],497:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -53740,7 +53727,7 @@ Table.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = Table;
-},{"react":791,"simple-assign":813}],499:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],498:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -54224,7 +54211,7 @@ TableBody.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = TableBody;
-},{"../Checkbox":473,"../internal/ClickAwayListener":512,"./TableRowColumn":504,"react":791,"simple-assign":813}],500:[function(require,module,exports){
+},{"../Checkbox":472,"../internal/ClickAwayListener":511,"./TableRowColumn":503,"react":840,"simple-assign":862}],499:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -54358,7 +54345,7 @@ TableFooter.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = TableFooter;
-},{"./TableRowColumn":504,"react":791,"simple-assign":813}],501:[function(require,module,exports){
+},{"./TableRowColumn":503,"react":840,"simple-assign":862}],500:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -54580,7 +54567,7 @@ TableHeader.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = TableHeader;
-},{"../Checkbox":473,"./TableHeaderColumn":502,"react":791,"simple-assign":813}],502:[function(require,module,exports){
+},{"../Checkbox":472,"./TableHeaderColumn":501,"react":840,"simple-assign":862}],501:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -54747,7 +54734,7 @@ TableHeaderColumn.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = TableHeaderColumn;
-},{"../internal/Tooltip":519,"react":791,"simple-assign":813}],503:[function(require,module,exports){
+},{"../internal/Tooltip":518,"react":840,"simple-assign":862}],502:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55020,7 +55007,7 @@ TableRow.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = TableRow;
-},{"react":791,"simple-assign":813}],504:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],503:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55192,7 +55179,7 @@ TableRowColumn.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = TableRowColumn;
-},{"react":791,"simple-assign":813}],505:[function(require,module,exports){
+},{"react":840,"simple-assign":862}],504:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55238,7 +55225,7 @@ exports.TableHeaderColumn = _TableHeaderColumn3.default;
 exports.TableRow = _TableRow3.default;
 exports.TableRowColumn = _TableRowColumn3.default;
 exports.default = _Table3.default;
-},{"./Table":498,"./TableBody":499,"./TableFooter":500,"./TableHeader":501,"./TableHeaderColumn":502,"./TableRow":503,"./TableRowColumn":504}],506:[function(require,module,exports){
+},{"./Table":497,"./TableBody":498,"./TableFooter":499,"./TableHeader":500,"./TableHeaderColumn":501,"./TableRow":502,"./TableRowColumn":503}],505:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55323,7 +55310,7 @@ InkBar.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = InkBar;
-},{"../styles/transitions":536,"react":791,"simple-assign":813}],507:[function(require,module,exports){
+},{"../styles/transitions":535,"react":840,"simple-assign":862}],506:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55514,7 +55501,7 @@ Tab.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = Tab;
-},{"../internal/EnhancedButton":513,"react":791,"simple-assign":813}],508:[function(require,module,exports){
+},{"../internal/EnhancedButton":512,"react":840,"simple-assign":862}],507:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55574,7 +55561,7 @@ TabTemplate.propTypes = {
   selected: _react.PropTypes.bool
 };
 exports.default = TabTemplate;
-},{"react":791}],509:[function(require,module,exports){
+},{"react":840}],508:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -55879,7 +55866,7 @@ Tabs.contextTypes = {
 };
 exports.default = Tabs;
 }).call(this,require('_process'))
-},{"./InkBar":506,"./TabTemplate":508,"_process":570,"react":791,"react-dom":588,"simple-assign":813,"warning":833}],510:[function(require,module,exports){
+},{"./InkBar":505,"./TabTemplate":507,"_process":570,"react":840,"react-dom":591,"simple-assign":862,"warning":882}],509:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55900,7 +55887,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 exports.Tab = _Tab3.default;
 exports.Tabs = _Tabs3.default;
 exports.default = _Tabs3.default;
-},{"./Tab":507,"./Tabs":509}],511:[function(require,module,exports){
+},{"./Tab":506,"./Tabs":508}],510:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -56055,7 +56042,7 @@ CircleRipple.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = CircleRipple;
-},{"../styles/transitions":536,"../utils/autoPrefix":551,"react":791,"react-dom":588,"recompose/shallowEqual":528,"simple-assign":813}],512:[function(require,module,exports){
+},{"../styles/transitions":535,"../utils/autoPrefix":550,"react":840,"react-dom":591,"recompose/shallowEqual":527,"simple-assign":862}],511:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -56165,7 +56152,7 @@ ClickAwayListener.propTypes = {
   onClickAway: _react.PropTypes.any
 };
 exports.default = ClickAwayListener;
-},{"../utils/events":558,"react":791,"react-dom":588}],513:[function(require,module,exports){
+},{"../utils/events":557,"react":840,"react-dom":591}],512:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -56548,7 +56535,7 @@ EnhancedButton.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = EnhancedButton;
-},{"../utils/childUtils":554,"../utils/events":558,"./FocusRipple":515,"./TouchRipple":520,"keycode":147,"react":791,"simple-assign":813}],514:[function(require,module,exports){
+},{"../utils/childUtils":553,"../utils/events":557,"./FocusRipple":514,"./TouchRipple":519,"keycode":150,"react":840,"simple-assign":862}],513:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -56995,7 +56982,7 @@ EnhancedSwitch.contextTypes = {
 };
 exports.default = EnhancedSwitch;
 }).call(this,require('_process'))
-},{"../styles/transitions":536,"./../Paper":489,"./FocusRipple":515,"./TouchRipple":520,"_process":570,"keycode":147,"react":791,"react-event-listener":589,"simple-assign":813,"warning":833}],515:[function(require,module,exports){
+},{"../styles/transitions":535,"./../Paper":488,"./FocusRipple":514,"./TouchRipple":519,"_process":570,"keycode":150,"react":840,"react-event-listener":593,"simple-assign":862,"warning":882}],514:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -57180,7 +57167,7 @@ FocusRipple.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = FocusRipple;
-},{"../styles/transitions":536,"../utils/autoPrefix":551,"./ScaleIn":517,"react":791,"react-dom":588,"recompose/shallowEqual":528,"simple-assign":813}],516:[function(require,module,exports){
+},{"../styles/transitions":535,"../utils/autoPrefix":550,"./ScaleIn":516,"react":840,"react-dom":591,"recompose/shallowEqual":527,"simple-assign":862}],515:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -57354,7 +57341,7 @@ RenderToLayer.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = RenderToLayer;
-},{"../utils/dom":557,"react":791,"react-dom":588}],517:[function(require,module,exports){
+},{"../utils/dom":556,"react":840,"react-dom":591}],516:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -57468,7 +57455,7 @@ ScaleIn.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = ScaleIn;
-},{"./ScaleInChild":518,"react":791,"react-addons-transition-group":578,"simple-assign":813}],518:[function(require,module,exports){
+},{"./ScaleInChild":517,"react":840,"react-addons-transition-group":580,"simple-assign":862}],517:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -57622,7 +57609,7 @@ ScaleInChild.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = ScaleInChild;
-},{"../styles/transitions":536,"../utils/autoPrefix":551,"react":791,"react-dom":588,"simple-assign":813}],519:[function(require,module,exports){
+},{"../styles/transitions":535,"../utils/autoPrefix":550,"react":840,"react-dom":591,"simple-assign":862}],518:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -57828,7 +57815,7 @@ Tooltip.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = Tooltip;
-},{"../styles/transitions":536,"react":791,"simple-assign":813}],520:[function(require,module,exports){
+},{"../styles/transitions":535,"react":840,"simple-assign":862}],519:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58122,7 +58109,7 @@ TouchRipple.contextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = TouchRipple;
-},{"../utils/dom":557,"./CircleRipple":511,"react":791,"react-addons-transition-group":578,"react-addons-update":579,"react-dom":588,"simple-assign":813}],521:[function(require,module,exports){
+},{"../utils/dom":556,"./CircleRipple":510,"react":840,"react-addons-transition-group":580,"react-addons-update":581,"react-dom":591,"simple-assign":862}],520:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58136,7 +58123,7 @@ var _flowRight2 = _interopRequireDefault(_flowRight);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _flowRight2.default;
-},{"lodash/flowRight":292}],522:[function(require,module,exports){
+},{"lodash/flowRight":292}],521:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58180,7 +58167,7 @@ var createElement = function createElement(Component, props, children) {
 };
 
 exports.default = createElement;
-},{"./isReferentiallyTransparentFunctionComponent":526,"react":791}],523:[function(require,module,exports){
+},{"./isReferentiallyTransparentFunctionComponent":525,"react":840}],522:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -58240,7 +58227,7 @@ var createHelper = function createHelper(func, helperName) {
 
 exports.default = createHelper;
 }).call(this,require('_process'))
-},{"./wrapDisplayName":530,"_process":570}],524:[function(require,module,exports){
+},{"./wrapDisplayName":529,"_process":570}],523:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58259,7 +58246,7 @@ var getDisplayName = function getDisplayName(Component) {
 };
 
 exports.default = getDisplayName;
-},{}],525:[function(require,module,exports){
+},{}],524:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58273,7 +58260,7 @@ var isClassComponent = function isClassComponent(Component) {
 };
 
 exports.default = isClassComponent;
-},{}],526:[function(require,module,exports){
+},{}],525:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58291,7 +58278,7 @@ var isReferentiallyTransparentFunctionComponent = function isReferentiallyTransp
 };
 
 exports.default = isReferentiallyTransparentFunctionComponent;
-},{"./isClassComponent.js":525}],527:[function(require,module,exports){
+},{"./isClassComponent.js":524}],526:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58317,7 +58304,7 @@ var pure = (0, _shouldUpdate2.default)(function (props, nextProps) {
 });
 
 exports.default = (0, _createHelper2.default)(pure, 'pure', true, true);
-},{"./createHelper":523,"./shallowEqual":528,"./shouldUpdate":529}],528:[function(require,module,exports){
+},{"./createHelper":522,"./shallowEqual":527,"./shouldUpdate":528}],527:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58357,7 +58344,7 @@ function shallowEqual(objA, objB) {
 
   return true;
 }
-},{}],529:[function(require,module,exports){
+},{}],528:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58413,7 +58400,7 @@ var shouldUpdate = function shouldUpdate(test) {
 };
 
 exports.default = (0, _createHelper2.default)(shouldUpdate, 'shouldUpdate');
-},{"./createElement":522,"./createHelper":523,"react":791}],530:[function(require,module,exports){
+},{"./createElement":521,"./createHelper":522,"react":840}],529:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58431,7 +58418,7 @@ var wrapDisplayName = function wrapDisplayName(BaseComponent, hocName) {
 };
 
 exports.default = wrapDisplayName;
-},{"./getDisplayName":524}],531:[function(require,module,exports){
+},{"./getDisplayName":523}],530:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58488,7 +58475,7 @@ MuiThemeProvider.childContextTypes = {
   muiTheme: _react.PropTypes.object.isRequired
 };
 exports.default = MuiThemeProvider;
-},{"./getMuiTheme":534,"react":791}],532:[function(require,module,exports){
+},{"./getMuiTheme":533,"react":840}],531:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58531,7 +58518,7 @@ exports.default = {
     shadowColor: _colors.fullBlack
   }
 };
-},{"../../utils/colorManipulator":555,"../colors":533,"../spacing":535}],533:[function(require,module,exports){
+},{"../../utils/colorManipulator":554,"../colors":532,"../spacing":534}],532:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -58822,7 +58809,7 @@ var faintBlack = exports.faintBlack = 'rgba(0, 0, 0, 0.12)';
 var fullWhite = exports.fullWhite = 'rgba(255, 255, 255, 1)';
 var darkWhite = exports.darkWhite = 'rgba(255, 255, 255, 0.87)';
 var lightWhite = exports.lightWhite = 'rgba(255, 255, 255, 0.54)';
-},{}],534:[function(require,module,exports){
+},{}],533:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59180,7 +59167,7 @@ function getMuiTheme(muiTheme) {
 
   return muiTheme;
 }
-},{"../utils/autoprefixer":552,"../utils/callOnce":553,"../utils/colorManipulator":555,"../utils/rtl":560,"./baseThemes/lightBaseTheme":532,"./colors":533,"./typography":537,"./zIndex":538,"lodash.merge":162,"recompose/compose":521}],535:[function(require,module,exports){
+},{"../utils/autoprefixer":551,"../utils/callOnce":552,"../utils/colorManipulator":554,"../utils/rtl":559,"./baseThemes/lightBaseTheme":531,"./colors":532,"./typography":536,"./zIndex":537,"lodash.merge":165,"recompose/compose":520}],534:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -59200,7 +59187,7 @@ exports.default = {
   desktopSubheaderHeight: 48,
   desktopToolbarHeight: 56
 };
-},{}],536:[function(require,module,exports){
+},{}],535:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59235,7 +59222,7 @@ exports.default = {
     return property + ' ' + duration + ' ' + easeFunction + ' ' + delay;
   }
 };
-},{}],537:[function(require,module,exports){
+},{}],536:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59267,7 +59254,7 @@ var Typography = function Typography() {
 };
 
 exports.default = new Typography();
-},{"./colors":533}],538:[function(require,module,exports){
+},{"./colors":532}],537:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -59285,7 +59272,7 @@ exports.default = {
   snackbar: 2900,
   tooltip: 3000
 };
-},{}],539:[function(require,module,exports){
+},{}],538:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59317,7 +59304,7 @@ ActionDateRange = (0, _pure2.default)(ActionDateRange);
 ActionDateRange.displayName = 'ActionDateRange';
 
 exports.default = ActionDateRange;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],540:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],539:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59349,7 +59336,7 @@ ActionList = (0, _pure2.default)(ActionList);
 ActionList.displayName = 'ActionList';
 
 exports.default = ActionList;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],541:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],540:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59381,7 +59368,7 @@ ActionSettings = (0, _pure2.default)(ActionSettings);
 ActionSettings.displayName = 'ActionSettings';
 
 exports.default = ActionSettings;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],542:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],541:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59413,7 +59400,7 @@ EditorModeEdit = (0, _pure2.default)(EditorModeEdit);
 EditorModeEdit.displayName = 'EditorModeEdit';
 
 exports.default = EditorModeEdit;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],543:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],542:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59445,7 +59432,7 @@ HardwareKeyboardArrowDown = (0, _pure2.default)(HardwareKeyboardArrowDown);
 HardwareKeyboardArrowDown.displayName = 'HardwareKeyboardArrowDown';
 
 exports.default = HardwareKeyboardArrowDown;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],544:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],543:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59477,7 +59464,7 @@ HardwareKeyboardArrowUp = (0, _pure2.default)(HardwareKeyboardArrowUp);
 HardwareKeyboardArrowUp.displayName = 'HardwareKeyboardArrowUp';
 
 exports.default = HardwareKeyboardArrowUp;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],545:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],544:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59509,7 +59496,7 @@ NavigationClose = (0, _pure2.default)(NavigationClose);
 NavigationClose.displayName = 'NavigationClose';
 
 exports.default = NavigationClose;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],546:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],545:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59541,7 +59528,7 @@ NavigationExpandLess = (0, _pure2.default)(NavigationExpandLess);
 NavigationExpandLess.displayName = 'NavigationExpandLess';
 
 exports.default = NavigationExpandLess;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],547:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],546:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59573,7 +59560,7 @@ NavigationExpandMore = (0, _pure2.default)(NavigationExpandMore);
 NavigationExpandMore.displayName = 'NavigationExpandMore';
 
 exports.default = NavigationExpandMore;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],548:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],547:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59605,7 +59592,7 @@ NavigationMenu = (0, _pure2.default)(NavigationMenu);
 NavigationMenu.displayName = 'NavigationMenu';
 
 exports.default = NavigationMenu;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],549:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],548:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59637,7 +59624,7 @@ ToggleCheckBoxOutlineBlank = (0, _pure2.default)(ToggleCheckBoxOutlineBlank);
 ToggleCheckBoxOutlineBlank.displayName = 'ToggleCheckBoxOutlineBlank';
 
 exports.default = ToggleCheckBoxOutlineBlank;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],550:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],549:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59669,7 +59656,7 @@ ToggleCheckBox = (0, _pure2.default)(ToggleCheckBox);
 ToggleCheckBox.displayName = 'ToggleCheckBox';
 
 exports.default = ToggleCheckBox;
-},{"../../SvgIcon":497,"react":791,"recompose/pure":527}],551:[function(require,module,exports){
+},{"../../SvgIcon":496,"react":840,"recompose/pure":526}],550:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -59680,7 +59667,7 @@ exports.default = {
     style[key] = value;
   }
 };
-},{}],552:[function(require,module,exports){
+},{}],551:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -59740,7 +59727,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var hasWarnedAboutUserAgent = false;
 }).call(this,require('_process'))
-},{"_process":570,"inline-style-prefixer":123,"warning":833}],553:[function(require,module,exports){
+},{"_process":570,"inline-style-prefixer":126,"warning":882}],552:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -59769,7 +59756,7 @@ function callOnce() {
   }
 }
 }).call(this,require('_process'))
-},{"_process":570,"warning":833}],554:[function(require,module,exports){
+},{"_process":570,"warning":882}],553:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -59818,7 +59805,7 @@ function extendChildren(children, extendedProps, extendedChildren) {
     return _react2.default.cloneElement(child, newProps, newChildren);
   }) : children;
 }
-},{"react":791,"react-addons-create-fragment":577}],555:[function(require,module,exports){
+},{"react":840,"react-addons-create-fragment":578}],554:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -60051,7 +60038,7 @@ function lighten(color, coefficient) {
 
   return convertColorToString(color);
 }
-},{}],556:[function(require,module,exports){
+},{}],555:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -60076,7 +60063,7 @@ function deprecated(propType, explanation) {
   };
 }
 }).call(this,require('_process'))
-},{"_process":570,"warning":833}],557:[function(require,module,exports){
+},{"_process":570,"warning":882}],556:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -60101,7 +60088,7 @@ exports.default = {
     };
   }
 };
-},{}],558:[function(require,module,exports){
+},{}],557:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -60141,7 +60128,7 @@ exports.default = {
     return ['keydown', 'keypress', 'keyup'].indexOf(event.type) !== -1;
   }
 };
-},{}],559:[function(require,module,exports){
+},{}],558:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -60173,7 +60160,7 @@ exports.default = {
   zDepth: _react.PropTypes.oneOf([0, 1, 2, 3, 4, 5])
 
 };
-},{"react":791}],560:[function(require,module,exports){
+},{"react":840}],559:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -60257,7 +60244,7 @@ function rtl(muiTheme) {
     };
   }
 }
-},{}],561:[function(require,module,exports){
+},{}],560:[function(require,module,exports){
 //! moment.js
 //! version : 2.13.0
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors
@@ -64298,7 +64285,7 @@ function rtl(muiTheme) {
     return _moment;
 
 }));
-},{}],562:[function(require,module,exports){
+},{}],561:[function(require,module,exports){
 /**
  * Helpers.
  */
@@ -64425,7 +64412,7 @@ function plural(ms, n, name) {
   return Math.ceil(ms / n) + ' ' + name + 's';
 }
 
-},{}],563:[function(require,module,exports){
+},{}],562:[function(require,module,exports){
 'use strict';
 var numberIsFinite = require('is-finite');
 
@@ -64433,13 +64420,13 @@ module.exports = Number.isInteger || function (x) {
 	return numberIsFinite(x) && Math.floor(x) === x;
 };
 
-},{"is-finite":142}],564:[function(require,module,exports){
+},{"is-finite":145}],563:[function(require,module,exports){
 'use strict';
 module.exports = Number.isNaN || function (x) {
 	return x !== x;
 };
 
-},{}],565:[function(require,module,exports){
+},{}],564:[function(require,module,exports){
 'use strict';
 /* eslint-disable no-unused-vars */
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -64524,7 +64511,7 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],566:[function(require,module,exports){
+},{}],565:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -64752,7 +64739,7 @@ var substr = 'ab'.substr(-1) === 'b'
 ;
 
 }).call(this,require('_process'))
-},{"_process":570}],567:[function(require,module,exports){
+},{"_process":570}],566:[function(require,module,exports){
 'use strict';
 
 // lightweight Buffer shim for pbf browser build
@@ -64913,7 +64900,7 @@ function encodeString(str) {
     return bytes;
 }
 
-},{"ieee754":106}],568:[function(require,module,exports){
+},{"ieee754":109}],567:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -65339,7 +65326,43 @@ function writePackedFixed64(arr, pbf)  { for (var i = 0; i < arr.length; i++) pb
 function writePackedSFixed64(arr, pbf) { for (var i = 0; i < arr.length; i++) pbf.writeSFixed64(arr[i]); }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./buffer":567}],569:[function(require,module,exports){
+},{"./buffer":566}],568:[function(require,module,exports){
+(function (process){
+// Generated by CoffeeScript 1.7.1
+(function() {
+  var getNanoSeconds, hrtime, loadTime;
+
+  if ((typeof performance !== "undefined" && performance !== null) && performance.now) {
+    module.exports = function() {
+      return performance.now();
+    };
+  } else if ((typeof process !== "undefined" && process !== null) && process.hrtime) {
+    module.exports = function() {
+      return (getNanoSeconds() - loadTime) / 1e6;
+    };
+    hrtime = process.hrtime;
+    getNanoSeconds = function() {
+      var hr;
+      hr = hrtime();
+      return hr[0] * 1e9 + hr[1];
+    };
+    loadTime = getNanoSeconds();
+  } else if (Date.now) {
+    module.exports = function() {
+      return Date.now() - loadTime;
+    };
+    loadTime = Date.now();
+  } else {
+    module.exports = function() {
+      return new Date().getTime() - loadTime;
+    };
+    loadTime = new Date().getTime();
+  }
+
+}).call(this);
+
+}).call(this,require('_process'))
+},{"_process":570}],569:[function(require,module,exports){
 'use strict';
 
 module.exports = Point;
@@ -66173,7 +66196,7 @@ exports.stringify = function (obj) {
 	}).join('&') : '';
 };
 
-},{"strict-uri-encode":814}],573:[function(require,module,exports){
+},{"strict-uri-encode":863}],573:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -66415,12 +66438,90 @@ function defaultCompare(a, b) {
 }
 
 },{}],577:[function(require,module,exports){
+(function (global){
+var now = require('performance-now')
+  , root = typeof window === 'undefined' ? global : window
+  , vendors = ['moz', 'webkit']
+  , suffix = 'AnimationFrame'
+  , raf = root['request' + suffix]
+  , caf = root['cancel' + suffix] || root['cancelRequest' + suffix]
+
+for(var i = 0; !raf && i < vendors.length; i++) {
+  raf = root[vendors[i] + 'Request' + suffix]
+  caf = root[vendors[i] + 'Cancel' + suffix]
+      || root[vendors[i] + 'CancelRequest' + suffix]
+}
+
+// Some versions of FF have rAF but not cAF
+if(!raf || !caf) {
+  var last = 0
+    , id = 0
+    , queue = []
+    , frameDuration = 1000 / 60
+
+  raf = function(callback) {
+    if(queue.length === 0) {
+      var _now = now()
+        , next = Math.max(0, frameDuration - (_now - last))
+      last = next + _now
+      setTimeout(function() {
+        var cp = queue.slice(0)
+        // Clear queue here to prevent
+        // callbacks from appending listeners
+        // to the current frame's queue
+        queue.length = 0
+        for(var i = 0; i < cp.length; i++) {
+          if(!cp[i].cancelled) {
+            try{
+              cp[i].callback(last)
+            } catch(e) {
+              setTimeout(function() { throw e }, 0)
+            }
+          }
+        }
+      }, Math.round(next))
+    }
+    queue.push({
+      handle: ++id,
+      callback: callback,
+      cancelled: false
+    })
+    return id
+  }
+
+  caf = function(handle) {
+    for(var i = 0; i < queue.length; i++) {
+      if(queue[i].handle === handle) {
+        queue[i].cancelled = true
+      }
+    }
+  }
+}
+
+module.exports = function(fn) {
+  // Wrap in a new function to prevent
+  // `cancel` potentially being assigned
+  // to the native rAF function
+  return raf.call(root, fn)
+}
+module.exports.cancel = function() {
+  caf.apply(root, arguments)
+}
+module.exports.polyfill = function() {
+  root.requestAnimationFrame = raf
+  root.cancelAnimationFrame = caf
+}
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"performance-now":568}],578:[function(require,module,exports){
 module.exports = require('react/lib/ReactFragment').create;
-},{"react/lib/ReactFragment":717}],578:[function(require,module,exports){
+},{"react/lib/ReactFragment":762}],579:[function(require,module,exports){
+module.exports = require('react/lib/shallowCompare');
+},{"react/lib/shallowCompare":835}],580:[function(require,module,exports){
 module.exports = require('react/lib/ReactTransitionGroup');
-},{"react/lib/ReactTransitionGroup":739}],579:[function(require,module,exports){
+},{"react/lib/ReactTransitionGroup":787}],581:[function(require,module,exports){
 module.exports = require('react/lib/update');
-},{"react/lib/update":789}],580:[function(require,module,exports){
+},{"react/lib/update":838}],582:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -66774,7 +66875,7 @@ Calendar.propTypes = {
 
 exports['default'] = Calendar;
 module.exports = exports['default'];
-},{"./DayCell.js":582,"./styles.js":586,"./utils/parseInput.js":587,"moment":561,"react":791}],581:[function(require,module,exports){
+},{"./DayCell.js":584,"./styles.js":588,"./utils/parseInput.js":589,"moment":560,"react":840}],583:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -67024,7 +67125,7 @@ DateRange.propTypes = {
 
 exports['default'] = DateRange;
 module.exports = exports['default'];
-},{"./Calendar.js":580,"./PredefinedRanges.js":583,"./styles.js":586,"./utils/parseInput.js":587,"moment":561,"react":791}],582:[function(require,module,exports){
+},{"./Calendar.js":582,"./PredefinedRanges.js":585,"./styles.js":588,"./utils/parseInput.js":589,"moment":560,"react":840}],584:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -67199,7 +67300,7 @@ DayCell.propTypes = {
 
 exports['default'] = DayCell;
 module.exports = exports['default'];
-},{"./styles.js":586,"classnames":11,"react":791}],583:[function(require,module,exports){
+},{"./styles.js":588,"classnames":11,"react":840}],585:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -67322,7 +67423,7 @@ PredefinedRanges.propTypes = {
 
 exports['default'] = PredefinedRanges;
 module.exports = exports['default'];
-},{"./styles.js":586,"./utils/parseInput.js":587,"moment":561,"react":791}],584:[function(require,module,exports){
+},{"./styles.js":588,"./utils/parseInput.js":589,"moment":560,"react":840}],586:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -67366,7 +67467,7 @@ exports['default'] = {
   }
 };
 module.exports = exports['default'];
-},{}],585:[function(require,module,exports){
+},{}],587:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -67389,7 +67490,7 @@ var _defaultRangesJs2 = _interopRequireDefault(_defaultRangesJs);
 
 exports['default'] = { DateRange: _DateRangeJs2['default'], Calendar: _CalendarJs2['default'], defaultRanges: _defaultRangesJs2['default'] };
 module.exports = exports['default'];
-},{"./Calendar.js":580,"./DateRange.js":581,"./defaultRanges.js":584}],586:[function(require,module,exports){
+},{"./Calendar.js":582,"./DateRange.js":583,"./defaultRanges.js":586}],588:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -67628,7 +67729,7 @@ exports['default'] = function () {
     PredefinedRangesItemActive: _extends({}, defaultTheme.PredefinedRangesItemActive, customTheme.PredefinedRangesItemActive)
   };
 };
-},{}],587:[function(require,module,exports){
+},{}],589:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -67659,12 +67760,225 @@ function parseInput(input, format) {
 }
 
 module.exports = exports['default'];
-},{"moment":561}],588:[function(require,module,exports){
+},{"moment":560}],590:[function(require,module,exports){
+'use strict';
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var React = require('react');
+var onElementResize = require('element-resize-event');
+
+var defaultContainerStyle = {
+  width: '100%',
+  height: '100%',
+  padding: 0,
+  border: 0
+};
+
+function defaultGetWidth(element) {
+  return element.clientWidth;
+}
+
+function defaultGetHeight(element) {
+  return element.clientHeight;
+}
+
+/**
+ * Wraps a react component and adds properties `containerHeight` and
+ * `containerWidth`. Useful for responsive design. Properties update on
+ * window resize. **Note** that the parent element must have either a
+ * height or a width, or nothing will be rendered
+ *
+ * Can be used as a
+ * [higher-order component](http://babeljs.io/blog/2015/06/07/react-on-es6-plus/#property-initializers)
+ * or as an [ES7 class decorator](https://github.com/wycats/javascript-decorators)
+ * (see examples)
+ *
+ * @param {object} [options]
+ * @param {function} [options.getHeight] A function that is passed an element and returns element
+ * height, where element is the wrapper div. Defaults to `(element) => element.clientHeight`
+ * @param {function} [options.getWidth]  A function that is passed an element and returns element
+ * width, where element is the wrapper div. Defaults to `(element) => element.clientWidth`
+ * @param {object} [options.containerStyle] A style object for the `<div>` that will wrap your component.
+ * The dimensions of this `div` are what are passed as props to your component. The default style is
+ * `{ width: '100%', height: '100%', padding: 0, border: 0 }` which will cause the `div` to fill its
+ * parent in most cases. If you are using a flexbox layout you will want to change this default style.
+ * @param {boolean} [options.elementResize=false] Set true to watch the wrapper `div` for changes in
+ * size which are not a result of window resizing - e.g. changes to the flexbox and other layout.
+ * @return {function}                   A higher-order component that can be
+ * used to enhance a react component `Dimensions()(MyComponent)`
+ *
+ * @example
+ * // ES2015
+ * import React from 'react'
+ * import Dimensions from 'react-dimensions'
+ *
+ * class MyComponent extends React.Component {
+ *   render() (
+ *     <div
+ *       containerWidth={this.props.containerWidth}
+ *       containerHeight={this.props.containerHeight}
+ *     >
+ *     </div>
+ *   )
+ * }
+ *
+ * export default Dimensions()(MyComponent) // Enhanced component
+ *
+ * @example
+ * // ES5
+ * var React = require('react')
+ * var Dimensions = require('react-dimensions')
+ *
+ * var MyComponent = React.createClass({
+ *   render: function() {(
+ *     <div
+ *       containerWidth={this.props.containerWidth}
+ *       containerHeight={this.props.containerHeight}
+ *     >
+ *     </div>
+ *   )}
+ * }
+ *
+ * module.exports = Dimensions()(MyComponent) // Enhanced component
+ *
+ */
+module.exports = function Dimensions() {
+  var _ref = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
+
+  var _ref$getHeight = _ref.getHeight;
+  var getHeight = _ref$getHeight === undefined ? defaultGetHeight : _ref$getHeight;
+  var _ref$getWidth = _ref.getWidth;
+  var getWidth = _ref$getWidth === undefined ? defaultGetWidth : _ref$getWidth;
+  var _ref$containerStyle = _ref.containerStyle;
+  var containerStyle = _ref$containerStyle === undefined ? defaultContainerStyle : _ref$containerStyle;
+  var _ref$elementResize = _ref.elementResize;
+  var elementResize = _ref$elementResize === undefined ? false : _ref$elementResize;
+
+  return function (ComposedComponent) {
+    return function (_React$Component) {
+      _inherits(DimensionsHOC, _React$Component);
+
+      function DimensionsHOC() {
+        var _Object$getPrototypeO;
+
+        var _temp, _this, _ret;
+
+        _classCallCheck(this, DimensionsHOC);
+
+        for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+          args[_key] = arguments[_key];
+        }
+
+        return _ret = (_temp = (_this = _possibleConstructorReturn(this, (_Object$getPrototypeO = Object.getPrototypeOf(DimensionsHOC)).call.apply(_Object$getPrototypeO, [this].concat(args))), _this), _this.state = {}, _this.updateDimensions = function () {
+          var container = _this.refs.container;
+          var containerWidth = getWidth(container);
+          var containerHeight = getHeight(container);
+
+          if (containerWidth !== _this.state.containerWidth || containerHeight !== _this.state.containerHeight) {
+            _this.setState({ containerWidth: containerWidth, containerHeight: containerHeight });
+          }
+        }, _this.onResize = function () {
+          if (_this.rqf) return;
+          _this.rqf = _this.getWindow().requestAnimationFrame(function () {
+            _this.rqf = null;
+            _this.updateDimensions();
+          });
+        }, _temp), _possibleConstructorReturn(_this, _ret);
+      }
+      // ES7 Class properties
+      // http://babeljs.io/blog/2015/06/07/react-on-es6-plus/#property-initializers
+
+
+      // Using arrow functions and ES7 Class properties to autobind
+      // http://babeljs.io/blog/2015/06/07/react-on-es6-plus/#arrow-functions
+
+
+      _createClass(DimensionsHOC, [{
+        key: 'getWindow',
+
+
+        // If the component is mounted in a different window to the javascript
+        // context, as with https://github.com/JakeGinnivan/react-popout
+        // then the `window` global will be different from the `window` that
+        // contains the component.
+        // Depends on `defaultView` which is not supported <IE9
+        value: function getWindow() {
+          return this.refs.container ? this.refs.container.ownerDocument.defaultView || window : window;
+        }
+      }, {
+        key: 'componentDidMount',
+        value: function componentDidMount() {
+          if (!this.refs.container) {
+            throw new Error('Cannot find container div');
+          }
+          this.updateDimensions();
+          if (elementResize) {
+            // Experimental: `element-resize-event` fires when an element resizes.
+            // It attaches its own window resize listener and also uses
+            // requestAnimationFrame, so we can just call `this.updateDimensions`.
+            onElementResize(this.refs.container, this.updateDimensions);
+          } else {
+            this.getWindow().addEventListener('resize', this.onResize, false);
+          }
+        }
+      }, {
+        key: 'componentWillUnmount',
+        value: function componentWillUnmount() {
+          this.getWindow().removeEventListener('resize', this.onResize);
+        }
+
+        /**
+         * Returns the underlying wrapped component instance.
+         * Useful if you need to access a method or property of the component
+         * passed to react-dimensions.
+         *
+         * @return {object} The rendered React component
+         **/
+
+      }, {
+        key: 'getWrappedInstance',
+        value: function getWrappedInstance() {
+          this.refs.wrappedInstance;
+        }
+      }, {
+        key: 'render',
+        value: function render() {
+          return React.createElement(
+            'div',
+            { style: containerStyle, ref: 'container' },
+            (this.state.containerWidth || this.state.containerHeight) && React.createElement(ComposedComponent, _extends({}, this.state, this.props, {
+              updateDimensions: this.updateDimensions,
+              ref: 'wrappedInstance'
+            }))
+          );
+        }
+      }]);
+
+      return DimensionsHOC;
+    }(React.Component);
+  };
+};
+
+},{"element-resize-event":22,"react":840}],591:[function(require,module,exports){
 'use strict';
 
 module.exports = require('react/lib/ReactDOM');
 
-},{"react/lib/ReactDOM":685}],589:[function(require,module,exports){
+},{"react/lib/ReactDOM":731}],592:[function(require,module,exports){
+'use strict';
+
+module.exports = require('react/lib/ReactDOMServer');
+
+},{"react/lib/ReactDOMServer":747}],593:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -67761,7 +68075,7 @@ EventListener.propTypes = {
   elementName: _react.PropTypes.string
 };
 exports.default = EventListener;
-},{"react":791}],590:[function(require,module,exports){
+},{"react":840}],594:[function(require,module,exports){
 (function (process){
 var React = require('react');
 var ReactDOM = require('react-dom');
@@ -67876,7 +68190,7 @@ Modal.defaultStyles = {
 module.exports = Modal
 
 }).call(this,require('_process'))
-},{"../helpers/ariaAppHider":592,"./ModalPortal":591,"_process":570,"element-class":19,"exenv":20,"lodash.assign":597,"react":791,"react-dom":588}],591:[function(require,module,exports){
+},{"../helpers/ariaAppHider":596,"./ModalPortal":595,"_process":570,"element-class":21,"exenv":23,"lodash.assign":601,"react":840,"react-dom":591}],595:[function(require,module,exports){
 var React = require('react');
 var div = React.DOM.div;
 var focusManager = require('../helpers/focusManager');
@@ -68064,7 +68378,7 @@ var ModalPortal = module.exports = React.createClass({
   }
 });
 
-},{"../helpers/focusManager":593,"../helpers/scopeTab":594,"lodash.assign":597,"react":791}],592:[function(require,module,exports){
+},{"../helpers/focusManager":597,"../helpers/scopeTab":598,"lodash.assign":601,"react":840}],596:[function(require,module,exports){
 var _element = typeof document !== 'undefined' ? document.body : null;
 
 function setElement(element) {
@@ -68108,7 +68422,7 @@ exports.show = show;
 exports.hide = hide;
 exports.resetForTesting = resetForTesting;
 
-},{}],593:[function(require,module,exports){
+},{}],597:[function(require,module,exports){
 var findTabbable = require('../helpers/tabbable');
 var modalElement = null;
 var focusLaterElement = null;
@@ -68178,7 +68492,7 @@ exports.teardownScopedFocus = function() {
 
 
 
-},{"../helpers/tabbable":595}],594:[function(require,module,exports){
+},{"../helpers/tabbable":599}],598:[function(require,module,exports){
 var findTabbable = require('../helpers/tabbable');
 
 module.exports = function(node, event) {
@@ -68199,7 +68513,7 @@ module.exports = function(node, event) {
   target.focus();
 };
 
-},{"../helpers/tabbable":595}],595:[function(require,module,exports){
+},{"../helpers/tabbable":599}],599:[function(require,module,exports){
 /*!
  * Adapted from jQuery UI core
  *
@@ -68251,11 +68565,11 @@ function findTabbableDescendants(element) {
 module.exports = findTabbableDescendants;
 
 
-},{}],596:[function(require,module,exports){
+},{}],600:[function(require,module,exports){
 module.exports = require('./components/Modal');
 
 
-},{"./components/Modal":590}],597:[function(require,module,exports){
+},{"./components/Modal":594}],601:[function(require,module,exports){
 /**
  * lodash 3.2.0 (Custom Build) <https://lodash.com/>
  * Build: `lodash modern modularize exports="npm" -o ./`
@@ -68337,7 +68651,7 @@ var assign = createAssigner(function(object, source, customizer) {
 
 module.exports = assign;
 
-},{"lodash._baseassign":148,"lodash._createassigner":152,"lodash.keys":160}],598:[function(require,module,exports){
+},{"lodash._baseassign":151,"lodash._createassigner":155,"lodash.keys":163}],602:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -68354,7 +68668,7 @@ function shouldPureComponentUpdate(nextProps, nextState) {
 }
 
 module.exports = exports['default'];
-},{"./shallowEqual":599}],599:[function(require,module,exports){
+},{"./shallowEqual":603}],603:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -68388,7 +68702,7 @@ function shallowEqual(objA, objB) {
 }
 
 module.exports = exports['default'];
-},{}],600:[function(require,module,exports){
+},{}],604:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -68467,7 +68781,7 @@ Provider.propTypes = {
 Provider.childContextTypes = {
   store: _storeShape2["default"].isRequired
 };
-},{"../utils/storeShape":604,"../utils/warning":605,"react":791}],601:[function(require,module,exports){
+},{"../utils/storeShape":608,"../utils/warning":609,"react":840}],605:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -68861,7 +69175,7 @@ function connect(mapStateToProps, mapDispatchToProps, mergeProps) {
     return (0, _hoistNonReactStatics2["default"])(Connect, WrappedComponent);
   };
 }
-},{"../utils/shallowEqual":603,"../utils/storeShape":604,"../utils/warning":605,"../utils/wrapActionCreators":606,"hoist-non-react-statics":105,"invariant":139,"lodash/isPlainObject":306,"react":791}],602:[function(require,module,exports){
+},{"../utils/shallowEqual":607,"../utils/storeShape":608,"../utils/warning":609,"../utils/wrapActionCreators":610,"hoist-non-react-statics":108,"invariant":142,"lodash/isPlainObject":305,"react":840}],606:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -68879,7 +69193,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "d
 
 exports.Provider = _Provider2["default"];
 exports.connect = _connect2["default"];
-},{"./components/Provider":600,"./components/connect":601}],603:[function(require,module,exports){
+},{"./components/Provider":604,"./components/connect":605}],607:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -68906,7 +69220,7 @@ function shallowEqual(objA, objB) {
 
   return true;
 }
-},{}],604:[function(require,module,exports){
+},{}],608:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -68918,7 +69232,7 @@ exports["default"] = _react.PropTypes.shape({
   dispatch: _react.PropTypes.func.isRequired,
   getState: _react.PropTypes.func.isRequired
 });
-},{"react":791}],605:[function(require,module,exports){
+},{"react":840}],609:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -68943,7 +69257,7 @@ function warning(message) {
   } catch (e) {}
   /* eslint-enable no-empty */
 }
-},{}],606:[function(require,module,exports){
+},{}],610:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -68956,7 +69270,7 @@ function wrapActionCreators(actionCreators) {
     return (0, _redux.bindActionCreators)(actionCreators, dispatch);
   };
 }
-},{"redux":807}],607:[function(require,module,exports){
+},{"redux":856}],611:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -69045,7 +69359,7 @@ function mapAsync(array, work, callback) {
     });
   });
 }
-},{}],608:[function(require,module,exports){
+},{}],612:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69077,7 +69391,7 @@ var History = {
 exports.default = History;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./InternalPropTypes":612,"./routerWarning":640,"_process":570}],609:[function(require,module,exports){
+},{"./InternalPropTypes":616,"./routerWarning":644,"_process":570}],613:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -69106,7 +69420,7 @@ var IndexLink = _react2.default.createClass({
 
 exports.default = IndexLink;
 module.exports = exports['default'];
-},{"./Link":614,"react":791}],610:[function(require,module,exports){
+},{"./Link":618,"react":840}],614:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69172,7 +69486,7 @@ var IndexRedirect = _react2.default.createClass({
 exports.default = IndexRedirect;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./InternalPropTypes":612,"./Redirect":617,"./routerWarning":640,"_process":570,"invariant":139,"react":791}],611:[function(require,module,exports){
+},{"./InternalPropTypes":616,"./Redirect":621,"./routerWarning":644,"_process":570,"invariant":142,"react":840}],615:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69235,7 +69549,7 @@ var IndexRoute = _react2.default.createClass({
 exports.default = IndexRoute;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./InternalPropTypes":612,"./RouteUtils":620,"./routerWarning":640,"_process":570,"invariant":139,"react":791}],612:[function(require,module,exports){
+},{"./InternalPropTypes":616,"./RouteUtils":624,"./routerWarning":644,"_process":570,"invariant":142,"react":840}],616:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -69268,7 +69582,7 @@ var component = exports.component = oneOfType([func, string]);
 var components = exports.components = oneOfType([component, object]);
 var route = exports.route = oneOfType([object, element]);
 var routes = exports.routes = oneOfType([route, arrayOf(route)]);
-},{"react":791}],613:[function(require,module,exports){
+},{"react":840}],617:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69339,7 +69653,7 @@ var Lifecycle = {
 exports.default = Lifecycle;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./routerWarning":640,"_process":570,"invariant":139,"react":791}],614:[function(require,module,exports){
+},{"./routerWarning":644,"_process":570,"invariant":142,"react":840}],618:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69515,7 +69829,7 @@ var Link = _react2.default.createClass({
 exports.default = Link;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./PropTypes":616,"./routerWarning":640,"_process":570,"react":791}],615:[function(require,module,exports){
+},{"./PropTypes":620,"./routerWarning":644,"_process":570,"react":840}],619:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69604,6 +69918,7 @@ function compilePattern(pattern) {
  * - **             Consumes (greedy) all characters up to the next character
  *                  in the pattern, or to the end of the URL if there is none
  *
+ *  The function calls callback(error, matched) when finished.
  * The return value is an object with the following properties:
  *
  * - remainingPathname
@@ -69729,7 +70044,7 @@ function formatPattern(pattern, params) {
   return pathname.replace(/\/+/g, '/');
 }
 }).call(this,require('_process'))
-},{"_process":570,"invariant":139}],616:[function(require,module,exports){
+},{"_process":570,"invariant":142}],620:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69833,7 +70148,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 exports.default = defaultExport;
 }).call(this,require('_process'))
-},{"./InternalPropTypes":612,"./deprecateObjectProperties":632,"./routerWarning":640,"_process":570,"react":791}],617:[function(require,module,exports){
+},{"./InternalPropTypes":616,"./deprecateObjectProperties":636,"./routerWarning":644,"_process":570,"react":840}],621:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69938,7 +70253,7 @@ var Redirect = _react2.default.createClass({
 exports.default = Redirect;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./InternalPropTypes":612,"./PatternUtils":615,"./RouteUtils":620,"_process":570,"invariant":139,"react":791}],618:[function(require,module,exports){
+},{"./InternalPropTypes":616,"./PatternUtils":619,"./RouteUtils":624,"_process":570,"invariant":142,"react":840}],622:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -69998,7 +70313,7 @@ var Route = _react2.default.createClass({
 exports.default = Route;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./InternalPropTypes":612,"./RouteUtils":620,"_process":570,"invariant":139,"react":791}],619:[function(require,module,exports){
+},{"./InternalPropTypes":616,"./RouteUtils":624,"_process":570,"invariant":142,"react":840}],623:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -70046,7 +70361,7 @@ var RouteContext = {
 exports.default = RouteContext;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./routerWarning":640,"_process":570,"react":791}],620:[function(require,module,exports){
+},{"./routerWarning":644,"_process":570,"react":840}],624:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -70161,7 +70476,7 @@ function createRoutes(routes) {
   return routes;
 }
 }).call(this,require('_process'))
-},{"./routerWarning":640,"_process":570,"react":791}],621:[function(require,module,exports){
+},{"./routerWarning":644,"_process":570,"react":840}],625:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -70372,7 +70687,7 @@ var Router = _react2.default.createClass({
 exports.default = Router;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./InternalPropTypes":612,"./RouteUtils":620,"./RouterContext":622,"./RouterUtils":623,"./createTransitionManager":631,"./routerWarning":640,"_process":570,"history/lib/createHashHistory":97,"history/lib/useQueries":104,"react":791}],622:[function(require,module,exports){
+},{"./InternalPropTypes":616,"./RouteUtils":624,"./RouterContext":626,"./RouterUtils":627,"./createTransitionManager":635,"./routerWarning":644,"_process":570,"history/lib/createHashHistory":100,"history/lib/useQueries":107,"react":840}],626:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -70531,7 +70846,7 @@ var RouterContext = _react2.default.createClass({
 exports.default = RouterContext;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./RouteUtils":620,"./deprecateObjectProperties":632,"./getRouteParams":634,"./routerWarning":640,"_process":570,"invariant":139,"react":791}],623:[function(require,module,exports){
+},{"./RouteUtils":624,"./deprecateObjectProperties":636,"./getRouteParams":638,"./routerWarning":644,"_process":570,"invariant":142,"react":840}],627:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -70566,7 +70881,7 @@ function createRoutingHistory(history, transitionManager) {
   return history;
 }
 }).call(this,require('_process'))
-},{"./deprecateObjectProperties":632,"_process":570}],624:[function(require,module,exports){
+},{"./deprecateObjectProperties":636,"_process":570}],628:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -70599,7 +70914,7 @@ var RoutingContext = _react2.default.createClass({
 exports.default = RoutingContext;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./RouterContext":622,"./routerWarning":640,"_process":570,"react":791}],625:[function(require,module,exports){
+},{"./RouterContext":626,"./routerWarning":644,"_process":570,"react":840}],629:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -70724,7 +71039,7 @@ function runLeaveHooks(routes) {
   }
 }
 }).call(this,require('_process'))
-},{"./AsyncUtils":607,"./routerWarning":640,"_process":570}],626:[function(require,module,exports){
+},{"./AsyncUtils":611,"./routerWarning":644,"_process":570}],630:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -70775,7 +71090,7 @@ exports.default = function () {
 };
 
 module.exports = exports['default'];
-},{"./RouterContext":622,"react":791}],627:[function(require,module,exports){
+},{"./RouterContext":626,"react":840}],631:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -70792,7 +71107,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 exports.default = (0, _createRouterHistory2.default)(_createBrowserHistory2.default);
 module.exports = exports['default'];
-},{"./createRouterHistory":630,"history/lib/createBrowserHistory":95}],628:[function(require,module,exports){
+},{"./createRouterHistory":634,"history/lib/createBrowserHistory":98}],632:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -70870,7 +71185,7 @@ function computeChangedRoutes(prevState, nextState) {
 
 exports.default = computeChangedRoutes;
 module.exports = exports['default'];
-},{"./PatternUtils":615}],629:[function(require,module,exports){
+},{"./PatternUtils":619}],633:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -70903,7 +71218,7 @@ function createMemoryHistory(options) {
   return history;
 }
 module.exports = exports['default'];
-},{"history/lib/createMemoryHistory":100,"history/lib/useBasename":103,"history/lib/useQueries":104}],630:[function(require,module,exports){
+},{"history/lib/createMemoryHistory":103,"history/lib/useBasename":106,"history/lib/useQueries":107}],634:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -70923,7 +71238,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var canUseDOM = !!(typeof window !== 'undefined' && window.document && window.document.createElement);
 
 module.exports = exports['default'];
-},{"./useRouterHistory":641}],631:[function(require,module,exports){
+},{"./useRouterHistory":645}],635:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -71233,7 +71548,7 @@ function createTransitionManager(history, routes) {
 //export default useRoutes
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./TransitionUtils":625,"./computeChangedRoutes":628,"./getComponents":633,"./isActive":637,"./matchRoutes":639,"./routerWarning":640,"_process":570,"history/lib/Actions":89}],632:[function(require,module,exports){
+},{"./TransitionUtils":629,"./computeChangedRoutes":632,"./getComponents":637,"./isActive":641,"./matchRoutes":643,"./routerWarning":644,"_process":570,"history/lib/Actions":92}],636:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -71311,7 +71626,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 exports.default = deprecateObjectProperties;
 }).call(this,require('_process'))
-},{"./routerWarning":640,"_process":570}],633:[function(require,module,exports){
+},{"./routerWarning":644,"_process":570}],637:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -71393,7 +71708,7 @@ function getComponents(nextState, callback) {
 exports.default = getComponents;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./AsyncUtils":607,"./deprecateObjectProperties":632,"./routerWarning":640,"_process":570}],634:[function(require,module,exports){
+},{"./AsyncUtils":611,"./deprecateObjectProperties":636,"./routerWarning":644,"_process":570}],638:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -71422,7 +71737,7 @@ function getRouteParams(route, params) {
 
 exports.default = getRouteParams;
 module.exports = exports['default'];
-},{"./PatternUtils":615}],635:[function(require,module,exports){
+},{"./PatternUtils":619}],639:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -71439,7 +71754,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 exports.default = (0, _createRouterHistory2.default)(_createHashHistory2.default);
 module.exports = exports['default'];
-},{"./createRouterHistory":630,"history/lib/createHashHistory":97}],636:[function(require,module,exports){
+},{"./createRouterHistory":634,"history/lib/createHashHistory":100}],640:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -71596,7 +71911,7 @@ exports.applyRouterMiddleware = _applyRouterMiddleware3.default;
 exports.browserHistory = _browserHistory3.default;
 exports.hashHistory = _hashHistory3.default;
 exports.createMemoryHistory = _createMemoryHistory3.default;
-},{"./History":608,"./IndexLink":609,"./IndexRedirect":610,"./IndexRoute":611,"./Lifecycle":613,"./Link":614,"./PatternUtils":615,"./PropTypes":616,"./Redirect":617,"./Route":618,"./RouteContext":619,"./RouteUtils":620,"./Router":621,"./RouterContext":622,"./RoutingContext":624,"./applyRouterMiddleware":626,"./browserHistory":627,"./createMemoryHistory":629,"./hashHistory":635,"./match":638,"./useRouterHistory":641,"./useRoutes":642,"./withRouter":643}],637:[function(require,module,exports){
+},{"./History":612,"./IndexLink":613,"./IndexRedirect":614,"./IndexRoute":615,"./Lifecycle":617,"./Link":618,"./PatternUtils":619,"./PropTypes":620,"./Redirect":621,"./Route":622,"./RouteContext":623,"./RouteUtils":624,"./Router":625,"./RouterContext":626,"./RoutingContext":628,"./applyRouterMiddleware":630,"./browserHistory":631,"./createMemoryHistory":633,"./hashHistory":639,"./match":642,"./useRouterHistory":645,"./useRoutes":646,"./withRouter":647}],641:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -71749,7 +72064,7 @@ function isActive(_ref, indexOnly, currentLocation, routes, params) {
   return queryIsActive(query, currentLocation.query);
 }
 module.exports = exports['default'];
-},{"./PatternUtils":615}],638:[function(require,module,exports){
+},{"./PatternUtils":619}],642:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -71833,7 +72148,7 @@ function match(_ref, callback) {
 exports.default = match;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./RouteUtils":620,"./RouterUtils":623,"./createMemoryHistory":629,"./createTransitionManager":631,"_process":570,"invariant":139}],639:[function(require,module,exports){
+},{"./RouteUtils":624,"./RouterUtils":627,"./createMemoryHistory":633,"./createTransitionManager":635,"_process":570,"invariant":142}],643:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -71945,13 +72260,17 @@ function matchRouteDeep(route, location, remainingPathname, paramNames, paramVal
   // Only try to match the path if the route actually has a pattern, and if
   // we're not just searching for potential nested absolute paths.
   if (remainingPathname !== null && pattern) {
-    var matched = (0, _PatternUtils.matchPattern)(pattern, remainingPathname);
-    if (matched) {
-      remainingPathname = matched.remainingPathname;
-      paramNames = [].concat(paramNames, matched.paramNames);
-      paramValues = [].concat(paramValues, matched.paramValues);
-    } else {
-      remainingPathname = null;
+    try {
+      var matched = (0, _PatternUtils.matchPattern)(pattern, remainingPathname);
+      if (matched) {
+        remainingPathname = matched.remainingPathname;
+        paramNames = [].concat(paramNames, matched.paramNames);
+        paramValues = [].concat(paramValues, matched.paramValues);
+      } else {
+        remainingPathname = null;
+      }
+    } catch (error) {
+      callback(error);
     }
 
     // By assumption, pattern is non-empty here, which is the prerequisite for
@@ -72065,7 +72384,7 @@ function matchRoutes(routes, location, callback, remainingPathname) {
 }
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./AsyncUtils":607,"./PatternUtils":615,"./RouteUtils":620,"./routerWarning":640,"_process":570}],640:[function(require,module,exports){
+},{"./AsyncUtils":611,"./PatternUtils":619,"./RouteUtils":624,"./routerWarning":644,"_process":570}],644:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -72102,7 +72421,7 @@ function routerWarning(falseToWarn, message) {
 function _resetWarned() {
   warned = {};
 }
-},{"warning":833}],641:[function(require,module,exports){
+},{"warning":882}],645:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -72126,7 +72445,7 @@ function useRouterHistory(createHistory) {
   };
 }
 module.exports = exports['default'];
-},{"history/lib/useBasename":103,"history/lib/useQueries":104}],642:[function(require,module,exports){
+},{"history/lib/useBasename":106,"history/lib/useQueries":107}],646:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -72180,7 +72499,7 @@ function useRoutes(createHistory) {
 exports.default = useRoutes;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./createTransitionManager":631,"./routerWarning":640,"_process":570,"history/lib/useQueries":104}],643:[function(require,module,exports){
+},{"./createTransitionManager":635,"./routerWarning":644,"_process":570,"history/lib/useQueries":107}],647:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -72221,7 +72540,7 @@ function withRouter(WrappedComponent) {
   return (0, _hoistNonReactStatics2.default)(WithRouter, WrappedComponent);
 }
 module.exports = exports['default'];
-},{"./PropTypes":616,"hoist-non-react-statics":105,"react":791}],644:[function(require,module,exports){
+},{"./PropTypes":620,"hoist-non-react-statics":108,"react":840}],648:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2015, Facebook, Inc.
@@ -72273,7 +72592,7 @@ var invariant = function (condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 }).call(this,require('_process'))
-},{"_process":570}],645:[function(require,module,exports){
+},{"_process":570}],649:[function(require,module,exports){
 /**
  * Copyright 2013-2015, Facebook, Inc.
  * All rights reserved.
@@ -72309,7 +72628,7 @@ var keyOf = function (oneKeyObj) {
 };
 
 module.exports = keyOf;
-},{}],646:[function(require,module,exports){
+},{}],650:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -72481,7 +72800,7 @@ function createTapEventPlugin(shouldRejectClick) {
 
 module.exports = createTapEventPlugin;
 
-},{"./TouchEventUtils":647,"fbjs/lib/keyOf":645,"react/lib/EventConstants":665,"react/lib/EventPluginUtils":668,"react/lib/EventPropagators":669,"react/lib/SyntheticUIEvent":757,"react/lib/ViewportMetrics":760}],647:[function(require,module,exports){
+},{"./TouchEventUtils":651,"fbjs/lib/keyOf":649,"react/lib/EventConstants":710,"react/lib/EventPluginUtils":713,"react/lib/EventPropagators":714,"react/lib/SyntheticUIEvent":805,"react/lib/ViewportMetrics":808}],651:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -72525,14 +72844,14 @@ var TouchEventUtils = {
 
 module.exports = TouchEventUtils;
 
-},{}],648:[function(require,module,exports){
+},{}],652:[function(require,module,exports){
 module.exports = function(lastTouchEvent, clickTimestamp) {
   if (lastTouchEvent && (clickTimestamp - lastTouchEvent) < 750) {
     return true;
   }
 };
 
-},{}],649:[function(require,module,exports){
+},{}],653:[function(require,module,exports){
 (function (process){
 var invariant = require('fbjs/lib/invariant');
 var defaultClickRejectionStrategy = require('./defaultClickRejectionStrategy');
@@ -72562,7 +72881,5540 @@ should be injected by the application.'
 };
 
 }).call(this,require('_process'))
-},{"./TapEventPlugin.js":646,"./defaultClickRejectionStrategy":648,"_process":570,"fbjs/lib/invariant":644,"react/lib/EventPluginHub":666}],650:[function(require,module,exports){
+},{"./TapEventPlugin.js":650,"./defaultClickRejectionStrategy":652,"_process":570,"fbjs/lib/invariant":648,"react/lib/EventPluginHub":711}],654:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * This HOC decorates a virtualized component and responds to arrow-key events by scrolling one row or column at a time.
+ */
+
+var ArrowKeyStepper = function (_Component) {
+  _inherits(ArrowKeyStepper, _Component);
+
+  function ArrowKeyStepper(props, context) {
+    _classCallCheck(this, ArrowKeyStepper);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(ArrowKeyStepper).call(this, props, context));
+
+    _this.state = {
+      scrollToColumn: 0,
+      scrollToRow: 0
+    };
+
+    _this._columnStartIndex = 0;
+    _this._columnStopIndex = 0;
+    _this._rowStartIndex = 0;
+    _this._rowStopIndex = 0;
+
+    _this._onKeyDown = _this._onKeyDown.bind(_this);
+    _this._onSectionRendered = _this._onSectionRendered.bind(_this);
+    return _this;
+  }
+
+  _createClass(ArrowKeyStepper, [{
+    key: 'render',
+    value: function render() {
+      var _props = this.props;
+      var className = _props.className;
+      var children = _props.children;
+      var _state = this.state;
+      var scrollToColumn = _state.scrollToColumn;
+      var scrollToRow = _state.scrollToRow;
+
+
+      return _react2.default.createElement(
+        'div',
+        {
+          className: className,
+          onKeyDown: this._onKeyDown
+        },
+        children({
+          onSectionRendered: this._onSectionRendered,
+          scrollToColumn: scrollToColumn,
+          scrollToRow: scrollToRow
+        })
+      );
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+  }, {
+    key: '_onKeyDown',
+    value: function _onKeyDown(event) {
+      var _props2 = this.props;
+      var columnCount = _props2.columnCount;
+      var rowCount = _props2.rowCount;
+
+      // The above cases all prevent default event event behavior.
+      // This is to keep the grid from scrolling after the snap-to update.
+
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          this.setState({
+            scrollToRow: Math.min(this._rowStopIndex + 1, rowCount - 1)
+          });
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          this.setState({
+            scrollToColumn: Math.max(this._columnStartIndex - 1, 0)
+          });
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          this.setState({
+            scrollToColumn: Math.min(this._columnStopIndex + 1, columnCount - 1)
+          });
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          this.setState({
+            scrollToRow: Math.max(this._rowStartIndex - 1, 0)
+          });
+          break;
+      }
+    }
+  }, {
+    key: '_onSectionRendered',
+    value: function _onSectionRendered(_ref) {
+      var columnStartIndex = _ref.columnStartIndex;
+      var columnStopIndex = _ref.columnStopIndex;
+      var rowStartIndex = _ref.rowStartIndex;
+      var rowStopIndex = _ref.rowStopIndex;
+
+      this._columnStartIndex = columnStartIndex;
+      this._columnStopIndex = columnStopIndex;
+      this._rowStartIndex = rowStartIndex;
+      this._rowStopIndex = rowStopIndex;
+    }
+  }]);
+
+  return ArrowKeyStepper;
+}(_react.Component);
+
+ArrowKeyStepper.propTypes = {
+  children: _react.PropTypes.func.isRequired,
+  className: _react.PropTypes.string,
+  columnCount: _react.PropTypes.number.isRequired,
+  rowCount: _react.PropTypes.number.isRequired
+};
+exports.default = ArrowKeyStepper;
+},{"react":840,"react-addons-shallow-compare":579}],655:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ArrowKeyStepper = exports.default = undefined;
+
+var _ArrowKeyStepper2 = require('./ArrowKeyStepper');
+
+var _ArrowKeyStepper3 = _interopRequireDefault(_ArrowKeyStepper2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _ArrowKeyStepper3.default;
+exports.ArrowKeyStepper = _ArrowKeyStepper3.default;
+},{"./ArrowKeyStepper":654}],656:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * Decorator component that automatically adjusts the width and height of a single child.
+ * Child component should not be declared as a child but should rather be specified by a `ChildComponent` property.
+ * All other properties will be passed through to the child component.
+ */
+
+var AutoSizer = function (_Component) {
+  _inherits(AutoSizer, _Component);
+
+  function AutoSizer(props) {
+    _classCallCheck(this, AutoSizer);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(AutoSizer).call(this, props));
+
+    _this.state = {
+      height: 0,
+      width: 0
+    };
+
+    _this._onResize = _this._onResize.bind(_this);
+    _this._onScroll = _this._onScroll.bind(_this);
+    _this._setRef = _this._setRef.bind(_this);
+    return _this;
+  }
+
+  _createClass(AutoSizer, [{
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      // Defer requiring resize handler in order to support server-side rendering.
+      // See issue #41
+      this._detectElementResize = require('../vendor/detectElementResize');
+      this._detectElementResize.addResizeListener(this._parentNode, this._onResize);
+
+      this._onResize();
+    }
+  }, {
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      if (this._detectElementResize) {
+        this._detectElementResize.removeResizeListener(this._parentNode, this._onResize);
+      }
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _props = this.props;
+      var children = _props.children;
+      var disableHeight = _props.disableHeight;
+      var disableWidth = _props.disableWidth;
+      var _state = this.state;
+      var height = _state.height;
+      var width = _state.width;
+
+      // Outer div should not force width/height since that may prevent containers from shrinking.
+      // Inner component should overflow and use calculated width/height.
+      // See issue #68 for more information.
+
+      var outerStyle = { overflow: 'visible' };
+
+      if (!disableHeight) {
+        outerStyle.height = 0;
+      }
+
+      if (!disableWidth) {
+        outerStyle.width = 0;
+      }
+
+      return _react2.default.createElement(
+        'div',
+        {
+          ref: this._setRef,
+          onScroll: this._onScroll,
+          style: outerStyle
+        },
+        children({ height: height, width: width })
+      );
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+  }, {
+    key: '_onResize',
+    value: function _onResize() {
+      var onResize = this.props.onResize;
+
+      // Gaurd against AutoSizer component being removed from the DOM immediately after being added.
+      // This can result in invalid style values which can result in NaN values if we don't handle them.
+      // See issue #150 for more context.
+
+      var boundingRect = this._parentNode.getBoundingClientRect();
+      var height = boundingRect.height || 0;
+      var width = boundingRect.width || 0;
+
+      var style = getComputedStyle(this._parentNode);
+      var paddingLeft = parseInt(style.paddingLeft, 10) || 0;
+      var paddingRight = parseInt(style.paddingRight, 10) || 0;
+      var paddingTop = parseInt(style.paddingTop, 10) || 0;
+      var paddingBottom = parseInt(style.paddingBottom, 10) || 0;
+
+      this.setState({
+        height: height - paddingTop - paddingBottom,
+        width: width - paddingLeft - paddingRight
+      });
+
+      onResize({ height: height, width: width });
+    }
+  }, {
+    key: '_onScroll',
+    value: function _onScroll(event) {
+      // Prevent detectElementResize library from being triggered by this scroll event.
+      event.stopPropagation();
+    }
+  }, {
+    key: '_setRef',
+    value: function _setRef(autoSizer) {
+      // In case the component has been unmounted
+      this._parentNode = autoSizer && autoSizer.parentNode;
+    }
+  }]);
+
+  return AutoSizer;
+}(_react.Component);
+
+AutoSizer.propTypes = {
+  /**
+   * Function respondible for rendering children.
+   * This function should implement the following signature:
+   * ({ height, width }) => PropTypes.element
+   */
+  children: _react.PropTypes.func.isRequired,
+
+  /** Disable dynamic :height property */
+  disableHeight: _react.PropTypes.bool,
+
+  /** Disable dynamic :width property */
+  disableWidth: _react.PropTypes.bool,
+
+  /** Callback to be invoked on-resize: ({ height, width }) */
+  onResize: _react.PropTypes.func.isRequired
+};
+AutoSizer.defaultProps = {
+  onResize: function onResize() {}
+};
+exports.default = AutoSizer;
+},{"../vendor/detectElementResize":693,"react":840,"react-addons-shallow-compare":579}],657:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.AutoSizer = exports.default = undefined;
+
+var _AutoSizer2 = require('./AutoSizer');
+
+var _AutoSizer3 = _interopRequireDefault(_AutoSizer2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _AutoSizer3.default;
+exports.AutoSizer = _AutoSizer3.default;
+},{"./AutoSizer":656}],658:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactDom = require('react-dom');
+
+var _reactDom2 = _interopRequireDefault(_reactDom);
+
+var _server = require('react-dom/server');
+
+var _server2 = _interopRequireDefault(_server);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * Measures a Grid cell's contents by rendering them in a way that is not visible to the user.
+ * Either a fixed width or height may be provided if it is desirable to measure only in one direction.
+ */
+
+var CellMeasurer = function (_Component) {
+  _inherits(CellMeasurer, _Component);
+
+  function CellMeasurer(props, state) {
+    _classCallCheck(this, CellMeasurer);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(CellMeasurer).call(this, props, state));
+
+    _this._cachedColumnWidths = {};
+    _this._cachedRowHeights = {};
+
+    _this.getColumnWidth = _this.getColumnWidth.bind(_this);
+    _this.getRowHeight = _this.getRowHeight.bind(_this);
+    _this.resetMeasurements = _this.resetMeasurements.bind(_this);
+    return _this;
+  }
+
+  _createClass(CellMeasurer, [{
+    key: 'getColumnWidth',
+    value: function getColumnWidth(_ref) {
+      var index = _ref.index;
+
+      if (this._cachedColumnWidths[index]) {
+        return this._cachedColumnWidths[index];
+      }
+
+      var rowCount = this.props.rowCount;
+
+
+      var maxWidth = 0;
+
+      for (var rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+        var _measureCell2 = this._measureCell({
+          clientWidth: true,
+          columnIndex: index,
+          rowIndex: rowIndex
+        });
+
+        var width = _measureCell2.width;
+
+
+        maxWidth = Math.max(maxWidth, width);
+      }
+
+      this._cachedColumnWidths[index] = maxWidth;
+
+      return maxWidth;
+    }
+  }, {
+    key: 'getRowHeight',
+    value: function getRowHeight(_ref2) {
+      var index = _ref2.index;
+
+      if (this._cachedRowHeights[index]) {
+        return this._cachedRowHeights[index];
+      }
+
+      var columnCount = this.props.columnCount;
+
+
+      var maxHeight = 0;
+
+      for (var columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+        var _measureCell3 = this._measureCell({
+          clientHeight: true,
+          columnIndex: columnIndex,
+          rowIndex: index
+        });
+
+        var height = _measureCell3.height;
+
+
+        maxHeight = Math.max(maxHeight, height);
+      }
+
+      this._cachedRowHeights[index] = maxHeight;
+
+      return maxHeight;
+    }
+  }, {
+    key: 'resetMeasurements',
+    value: function resetMeasurements() {
+      this._cachedColumnWidths = {};
+      this._cachedRowHeights = {};
+    }
+  }, {
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      this._renderAndMount();
+    }
+  }, {
+    key: 'componentWillReceiveProps',
+    value: function componentWillReceiveProps(nextProps) {
+      this._updateDivDimensions(nextProps);
+    }
+  }, {
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      this._unmountContainer();
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var children = this.props.children;
+
+
+      return children({
+        getColumnWidth: this.getColumnWidth,
+        getRowHeight: this.getRowHeight,
+        resetMeasurements: this.resetMeasurements
+      });
+    }
+  }, {
+    key: '_getContainerNode',
+    value: function _getContainerNode(props) {
+      var container = props.container;
+
+
+      if (container) {
+        return _reactDom2.default.findDOMNode(typeof container === 'function' ? container() : container);
+      } else {
+        var node = _reactDom2.default.findDOMNode(this);
+
+        return node.ownerDocument.body;
+      }
+    }
+  }, {
+    key: '_measureCell',
+    value: function _measureCell(_ref3) {
+      var _ref3$clientHeight = _ref3.clientHeight;
+      var clientHeight = _ref3$clientHeight === undefined ? false : _ref3$clientHeight;
+      var _ref3$clientWidth = _ref3.clientWidth;
+      var clientWidth = _ref3$clientWidth === undefined ? true : _ref3$clientWidth;
+      var columnIndex = _ref3.columnIndex;
+      var rowIndex = _ref3.rowIndex;
+      var cellRenderer = this.props.cellRenderer;
+
+
+      var rendered = cellRenderer({
+        columnIndex: columnIndex,
+        rowIndex: rowIndex
+      });
+
+      this._div.innerHTML = _server2.default.renderToString(rendered);
+
+      return {
+        height: clientHeight && this._div.clientHeight,
+        width: clientWidth && this._div.clientWidth
+      };
+    }
+  }, {
+    key: '_renderAndMount',
+    value: function _renderAndMount() {
+      if (!this._div) {
+        this._div = document.createElement('div');
+        this._div.style.display = 'inline-block';
+        this._div.style.position = 'absolute';
+        this._div.style.visibility = 'hidden';
+        this._div.style.zIndex = -1;
+
+        this._updateDivDimensions(this.props);
+
+        this._containerNode = this._getContainerNode(this.props);
+        this._containerNode.appendChild(this._div);
+      }
+    }
+  }, {
+    key: '_unmountContainer',
+    value: function _unmountContainer() {
+      if (this._div) {
+        this._containerNode.removeChild(this._div);
+
+        this._div = null;
+      }
+
+      this._containerNode = null;
+    }
+  }, {
+    key: '_updateDivDimensions',
+    value: function _updateDivDimensions(props) {
+      var height = props.height;
+      var width = props.width;
+
+
+      if (height && height !== this._divHeight) {
+        this._divHeight = height;
+        this._div.style.height = height + 'px';
+      }
+
+      if (width && width !== this._divWidth) {
+        this._divWidth = width;
+        this._div.style.width = width + 'px';
+      }
+    }
+  }]);
+
+  return CellMeasurer;
+}(_react.Component);
+
+CellMeasurer.propTypes = {
+  /**
+   * Renders a cell given its indices.
+   * Should implement the following interface: ({ columnIndex: number, rowIndex: number }): PropTypes.node
+   */
+  cellRenderer: _react.PropTypes.func.isRequired,
+
+  /**
+   * Function respondible for rendering a virtualized component.
+   * This function should implement the following signature:
+   * ({ getColumnWidth, getRowHeight, resetMeasurements }) => PropTypes.element
+   */
+  children: _react.PropTypes.func.isRequired,
+
+  /**
+   * Number of columns in grid.
+   */
+  columnCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * A Node, Component instance, or function that returns either.
+   * If this property is not specified the document body will be used.
+   */
+  container: _react2.default.PropTypes.oneOfType([_react2.default.PropTypes.func, _react2.default.PropTypes.node]),
+
+  /**
+   * Assign a fixed :height in order to measure dynamic text :width only.
+   */
+  height: _react.PropTypes.number,
+
+  /**
+   * Number of rows in grid.
+   */
+  rowCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Assign a fixed :width in order to measure dynamic text :height only.
+   */
+  width: _react.PropTypes.number
+};
+exports.default = CellMeasurer;
+},{"react":840,"react-dom":591,"react-dom/server":592}],659:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.CellMeasurer = exports.default = undefined;
+
+var _CellMeasurer2 = require('./CellMeasurer');
+
+var _CellMeasurer3 = _interopRequireDefault(_CellMeasurer2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _CellMeasurer3.default;
+exports.CellMeasurer = _CellMeasurer3.default;
+},{"./CellMeasurer":658}],660:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _CollectionView = require('./CollectionView');
+
+var _CollectionView2 = _interopRequireDefault(_CollectionView);
+
+var _calculateSizeAndPositionData2 = require('./utils/calculateSizeAndPositionData');
+
+var _calculateSizeAndPositionData3 = _interopRequireDefault(_calculateSizeAndPositionData2);
+
+var _getUpdatedOffsetForIndex = require('../utils/getUpdatedOffsetForIndex');
+
+var _getUpdatedOffsetForIndex2 = _interopRequireDefault(_getUpdatedOffsetForIndex);
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * Renders scattered or non-linear data.
+ * Unlike Grid, which renders checkerboard data, Collection can render arbitrarily positioned- even overlapping- data.
+ */
+
+var Collection = function (_Component) {
+  _inherits(Collection, _Component);
+
+  function Collection(props, context) {
+    _classCallCheck(this, Collection);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(Collection).call(this, props, context));
+
+    _this._cellMetadata = [];
+    _this._lastRenderedCellIndices = [];
+    return _this;
+  }
+
+  /** See Collection#recomputeCellSizesAndPositions */
+
+
+  _createClass(Collection, [{
+    key: 'recomputeCellSizesAndPositions',
+    value: function recomputeCellSizesAndPositions() {
+      this.refs.CollectionView.recomputeCellSizesAndPositions();
+    }
+
+    /** React lifecycle methods */
+
+  }, {
+    key: 'render',
+    value: function render() {
+      var props = _objectWithoutProperties(this.props, []);
+
+      return _react2.default.createElement(_CollectionView2.default, _extends({
+        cellLayoutManager: this,
+        ref: 'CollectionView'
+      }, props));
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+
+    /** CellLayoutManager interface */
+
+  }, {
+    key: 'calculateSizeAndPositionData',
+    value: function calculateSizeAndPositionData() {
+      var _props = this.props;
+      var cellCount = _props.cellCount;
+      var cellSizeAndPositionGetter = _props.cellSizeAndPositionGetter;
+      var sectionSize = _props.sectionSize;
+
+
+      var data = (0, _calculateSizeAndPositionData3.default)({
+        cellCount: cellCount,
+        cellSizeAndPositionGetter: cellSizeAndPositionGetter,
+        sectionSize: sectionSize
+      });
+
+      this._cellMetadata = data.cellMetadata;
+      this._sectionManager = data.sectionManager;
+      this._height = data.height;
+      this._width = data.width;
+    }
+
+    /**
+     * Returns the most recently rendered set of cell indices.
+     */
+
+  }, {
+    key: 'getLastRenderedIndices',
+    value: function getLastRenderedIndices() {
+      return this._lastRenderedCellIndices;
+    }
+
+    /**
+     * Calculates the minimum amount of change from the current scroll position to ensure the specified cell is (fully) visible.
+     */
+
+  }, {
+    key: 'getScrollPositionForCell',
+    value: function getScrollPositionForCell(_ref) {
+      var align = _ref.align;
+      var cellIndex = _ref.cellIndex;
+      var height = _ref.height;
+      var scrollLeft = _ref.scrollLeft;
+      var scrollTop = _ref.scrollTop;
+      var width = _ref.width;
+      var cellCount = this.props.cellCount;
+
+
+      if (cellIndex >= 0 && cellIndex < cellCount) {
+        var cellMetadata = this._cellMetadata[cellIndex];
+
+        scrollLeft = (0, _getUpdatedOffsetForIndex2.default)({
+          align: align,
+          cellOffset: cellMetadata.x,
+          cellSize: cellMetadata.width,
+          containerSize: width,
+          currentOffset: scrollLeft,
+          targetIndex: cellIndex
+        });
+
+        scrollTop = (0, _getUpdatedOffsetForIndex2.default)({
+          align: align,
+          cellOffset: cellMetadata.y,
+          cellSize: cellMetadata.height,
+          containerSize: height,
+          currentOffset: scrollTop,
+          targetIndex: cellIndex
+        });
+      }
+
+      return {
+        scrollLeft: scrollLeft,
+        scrollTop: scrollTop
+      };
+    }
+  }, {
+    key: 'getTotalSize',
+    value: function getTotalSize() {
+      return {
+        height: this._height,
+        width: this._width
+      };
+    }
+  }, {
+    key: 'cellRenderers',
+    value: function cellRenderers(_ref2) {
+      var _this2 = this;
+
+      var height = _ref2.height;
+      var isScrolling = _ref2.isScrolling;
+      var width = _ref2.width;
+      var x = _ref2.x;
+      var y = _ref2.y;
+      var _props2 = this.props;
+      var cellGroupRenderer = _props2.cellGroupRenderer;
+      var cellRenderer = _props2.cellRenderer;
+
+      // Store for later calls to getLastRenderedIndices()
+
+      this._lastRenderedCellIndices = this._sectionManager.getCellIndices({
+        height: height,
+        width: width,
+        x: x,
+        y: y
+      });
+
+      return cellGroupRenderer({
+        cellRenderer: cellRenderer,
+        cellSizeAndPositionGetter: function cellSizeAndPositionGetter(_ref3) {
+          var index = _ref3.index;
+          return _this2._sectionManager.getCellMetadata({ index: index });
+        },
+        indices: this._lastRenderedCellIndices,
+        isScrolling: isScrolling
+      });
+    }
+  }]);
+
+  return Collection;
+}(_react.Component);
+
+Collection.propTypes = {
+  'aria-label': _react.PropTypes.string,
+
+  /**
+   * Number of cells in Collection.
+   */
+  cellCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Responsible for rendering a group of cells given their indices.
+   * Should implement the following interface: ({
+   *   cellSizeAndPositionGetter:Function,
+   *   indices: Array<number>,
+   *   cellRenderer: Function
+   * }): Array<PropTypes.node>
+   */
+  cellGroupRenderer: _react.PropTypes.func.isRequired,
+
+  /**
+   * Responsible for rendering a cell given an row and column index.
+   * Should implement the following interface: ({ index: number }): PropTypes.element
+   */
+  cellRenderer: _react.PropTypes.func.isRequired,
+
+  /**
+   * Callback responsible for returning size and offset/position information for a given cell (index).
+   * ({ index: number }): { height: number, width: number, x: number, y: number }
+   */
+  cellSizeAndPositionGetter: _react.PropTypes.func.isRequired,
+
+  /**
+   * Optionally override the size of the sections a Collection's cells are split into.
+   */
+  sectionSize: _react.PropTypes.number
+};
+Collection.defaultProps = {
+  'aria-label': 'grid',
+  cellGroupRenderer: defaultCellGroupRenderer
+};
+exports.default = Collection;
+
+
+function defaultCellGroupRenderer(_ref4) {
+  var cellRenderer = _ref4.cellRenderer;
+  var cellSizeAndPositionGetter = _ref4.cellSizeAndPositionGetter;
+  var indices = _ref4.indices;
+  var isScrolling = _ref4.isScrolling;
+
+  return indices.map(function (index) {
+    var cellMetadata = cellSizeAndPositionGetter({ index: index });
+    var renderedCell = cellRenderer({
+      index: index,
+      isScrolling: isScrolling
+    });
+
+    if (renderedCell == null || renderedCell === false) {
+      return null;
+    }
+
+    return _react2.default.createElement(
+      'div',
+      {
+        className: 'Collection__cell',
+        key: index,
+        style: {
+          height: cellMetadata.height,
+          left: cellMetadata.x,
+          top: cellMetadata.y,
+          width: cellMetadata.width
+        }
+      },
+      renderedCell
+    );
+  }).filter(function (renderedCell) {
+    return !!renderedCell;
+  });
+}
+},{"../utils/getUpdatedOffsetForIndex":692,"./CollectionView":661,"./utils/calculateSizeAndPositionData":665,"react":840,"react-addons-shallow-compare":579}],661:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _classnames = require('classnames');
+
+var _classnames2 = _interopRequireDefault(_classnames);
+
+var _createCallbackMemoizer = require('../utils/createCallbackMemoizer');
+
+var _createCallbackMemoizer2 = _interopRequireDefault(_createCallbackMemoizer);
+
+var _scrollbarSize = require('dom-helpers/util/scrollbarSize');
+
+var _scrollbarSize2 = _interopRequireDefault(_scrollbarSize);
+
+var _raf = require('raf');
+
+var _raf2 = _interopRequireDefault(_raf);
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+// @TODO It would be nice to refactor Grid to use this code as well.
+
+/**
+ * Specifies the number of miliseconds during which to disable pointer events while a scroll is in progress.
+ * This improves performance and makes scrolling smoother.
+ */
+var IS_SCROLLING_TIMEOUT = 150;
+
+/**
+ * Controls whether the Grid updates the DOM element's scrollLeft/scrollTop based on the current state or just observes it.
+ * This prevents Grid from interrupting mouse-wheel animations (see issue #2).
+ */
+var SCROLL_POSITION_CHANGE_REASONS = {
+  OBSERVED: 'observed',
+  REQUESTED: 'requested'
+};
+
+/**
+ * Monitors changes in properties (eg. cellCount) and state (eg. scroll offsets) to determine when rendering needs to occur.
+ * This component does not render any visible content itself; it defers to the specified :cellLayoutManager.
+ */
+
+var CollectionView = function (_Component) {
+  _inherits(CollectionView, _Component);
+
+  function CollectionView(props, context) {
+    _classCallCheck(this, CollectionView);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(CollectionView).call(this, props, context));
+
+    _this.state = {
+      calculateSizeAndPositionDataOnNextUpdate: false,
+      isScrolling: false,
+      scrollLeft: 0,
+      scrollTop: 0
+    };
+
+    // Invokes callbacks only when their values have changed.
+    _this._onSectionRenderedMemoizer = (0, _createCallbackMemoizer2.default)();
+    _this._onScrollMemoizer = (0, _createCallbackMemoizer2.default)(false);
+
+    // Bind functions to instance so they don't lose context when passed around.
+    _this._invokeOnSectionRenderedHelper = _this._invokeOnSectionRenderedHelper.bind(_this);
+    _this._onScroll = _this._onScroll.bind(_this);
+    _this._updateScrollPositionForScrollToCell = _this._updateScrollPositionForScrollToCell.bind(_this);
+    return _this;
+  }
+
+  /**
+   * Forced recompute of cell sizes and positions.
+   * This function should be called if cell sizes have changed but nothing else has.
+   * Since cell positions are calculated by callbacks, the collection view has no way of detecting when the underlying data has changed.
+   */
+
+
+  _createClass(CollectionView, [{
+    key: 'recomputeCellSizesAndPositions',
+    value: function recomputeCellSizesAndPositions() {
+      this.setState({
+        calculateSizeAndPositionDataOnNextUpdate: true
+      });
+    }
+
+    /* ---------------------------- Component lifecycle methods ---------------------------- */
+
+  }, {
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      var _props = this.props;
+      var cellLayoutManager = _props.cellLayoutManager;
+      var scrollLeft = _props.scrollLeft;
+      var scrollToCell = _props.scrollToCell;
+      var scrollTop = _props.scrollTop;
+
+      // If this component was first rendered server-side, scrollbar size will be undefined.
+      // In that event we need to remeasure.
+
+      if (!this._scrollbarSizeMeasured) {
+        this._scrollbarSize = (0, _scrollbarSize2.default)();
+        this._scrollbarSizeMeasured = true;
+        this.setState({});
+      }
+
+      if (scrollToCell >= 0) {
+        this._updateScrollPositionForScrollToCell();
+      } else if (scrollLeft >= 0 || scrollTop >= 0) {
+        this._setScrollPosition({ scrollLeft: scrollLeft, scrollTop: scrollTop });
+      }
+
+      // Update onSectionRendered callback.
+      this._invokeOnSectionRenderedHelper();
+
+      var _cellLayoutManager$ge = cellLayoutManager.getTotalSize();
+
+      var totalHeight = _cellLayoutManager$ge.height;
+      var totalWidth = _cellLayoutManager$ge.width;
+
+      // Initialize onScroll callback.
+
+      this._invokeOnScrollMemoizer({
+        scrollLeft: scrollLeft || 0,
+        scrollTop: scrollTop || 0,
+        totalHeight: totalHeight,
+        totalWidth: totalWidth
+      });
+    }
+  }, {
+    key: 'componentDidUpdate',
+    value: function componentDidUpdate(prevProps, prevState) {
+      var _props2 = this.props;
+      var height = _props2.height;
+      var scrollToCell = _props2.scrollToCell;
+      var width = _props2.width;
+      var _state = this.state;
+      var scrollLeft = _state.scrollLeft;
+      var scrollPositionChangeReason = _state.scrollPositionChangeReason;
+      var scrollToAlignment = _state.scrollToAlignment;
+      var scrollTop = _state.scrollTop;
+
+      // Make sure requested changes to :scrollLeft or :scrollTop get applied.
+      // Assigning to scrollLeft/scrollTop tells the browser to interrupt any running scroll animations,
+      // And to discard any pending async changes to the scroll position that may have happened in the meantime (e.g. on a separate scrolling thread).
+      // So we only set these when we require an adjustment of the scroll position.
+      // See issue #2 for more information.
+
+      if (scrollPositionChangeReason === SCROLL_POSITION_CHANGE_REASONS.REQUESTED) {
+        if (scrollLeft >= 0 && scrollLeft !== prevState.scrollLeft && scrollLeft !== this.refs.scrollingContainer.scrollLeft) {
+          this.refs.scrollingContainer.scrollLeft = scrollLeft;
+        }
+        if (scrollTop >= 0 && scrollTop !== prevState.scrollTop && scrollTop !== this.refs.scrollingContainer.scrollTop) {
+          this.refs.scrollingContainer.scrollTop = scrollTop;
+        }
+      }
+
+      // Update scroll offsets if the current :scrollToCell values requires it
+      if (height !== prevProps.height || scrollToAlignment !== prevProps.scrollToAlignment || scrollToCell !== prevProps.scrollToCell || width !== prevProps.width) {
+        this._updateScrollPositionForScrollToCell();
+      }
+
+      // Update onRowsRendered callback if start/stop indices have changed
+      this._invokeOnSectionRenderedHelper();
+    }
+  }, {
+    key: 'componentWillMount',
+    value: function componentWillMount() {
+      var cellLayoutManager = this.props.cellLayoutManager;
+
+
+      cellLayoutManager.calculateSizeAndPositionData();
+
+      // If this component is being rendered server-side, getScrollbarSize() will return undefined.
+      // We handle this case in componentDidMount()
+      this._scrollbarSize = (0, _scrollbarSize2.default)();
+      if (this._scrollbarSize === undefined) {
+        this._scrollbarSizeMeasured = false;
+        this._scrollbarSize = 0;
+      } else {
+        this._scrollbarSizeMeasured = true;
+      }
+    }
+  }, {
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      if (this._disablePointerEventsTimeoutId) {
+        clearTimeout(this._disablePointerEventsTimeoutId);
+      }
+
+      if (this._setNextStateAnimationFrameId) {
+        _raf2.default.cancel(this._setNextStateAnimationFrameId);
+      }
+    }
+
+    /**
+     * @private
+     * This method updates scrollLeft/scrollTop in state for the following conditions:
+     * 1) Empty content (0 rows or columns)
+     * 2) New scroll props overriding the current state
+     * 3) Cells-count or cells-size has changed, making previous scroll offsets invalid
+     */
+
+  }, {
+    key: 'componentWillUpdate',
+    value: function componentWillUpdate(nextProps, nextState) {
+      if (nextProps.cellCount === 0 && (nextState.scrollLeft !== 0 || nextState.scrollTop !== 0)) {
+        this._setScrollPosition({
+          scrollLeft: 0,
+          scrollTop: 0
+        });
+      } else if (nextProps.scrollLeft !== this.props.scrollLeft || nextProps.scrollTop !== this.props.scrollTop) {
+        this._setScrollPosition({
+          scrollLeft: nextProps.scrollLeft,
+          scrollTop: nextProps.scrollTop
+        });
+      }
+
+      if (nextProps.cellCount !== this.props.cellCount || nextProps.cellLayoutManager !== this.props.cellLayoutManager || nextState.calculateSizeAndPositionDataOnNextUpdate) {
+        nextProps.cellLayoutManager.calculateSizeAndPositionData();
+      }
+
+      if (nextState.calculateSizeAndPositionDataOnNextUpdate) {
+        this.setState({
+          calculateSizeAndPositionDataOnNextUpdate: false
+        });
+      }
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _props3 = this.props;
+      var cellLayoutManager = _props3.cellLayoutManager;
+      var className = _props3.className;
+      var height = _props3.height;
+      var noContentRenderer = _props3.noContentRenderer;
+      var style = _props3.style;
+      var width = _props3.width;
+      var _state2 = this.state;
+      var isScrolling = _state2.isScrolling;
+      var scrollLeft = _state2.scrollLeft;
+      var scrollTop = _state2.scrollTop;
+
+
+      var childrenToDisplay = height > 0 && width > 0 ? cellLayoutManager.cellRenderers({
+        height: height,
+        isScrolling: isScrolling,
+        width: width,
+        x: scrollLeft,
+        y: scrollTop
+      }) : [];
+
+      var _cellLayoutManager$ge2 = cellLayoutManager.getTotalSize();
+
+      var totalHeight = _cellLayoutManager$ge2.height;
+      var totalWidth = _cellLayoutManager$ge2.width;
+
+
+      var collectionStyle = _extends({}, style, {
+        height: height,
+        width: width
+      });
+
+      // Force browser to hide scrollbars when we know they aren't necessary.
+      // Otherwise once scrollbars appear they may not disappear again.
+      // For more info see issue #116
+      var verticalScrollBarSize = totalHeight > height ? this._scrollbarSize : 0;
+      var horizontalScrollBarSize = totalWidth > width ? this._scrollbarSize : 0;
+      if (totalWidth + verticalScrollBarSize <= width) {
+        collectionStyle.overflowX = 'hidden';
+      }
+      if (totalHeight + horizontalScrollBarSize <= height) {
+        collectionStyle.overflowY = 'hidden';
+      }
+
+      return _react2.default.createElement(
+        'div',
+        {
+          ref: 'scrollingContainer',
+          'aria-label': this.props['aria-label'],
+          className: (0, _classnames2.default)('Collection', className),
+          onScroll: this._onScroll,
+          role: 'grid',
+          style: collectionStyle,
+          tabIndex: 0
+        },
+        childrenToDisplay.length > 0 && _react2.default.createElement(
+          'div',
+          {
+            className: 'Collection__innerScrollContainer',
+            style: {
+              height: totalHeight,
+              maxHeight: totalHeight,
+              maxWidth: totalWidth,
+              pointerEvents: isScrolling ? 'none' : 'auto',
+              width: totalWidth
+            }
+          },
+          childrenToDisplay
+        ),
+        childrenToDisplay.length === 0 && noContentRenderer()
+      );
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+
+    /* ---------------------------- Helper methods ---------------------------- */
+
+    /**
+     * Sets an :isScrolling flag for a small window of time.
+     * This flag is used to disable pointer events on the scrollable portion of the Collection.
+     * This prevents jerky/stuttery mouse-wheel scrolling.
+     */
+
+  }, {
+    key: '_enablePointerEventsAfterDelay',
+    value: function _enablePointerEventsAfterDelay() {
+      var _this2 = this;
+
+      if (this._disablePointerEventsTimeoutId) {
+        clearTimeout(this._disablePointerEventsTimeoutId);
+      }
+
+      this._disablePointerEventsTimeoutId = setTimeout(function () {
+        _this2._disablePointerEventsTimeoutId = null;
+        _this2.setState({
+          isScrolling: false
+        });
+      }, IS_SCROLLING_TIMEOUT);
+    }
+  }, {
+    key: '_invokeOnSectionRenderedHelper',
+    value: function _invokeOnSectionRenderedHelper() {
+      var _props4 = this.props;
+      var cellLayoutManager = _props4.cellLayoutManager;
+      var onSectionRendered = _props4.onSectionRendered;
+
+
+      this._onSectionRenderedMemoizer({
+        callback: onSectionRendered,
+        indices: {
+          indices: cellLayoutManager.getLastRenderedIndices()
+        }
+      });
+    }
+  }, {
+    key: '_invokeOnScrollMemoizer',
+    value: function _invokeOnScrollMemoizer(_ref) {
+      var _this3 = this;
+
+      var scrollLeft = _ref.scrollLeft;
+      var scrollTop = _ref.scrollTop;
+      var totalHeight = _ref.totalHeight;
+      var totalWidth = _ref.totalWidth;
+
+      this._onScrollMemoizer({
+        callback: function callback(_ref2) {
+          var scrollLeft = _ref2.scrollLeft;
+          var scrollTop = _ref2.scrollTop;
+          var _props5 = _this3.props;
+          var height = _props5.height;
+          var onScroll = _props5.onScroll;
+          var width = _props5.width;
+
+
+          onScroll({
+            clientHeight: height,
+            clientWidth: width,
+            scrollHeight: totalHeight,
+            scrollLeft: scrollLeft,
+            scrollTop: scrollTop,
+            scrollWidth: totalWidth
+          });
+        },
+        indices: {
+          scrollLeft: scrollLeft,
+          scrollTop: scrollTop
+        }
+      });
+    }
+
+    /**
+     * Updates the state during the next animation frame.
+     * Use this method to avoid multiple renders in a small span of time.
+     * This helps performance for bursty events (like onScroll).
+     */
+
+  }, {
+    key: '_setNextState',
+    value: function _setNextState(state) {
+      var _this4 = this;
+
+      if (this._setNextStateAnimationFrameId) {
+        _raf2.default.cancel(this._setNextStateAnimationFrameId);
+      }
+
+      this._setNextStateAnimationFrameId = (0, _raf2.default)(function () {
+        _this4._setNextStateAnimationFrameId = null;
+        _this4.setState(state);
+      });
+    }
+  }, {
+    key: '_setScrollPosition',
+    value: function _setScrollPosition(_ref3) {
+      var scrollLeft = _ref3.scrollLeft;
+      var scrollTop = _ref3.scrollTop;
+
+      var newState = {
+        scrollPositionChangeReason: SCROLL_POSITION_CHANGE_REASONS.REQUESTED
+      };
+
+      if (scrollLeft >= 0) {
+        newState.scrollLeft = scrollLeft;
+      }
+
+      if (scrollTop >= 0) {
+        newState.scrollTop = scrollTop;
+      }
+
+      if (scrollLeft >= 0 && scrollLeft !== this.state.scrollLeft || scrollTop >= 0 && scrollTop !== this.state.scrollTop) {
+        this.setState(newState);
+      }
+    }
+  }, {
+    key: '_updateScrollPositionForScrollToCell',
+    value: function _updateScrollPositionForScrollToCell() {
+      var _props6 = this.props;
+      var cellLayoutManager = _props6.cellLayoutManager;
+      var height = _props6.height;
+      var scrollToAlignment = _props6.scrollToAlignment;
+      var scrollToCell = _props6.scrollToCell;
+      var width = _props6.width;
+      var _state3 = this.state;
+      var scrollLeft = _state3.scrollLeft;
+      var scrollTop = _state3.scrollTop;
+
+
+      if (scrollToCell >= 0) {
+        var scrollPosition = cellLayoutManager.getScrollPositionForCell({
+          align: scrollToAlignment,
+          cellIndex: scrollToCell,
+          height: height,
+          scrollLeft: scrollLeft,
+          scrollTop: scrollTop,
+          width: width
+        });
+
+        if (scrollPosition.scrollLeft !== scrollLeft || scrollPosition.scrollTop !== scrollTop) {
+          this._setScrollPosition(scrollPosition);
+        }
+      }
+    }
+  }, {
+    key: '_onScroll',
+    value: function _onScroll(event) {
+      // In certain edge-cases React dispatches an onScroll event with an invalid target.scrollLeft / target.scrollTop.
+      // This invalid event can be detected by comparing event.target to this component's scrollable DOM element.
+      // See issue #404 for more information.
+      if (event.target !== this.refs.scrollingContainer) {
+        return;
+      }
+
+      // Prevent pointer events from interrupting a smooth scroll
+      this._enablePointerEventsAfterDelay();
+
+      // When this component is shrunk drastically, React dispatches a series of back-to-back scroll events,
+      // Gradually converging on a scrollTop that is within the bounds of the new, smaller height.
+      // This causes a series of rapid renders that is slow for long lists.
+      // We can avoid that by doing some simple bounds checking to ensure that scrollTop never exceeds the total height.
+      var _props7 = this.props;
+      var cellLayoutManager = _props7.cellLayoutManager;
+      var height = _props7.height;
+      var width = _props7.width;
+
+      var scrollbarSize = this._scrollbarSize;
+
+      var _cellLayoutManager$ge3 = cellLayoutManager.getTotalSize();
+
+      var totalHeight = _cellLayoutManager$ge3.height;
+      var totalWidth = _cellLayoutManager$ge3.width;
+
+      var scrollLeft = Math.max(0, Math.min(totalWidth - width + scrollbarSize, event.target.scrollLeft));
+      var scrollTop = Math.max(0, Math.min(totalHeight - height + scrollbarSize, event.target.scrollTop));
+
+      // Certain devices (like Apple touchpad) rapid-fire duplicate events.
+      // Don't force a re-render if this is the case.
+      // The mouse may move faster then the animation frame does.
+      // Use requestAnimationFrame to avoid over-updating.
+      if (this.state.scrollLeft !== scrollLeft || this.state.scrollTop !== scrollTop) {
+        // Browsers with cancelable scroll events (eg. Firefox) interrupt scrolling animations if scrollTop/scrollLeft is set.
+        // Other browsers (eg. Safari) don't scroll as well without the help under certain conditions (DOM or style changes during scrolling).
+        // All things considered, this seems to be the best current work around that I'm aware of.
+        // For more information see https://github.com/bvaughn/react-virtualized/pull/124
+        var scrollPositionChangeReason = event.cancelable ? SCROLL_POSITION_CHANGE_REASONS.OBSERVED : SCROLL_POSITION_CHANGE_REASONS.REQUESTED;
+
+        // Synchronously set :isScrolling the first time (since _setNextState will reschedule its animation frame each time it's called)
+        if (!this.state.isScrolling) {
+          this.setState({
+            isScrolling: true
+          });
+        }
+
+        this._setNextState({
+          isScrolling: true,
+          scrollLeft: scrollLeft,
+          scrollPositionChangeReason: scrollPositionChangeReason,
+          scrollTop: scrollTop
+        });
+      }
+
+      this._invokeOnScrollMemoizer({
+        scrollLeft: scrollLeft,
+        scrollTop: scrollTop,
+        totalWidth: totalWidth,
+        totalHeight: totalHeight
+      });
+    }
+  }]);
+
+  return CollectionView;
+}(_react.Component);
+
+CollectionView.propTypes = {
+  'aria-label': _react.PropTypes.string,
+
+  /**
+   * Number of cells in collection.
+   */
+  cellCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Calculates cell sizes and positions and manages rendering the appropriate cells given a specified window.
+   */
+  cellLayoutManager: _react.PropTypes.object.isRequired,
+
+  /**
+   * Optional custom CSS class name to attach to root Collection element.
+   */
+  className: _react.PropTypes.string,
+
+  /**
+   * Height of Collection; this property determines the number of visible (vs virtualized) rows.
+   */
+  height: _react.PropTypes.number.isRequired,
+
+  /**
+   * Optional renderer to be used in place of rows when either :rowCount or :cellCount is 0.
+   */
+  noContentRenderer: _react.PropTypes.func.isRequired,
+
+  /**
+   * Callback invoked whenever the scroll offset changes within the inner scrollable region.
+   * This callback can be used to sync scrolling between lists, tables, or grids.
+   * ({ clientHeight, clientWidth, scrollHeight, scrollLeft, scrollTop, scrollWidth }): void
+   */
+  onScroll: _react.PropTypes.func.isRequired,
+
+  /**
+   * Callback invoked with information about the section of the Collection that was just rendered.
+   * This callback is passed a named :indices parameter which is an Array of the most recently rendered section indices.
+   */
+  onSectionRendered: _react.PropTypes.func.isRequired,
+
+  /**
+   * Horizontal offset.
+   */
+  scrollLeft: _react.PropTypes.number,
+
+  /**
+   * Controls scroll-to-cell behavior of the Grid.
+   * The default ("auto") scrolls the least amount possible to ensure that the specified cell is fully visible.
+   * Use "start" to align cells to the top/left of the Grid and "end" to align bottom/right.
+   */
+  scrollToAlignment: _react.PropTypes.oneOf(['auto', 'end', 'start', 'center']).isRequired,
+
+  /**
+   * Cell index to ensure visible (by forcefully scrolling if necessary).
+   */
+  scrollToCell: _react.PropTypes.number,
+
+  /**
+   * Vertical offset.
+   */
+  scrollTop: _react.PropTypes.number,
+
+  /**
+   * Optional custom inline style to attach to root Collection element.
+   */
+  style: _react.PropTypes.object,
+
+  /**
+   * Width of Collection; this property determines the number of visible (vs virtualized) columns.
+   */
+  width: _react.PropTypes.number.isRequired
+};
+CollectionView.defaultProps = {
+  'aria-label': 'grid',
+  noContentRenderer: function noContentRenderer() {
+    return null;
+  },
+  onScroll: function onScroll() {
+    return null;
+  },
+  onSectionRendered: function onSectionRendered() {
+    return null;
+  },
+  scrollToAlignment: 'auto',
+  style: {}
+};
+exports.default = CollectionView;
+},{"../utils/createCallbackMemoizer":691,"classnames":11,"dom-helpers/util/scrollbarSize":19,"raf":577,"react":840,"react-addons-shallow-compare":579}],662:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/**
+ * A section of the Window.
+ * Window Sections are used to group nearby cells.
+ * This enables us to more quickly determine which cells to display in a given region of the Window.
+ * Sections have a fixed size and contain 0 to many cells (tracked by their indices).
+ */
+
+var Section = function () {
+  function Section(_ref) {
+    var height = _ref.height;
+    var width = _ref.width;
+    var x = _ref.x;
+    var y = _ref.y;
+
+    _classCallCheck(this, Section);
+
+    this.height = height;
+    this.width = width;
+    this.x = x;
+    this.y = y;
+
+    this._indexMap = {};
+    this._indices = [];
+  }
+
+  /** Add a cell to this section. */
+
+
+  _createClass(Section, [{
+    key: 'addCellIndex',
+    value: function addCellIndex(_ref2) {
+      var index = _ref2.index;
+
+      if (!this._indexMap[index]) {
+        this._indexMap[index] = true;
+        this._indices.push(index);
+      }
+    }
+
+    /** Get all cell indices that have been added to this section. */
+
+  }, {
+    key: 'getCellIndices',
+    value: function getCellIndices() {
+      return this._indices;
+    }
+
+    /** Intended for debugger/test purposes only */
+
+  }, {
+    key: 'toString',
+    value: function toString() {
+      return this.x + ',' + this.y + ' ' + this.width + 'x' + this.height;
+    }
+  }]);
+
+  return Section;
+}(); /** @rlow */
+
+
+exports.default = Section;
+},{}],663:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /**
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * Window Sections are used to group nearby cells.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * This enables us to more quickly determine which cells to display in a given region of the Window.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      * 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      */
+
+
+var _Section = require('./Section');
+
+var _Section2 = _interopRequireDefault(_Section);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var SECTION_SIZE = 100;
+
+/**
+ * Contains 0 to many Sections.
+ * Grows (and adds Sections) dynamically as cells are registered.
+ * Automatically adds cells to the appropriate Section(s).
+ */
+
+var SectionManager = function () {
+  function SectionManager() {
+    var sectionSize = arguments.length <= 0 || arguments[0] === undefined ? SECTION_SIZE : arguments[0];
+
+    _classCallCheck(this, SectionManager);
+
+    this._sectionSize = sectionSize;
+
+    this._cellMetadata = [];
+    this._sections = {};
+  }
+
+  /**
+   * Gets all cell indices contained in the specified region.
+   * A region may encompass 1 or more Sections.
+   */
+
+
+  _createClass(SectionManager, [{
+    key: 'getCellIndices',
+    value: function getCellIndices(_ref) {
+      var height = _ref.height;
+      var width = _ref.width;
+      var x = _ref.x;
+      var y = _ref.y;
+
+      var indices = {};
+
+      this.getSections({ height: height, width: width, x: x, y: y }).forEach(function (section) {
+        return section.getCellIndices().forEach(function (index) {
+          indices[index] = index;
+        });
+      });
+
+      // Object keys are strings; this function returns numbers
+      return Object.keys(indices).map(function (index) {
+        return indices[index];
+      });
+    }
+
+    /** Get size and position information for the cell specified. */
+
+  }, {
+    key: 'getCellMetadata',
+    value: function getCellMetadata(_ref2) {
+      var index = _ref2.index;
+
+      return this._cellMetadata[index];
+    }
+
+    /** Get all Sections overlapping the specified region. */
+
+  }, {
+    key: 'getSections',
+    value: function getSections(_ref3) {
+      var height = _ref3.height;
+      var width = _ref3.width;
+      var x = _ref3.x;
+      var y = _ref3.y;
+
+      var sectionXStart = Math.floor(x / this._sectionSize);
+      var sectionXStop = Math.floor((x + width - 1) / this._sectionSize);
+      var sectionYStart = Math.floor(y / this._sectionSize);
+      var sectionYStop = Math.floor((y + height - 1) / this._sectionSize);
+
+      var sections = [];
+
+      for (var sectionX = sectionXStart; sectionX <= sectionXStop; sectionX++) {
+        for (var sectionY = sectionYStart; sectionY <= sectionYStop; sectionY++) {
+          var key = sectionX + '.' + sectionY;
+
+          if (!this._sections[key]) {
+            this._sections[key] = new _Section2.default({
+              height: this._sectionSize,
+              width: this._sectionSize,
+              x: sectionX * this._sectionSize,
+              y: sectionY * this._sectionSize
+            });
+          }
+
+          sections.push(this._sections[key]);
+        }
+      }
+
+      return sections;
+    }
+
+    /** Total number of Sections based on the currently registered cells. */
+
+  }, {
+    key: 'getTotalSectionCount',
+    value: function getTotalSectionCount() {
+      return Object.keys(this._sections).length;
+    }
+
+    /** Intended for debugger/test purposes only */
+
+  }, {
+    key: 'toString',
+    value: function toString() {
+      var _this = this;
+
+      return Object.keys(this._sections).map(function (index) {
+        return _this._sections[index].toString();
+      });
+    }
+
+    /** Adds a cell to the appropriate Sections and registers it metadata for later retrievable. */
+
+  }, {
+    key: 'registerCell',
+    value: function registerCell(_ref4) {
+      var cellMetadatum = _ref4.cellMetadatum;
+      var index = _ref4.index;
+
+      this._cellMetadata[index] = cellMetadatum;
+
+      this.getSections(cellMetadatum).forEach(function (section) {
+        return section.addCellIndex({ index: index });
+      });
+    }
+  }]);
+
+  return SectionManager;
+}();
+
+exports.default = SectionManager;
+},{"./Section":662}],664:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.Collection = exports.default = undefined;
+
+var _Collection2 = require('./Collection');
+
+var _Collection3 = _interopRequireDefault(_Collection2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _Collection3.default;
+exports.Collection = _Collection3.default;
+},{"./Collection":660}],665:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = calculateSizeAndPositionData;
+
+var _SectionManager = require('../SectionManager');
+
+var _SectionManager2 = _interopRequireDefault(_SectionManager);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function calculateSizeAndPositionData(_ref) {
+  var cellCount = _ref.cellCount;
+  var cellSizeAndPositionGetter = _ref.cellSizeAndPositionGetter;
+  var sectionSize = _ref.sectionSize;
+
+  var cellMetadata = [];
+  var sectionManager = new _SectionManager2.default(sectionSize);
+  var height = 0;
+  var width = 0;
+
+  for (var index = 0; index < cellCount; index++) {
+    var cellMetadatum = cellSizeAndPositionGetter({ index: index });
+
+    if (cellMetadatum.height == null || isNaN(cellMetadatum.height) || cellMetadatum.width == null || isNaN(cellMetadatum.width) || cellMetadatum.x == null || isNaN(cellMetadatum.x) || cellMetadatum.y == null || isNaN(cellMetadatum.y)) {
+      throw Error('Invalid metadata returned for cell ' + index + ':\n        x:' + cellMetadatum.x + ', y:' + cellMetadatum.y + ', width:' + cellMetadatum.width + ', height:' + cellMetadatum.height);
+    }
+
+    height = Math.max(height, cellMetadatum.y + cellMetadatum.height);
+    width = Math.max(width, cellMetadatum.x + cellMetadatum.width);
+
+    cellMetadata[index] = cellMetadatum;
+    sectionManager.registerCell({
+      cellMetadatum: cellMetadatum,
+      index: index
+    });
+  }
+
+  return {
+    cellMetadata: cellMetadata,
+    height: height,
+    sectionManager: sectionManager,
+    width: width
+  };
+}
+},{"../SectionManager":663}],666:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+var _Grid = require('../Grid');
+
+var _Grid2 = _interopRequireDefault(_Grid);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * High-order component that auto-calculates column-widths for `Grid` cells.
+ */
+
+var ColumnSizer = function (_Component) {
+  _inherits(ColumnSizer, _Component);
+
+  function ColumnSizer(props, context) {
+    _classCallCheck(this, ColumnSizer);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(ColumnSizer).call(this, props, context));
+
+    _this._registerChild = _this._registerChild.bind(_this);
+    return _this;
+  }
+
+  _createClass(ColumnSizer, [{
+    key: 'componentDidUpdate',
+    value: function componentDidUpdate(prevProps, prevState) {
+      var _props = this.props;
+      var columnMaxWidth = _props.columnMaxWidth;
+      var columnMinWidth = _props.columnMinWidth;
+      var columnCount = _props.columnCount;
+      var width = _props.width;
+
+
+      if (columnMaxWidth !== prevProps.columnMaxWidth || columnMinWidth !== prevProps.columnMinWidth || columnCount !== prevProps.columnCount || width !== prevProps.width) {
+        if (this._registeredChild) {
+          this._registeredChild.recomputeGridSize();
+        }
+      }
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _props2 = this.props;
+      var children = _props2.children;
+      var columnMaxWidth = _props2.columnMaxWidth;
+      var columnMinWidth = _props2.columnMinWidth;
+      var columnCount = _props2.columnCount;
+      var width = _props2.width;
+
+
+      var safeColumnMinWidth = columnMinWidth || 1;
+
+      var safeColumnMaxWidth = columnMaxWidth ? Math.min(columnMaxWidth, width) : width;
+
+      var columnWidth = width / columnCount;
+      columnWidth = Math.max(safeColumnMinWidth, columnWidth);
+      columnWidth = Math.min(safeColumnMaxWidth, columnWidth);
+      columnWidth = Math.floor(columnWidth);
+
+      var adjustedWidth = Math.min(width, columnWidth * columnCount);
+
+      return children({
+        adjustedWidth: adjustedWidth,
+        getColumnWidth: function getColumnWidth() {
+          return columnWidth;
+        },
+        registerChild: this._registerChild
+      });
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+  }, {
+    key: '_registerChild',
+    value: function _registerChild(child) {
+      if (child !== null && !(child instanceof _Grid2.default)) {
+        throw Error('Unexpected child type registered; only Grid children are supported.');
+      }
+
+      this._registeredChild = child;
+
+      if (this._registeredChild) {
+        this._registeredChild.recomputeGridSize();
+      }
+    }
+  }]);
+
+  return ColumnSizer;
+}(_react.Component);
+
+ColumnSizer.propTypes = {
+  /**
+   * Function respondible for rendering a virtualized Grid.
+   * This function should implement the following signature:
+   * ({ adjustedWidth, getColumnWidth, registerChild }) => PropTypes.element
+   *
+   * The specified :getColumnWidth function should be passed to the Grid's :columnWidth property.
+   * The :registerChild should be passed to the Grid's :ref property.
+   * The :adjustedWidth property is optional; it reflects the lesser of the overall width or the width of all columns.
+   */
+  children: _react.PropTypes.func.isRequired,
+
+  /** Optional maximum allowed column width */
+  columnMaxWidth: _react.PropTypes.number,
+
+  /** Optional minimum allowed column width */
+  columnMinWidth: _react.PropTypes.number,
+
+  /** Number of columns in Grid or FlexTable child */
+  columnCount: _react.PropTypes.number.isRequired,
+
+  /** Width of Grid or FlexTable child */
+  width: _react.PropTypes.number.isRequired
+};
+exports.default = ColumnSizer;
+},{"../Grid":678,"react":840,"react-addons-shallow-compare":579}],667:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ColumnSizer = exports.default = undefined;
+
+var _ColumnSizer2 = require('./ColumnSizer');
+
+var _ColumnSizer3 = _interopRequireDefault(_ColumnSizer2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _ColumnSizer3.default;
+exports.ColumnSizer = _ColumnSizer3.default;
+},{"./ColumnSizer":666}],668:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _react = require('react');
+
+var _defaultHeaderRenderer = require('./defaultHeaderRenderer');
+
+var _defaultHeaderRenderer2 = _interopRequireDefault(_defaultHeaderRenderer);
+
+var _defaultCellRenderer = require('./defaultCellRenderer');
+
+var _defaultCellRenderer2 = _interopRequireDefault(_defaultCellRenderer);
+
+var _defaultCellDataGetter = require('./defaultCellDataGetter');
+
+var _defaultCellDataGetter2 = _interopRequireDefault(_defaultCellDataGetter);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * Describes the header and cell contents of a table column.
+ */
+
+var Column = function (_Component) {
+  _inherits(Column, _Component);
+
+  function Column() {
+    _classCallCheck(this, Column);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(Column).apply(this, arguments));
+  }
+
+  return Column;
+}(_react.Component);
+
+Column.defaultProps = {
+  cellDataGetter: _defaultCellDataGetter2.default,
+  cellRenderer: _defaultCellRenderer2.default,
+  cellStyle: {},
+  flexGrow: 0,
+  flexShrink: 1,
+  headerRenderer: _defaultHeaderRenderer2.default
+};
+Column.propTypes = {
+  /** Optional aria-label value to set on the column header */
+  'aria-label': _react.PropTypes.string,
+
+  /**
+   * Callback responsible for returning a cell's data, given its :dataKey
+   * ({ columnData: any, dataKey: string, rowData: any }): any
+   */
+  cellDataGetter: _react.PropTypes.func,
+
+  /**
+   * Callback responsible for rendering a cell's contents.
+   * ({ cellData: any, columnData: any, dataKey: string, rowData: any, rowIndex: number }): node
+   */
+  cellRenderer: _react.PropTypes.func,
+
+  /** Optional CSS class to apply to cell */
+  className: _react.PropTypes.string,
+
+  /** Optional additional data passed to this column's :cellDataGetter */
+  columnData: _react.PropTypes.object,
+
+  /** Uniquely identifies the row-data attribute correspnding to this cell */
+  dataKey: _react.PropTypes.any.isRequired,
+
+  /** If sort is enabled for the table at large, disable it for this column */
+  disableSort: _react.PropTypes.bool,
+
+  /** Flex grow style; defaults to 0 */
+  flexGrow: _react.PropTypes.number,
+
+  /** Flex shrink style; defaults to 1 */
+  flexShrink: _react.PropTypes.number,
+
+  /** Optional CSS class to apply to this column's header */
+  headerClassName: _react.PropTypes.string,
+
+  /**
+   * Optional callback responsible for rendering a column header contents.
+   * ({ columnData: object, dataKey: string, disableSort: boolean, label: string, sortBy: string, sortDirection: string }): PropTypes.node
+   */
+  headerRenderer: _react.PropTypes.func.isRequired,
+
+  /** Header label for this column */
+  label: _react.PropTypes.string,
+
+  /** Maximum width of column; this property will only be used if :flexGrow is > 0. */
+  maxWidth: _react.PropTypes.number,
+
+  /** Minimum width of column. */
+  minWidth: _react.PropTypes.number,
+
+  /** Optional inline style to apply to cell */
+  style: _react.PropTypes.object,
+
+  /** Flex basis (width) for this column; This value can grow or shrink based on :flexGrow and :flexShrink properties. */
+  width: _react.PropTypes.number.isRequired
+};
+exports.default = Column;
+},{"./defaultCellDataGetter":672,"./defaultCellRenderer":673,"./defaultHeaderRenderer":674,"react":840}],669:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _classnames = require('classnames');
+
+var _classnames2 = _interopRequireDefault(_classnames);
+
+var _FlexColumn = require('./FlexColumn');
+
+var _FlexColumn2 = _interopRequireDefault(_FlexColumn);
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactDom = require('react-dom');
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+var _Grid = require('../Grid');
+
+var _Grid2 = _interopRequireDefault(_Grid);
+
+var _SortDirection = require('./SortDirection');
+
+var _SortDirection2 = _interopRequireDefault(_SortDirection);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * Table component with fixed headers and virtualized rows for improved performance with large data sets.
+ * This component expects explicit width, height, and padding parameters.
+ */
+
+var FlexTable = function (_Component) {
+  _inherits(FlexTable, _Component);
+
+  function FlexTable(props) {
+    _classCallCheck(this, FlexTable);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(FlexTable).call(this, props));
+
+    _this.state = {
+      scrollbarWidth: 0
+    };
+
+    _this._createRow = _this._createRow.bind(_this);
+    return _this;
+  }
+
+  /** See Grid#measureAllCells */
+
+
+  _createClass(FlexTable, [{
+    key: 'measureAllRows',
+    value: function measureAllRows() {
+      this.refs.Grid.measureAllCells();
+    }
+
+    /** See Grid#recomputeGridSize */
+
+  }, {
+    key: 'recomputeRowHeights',
+    value: function recomputeRowHeights() {
+      this.refs.Grid.recomputeGridSize();
+    }
+  }, {
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      this._setScrollbarWidth();
+    }
+  }, {
+    key: 'componentDidUpdate',
+    value: function componentDidUpdate() {
+      this._setScrollbarWidth();
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _this2 = this;
+
+      var _props = this.props;
+      var className = _props.className;
+      var disableHeader = _props.disableHeader;
+      var estimatedRowSize = _props.estimatedRowSize;
+      var headerHeight = _props.headerHeight;
+      var height = _props.height;
+      var noRowsRenderer = _props.noRowsRenderer;
+      var onRowsRendered = _props.onRowsRendered;
+      var _onScroll = _props.onScroll;
+      var overscanRowCount = _props.overscanRowCount;
+      var rowClassName = _props.rowClassName;
+      var rowHeight = _props.rowHeight;
+      var rowCount = _props.rowCount;
+      var rowStyle = _props.rowStyle;
+      var scrollToAlignment = _props.scrollToAlignment;
+      var scrollToIndex = _props.scrollToIndex;
+      var scrollTop = _props.scrollTop;
+      var style = _props.style;
+      var width = _props.width;
+      var scrollbarWidth = this.state.scrollbarWidth;
+
+
+      var availableRowsHeight = height - headerHeight;
+
+      // This row-renderer wrapper function is necessary in order to trigger re-render when the
+      // sort-by or sort-direction have changed (else Grid will not see any props changes)
+      var rowRenderer = function rowRenderer(_ref) {
+        var index = _ref.index;
+        var isScrolling = _ref.isScrolling;
+
+        return _this2._createRow({
+          index: index,
+          isScrolling: isScrolling
+        });
+      };
+
+      var rowClass = rowClassName instanceof Function ? rowClassName({ index: -1 }) : rowClassName;
+
+      return _react2.default.createElement(
+        'div',
+        {
+          className: (0, _classnames2.default)('FlexTable', className),
+          style: style
+        },
+        !disableHeader && _react2.default.createElement(
+          'div',
+          {
+            className: (0, _classnames2.default)('FlexTable__headerRow', rowClass),
+            style: _extends({}, rowStyle, {
+              height: headerHeight,
+              paddingRight: scrollbarWidth,
+              width: width
+            })
+          },
+          this._getRenderedHeaderRow()
+        ),
+        _react2.default.createElement(_Grid2.default, {
+          'aria-label': this.props['aria-label'],
+          className: 'FlexTable__Grid',
+          cellRenderer: function cellRenderer(_ref2) {
+            var columnIndex = _ref2.columnIndex;
+            var isScrolling = _ref2.isScrolling;
+            var rowIndex = _ref2.rowIndex;
+            return rowRenderer({
+              index: rowIndex,
+              isScrolling: isScrolling
+            });
+          },
+          columnWidth: width,
+          columnCount: 1,
+          estimatedRowSize: estimatedRowSize,
+          height: availableRowsHeight,
+          noContentRenderer: noRowsRenderer,
+          onScroll: function onScroll(_ref3) {
+            var clientHeight = _ref3.clientHeight;
+            var scrollHeight = _ref3.scrollHeight;
+            var scrollTop = _ref3.scrollTop;
+            return _onScroll({ clientHeight: clientHeight, scrollHeight: scrollHeight, scrollTop: scrollTop });
+          },
+          onSectionRendered: function onSectionRendered(_ref4) {
+            var rowOverscanStartIndex = _ref4.rowOverscanStartIndex;
+            var rowOverscanStopIndex = _ref4.rowOverscanStopIndex;
+            var rowStartIndex = _ref4.rowStartIndex;
+            var rowStopIndex = _ref4.rowStopIndex;
+            return onRowsRendered({
+              overscanStartIndex: rowOverscanStartIndex,
+              overscanStopIndex: rowOverscanStopIndex,
+              startIndex: rowStartIndex,
+              stopIndex: rowStopIndex
+            });
+          },
+          overscanRowCount: overscanRowCount,
+          ref: 'Grid',
+          rowHeight: rowHeight,
+          rowCount: rowCount,
+          scrollToAlignment: scrollToAlignment,
+          scrollToRow: scrollToIndex,
+          scrollTop: scrollTop,
+          width: width
+        })
+      );
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+  }, {
+    key: '_createColumn',
+    value: function _createColumn(_ref5) {
+      var column = _ref5.column;
+      var columnIndex = _ref5.columnIndex;
+      var isScrolling = _ref5.isScrolling;
+      var rowData = _ref5.rowData;
+      var rowIndex = _ref5.rowIndex;
+      var _column$props = column.props;
+      var cellDataGetter = _column$props.cellDataGetter;
+      var cellRenderer = _column$props.cellRenderer;
+      var className = _column$props.className;
+      var columnData = _column$props.columnData;
+      var dataKey = _column$props.dataKey;
+      var cellStyle = _column$props.style;
+
+
+      var cellData = cellDataGetter({ columnData: columnData, dataKey: dataKey, rowData: rowData });
+      var renderedCell = cellRenderer({ cellData: cellData, columnData: columnData, dataKey: dataKey, isScrolling: isScrolling, rowData: rowData, rowIndex: rowIndex });
+
+      var style = this._getFlexStyleForColumn(column, cellStyle);
+
+      var title = typeof renderedCell === 'string' ? renderedCell : null;
+
+      return _react2.default.createElement(
+        'div',
+        {
+          key: 'Row' + rowIndex + '-Col' + columnIndex,
+          className: (0, _classnames2.default)('FlexTable__rowColumn', className),
+          style: style
+        },
+        _react2.default.createElement(
+          'div',
+          {
+            className: 'FlexTable__truncatedColumnText',
+            title: title
+          },
+          renderedCell
+        )
+      );
+    }
+  }, {
+    key: '_createHeader',
+    value: function _createHeader(column, columnIndex) {
+      var _props2 = this.props;
+      var headerClassName = _props2.headerClassName;
+      var headerStyle = _props2.headerStyle;
+      var onHeaderClick = _props2.onHeaderClick;
+      var sort = _props2.sort;
+      var sortBy = _props2.sortBy;
+      var sortDirection = _props2.sortDirection;
+      var _column$props2 = column.props;
+      var dataKey = _column$props2.dataKey;
+      var disableSort = _column$props2.disableSort;
+      var headerRenderer = _column$props2.headerRenderer;
+      var label = _column$props2.label;
+      var columnData = _column$props2.columnData;
+
+      var sortEnabled = !disableSort && sort;
+
+      var classNames = (0, _classnames2.default)('FlexTable__headerColumn', headerClassName, column.props.headerClassName, {
+        'FlexTable__sortableHeaderColumn': sortEnabled
+      });
+      var style = this._getFlexStyleForColumn(column, headerStyle);
+
+      var renderedHeader = headerRenderer({
+        columnData: columnData,
+        dataKey: dataKey,
+        disableSort: disableSort,
+        label: label,
+        sortBy: sortBy,
+        sortDirection: sortDirection
+      });
+
+      var a11yProps = {};
+
+      if (sortEnabled || onHeaderClick) {
+        (function () {
+          // If this is a sortable header, clicking it should update the table data's sorting.
+          var newSortDirection = sortBy !== dataKey || sortDirection === _SortDirection2.default.DESC ? _SortDirection2.default.ASC : _SortDirection2.default.DESC;
+
+          var onClick = function onClick() {
+            sortEnabled && sort({
+              sortBy: dataKey,
+              sortDirection: newSortDirection
+            });
+            onHeaderClick && onHeaderClick({ columnData: columnData, dataKey: dataKey });
+          };
+
+          var onKeyDown = function onKeyDown(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+              onClick();
+            }
+          };
+
+          a11yProps['aria-label'] = column.props['aria-label'] || label || dataKey;
+          a11yProps.role = 'rowheader';
+          a11yProps.tabIndex = 0;
+          a11yProps.onClick = onClick;
+          a11yProps.onKeyDown = onKeyDown;
+        })();
+      }
+
+      return _react2.default.createElement(
+        'div',
+        _extends({}, a11yProps, {
+          key: 'Header-Col' + columnIndex,
+          className: classNames,
+          style: style
+        }),
+        renderedHeader
+      );
+    }
+  }, {
+    key: '_createRow',
+    value: function _createRow(_ref6) {
+      var _this3 = this;
+
+      var index = _ref6.index;
+      var isScrolling = _ref6.isScrolling;
+      var _props3 = this.props;
+      var children = _props3.children;
+      var onRowClick = _props3.onRowClick;
+      var rowClassName = _props3.rowClassName;
+      var rowGetter = _props3.rowGetter;
+      var rowStyle = _props3.rowStyle;
+      var scrollbarWidth = this.state.scrollbarWidth;
+
+
+      var rowClass = rowClassName instanceof Function ? rowClassName({ index: index }) : rowClassName;
+      var rowData = rowGetter({ index: index });
+
+      var renderedRow = _react2.default.Children.toArray(children).map(function (column, columnIndex) {
+        return _this3._createColumn({
+          column: column,
+          columnIndex: columnIndex,
+          isScrolling: isScrolling,
+          rowData: rowData,
+          rowIndex: index
+        });
+      });
+
+      var a11yProps = {};
+
+      if (onRowClick) {
+        a11yProps['aria-label'] = 'row';
+        a11yProps.role = 'row';
+        a11yProps.tabIndex = 0;
+        a11yProps.onClick = function () {
+          return onRowClick({ index: index });
+        };
+      }
+
+      return _react2.default.createElement(
+        'div',
+        _extends({}, a11yProps, {
+          key: index,
+          className: (0, _classnames2.default)('FlexTable__row', rowClass),
+          style: _extends({}, rowStyle, {
+            height: this._getRowHeight(index),
+            paddingRight: scrollbarWidth
+          })
+        }),
+        renderedRow
+      );
+    }
+
+    /**
+     * Determines the flex-shrink, flex-grow, and width values for a cell (header or column).
+     */
+
+  }, {
+    key: '_getFlexStyleForColumn',
+    value: function _getFlexStyleForColumn(column) {
+      var customStyle = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+      var flexValue = column.props.flexGrow + ' ' + column.props.flexShrink + ' ' + column.props.width + 'px';
+
+      var style = _extends({}, customStyle, {
+        flex: flexValue,
+        msFlex: flexValue,
+        WebkitFlex: flexValue
+      });
+
+      if (column.props.maxWidth) {
+        style.maxWidth = column.props.maxWidth;
+      }
+
+      if (column.props.minWidth) {
+        style.minWidth = column.props.minWidth;
+      }
+
+      return style;
+    }
+  }, {
+    key: '_getRenderedHeaderRow',
+    value: function _getRenderedHeaderRow() {
+      var _this4 = this;
+
+      var _props4 = this.props;
+      var children = _props4.children;
+      var disableHeader = _props4.disableHeader;
+
+      var items = disableHeader ? [] : _react2.default.Children.toArray(children);
+
+      return items.map(function (column, index) {
+        return _this4._createHeader(column, index);
+      });
+    }
+  }, {
+    key: '_getRowHeight',
+    value: function _getRowHeight(rowIndex) {
+      var rowHeight = this.props.rowHeight;
+
+
+      return rowHeight instanceof Function ? rowHeight({ index: rowIndex }) : rowHeight;
+    }
+  }, {
+    key: '_setScrollbarWidth',
+    value: function _setScrollbarWidth() {
+      var Grid = (0, _reactDom.findDOMNode)(this.refs.Grid);
+      var clientWidth = Grid.clientWidth || 0;
+      var offsetWidth = Grid.offsetWidth || 0;
+      var scrollbarWidth = offsetWidth - clientWidth;
+
+      this.setState({ scrollbarWidth: scrollbarWidth });
+    }
+  }]);
+
+  return FlexTable;
+}(_react.Component);
+
+FlexTable.propTypes = {
+  'aria-label': _react.PropTypes.string,
+
+  /** One or more FlexColumns describing the data displayed in this row */
+  children: function children(props, propName, componentName) {
+    var children = _react2.default.Children.toArray(props.children);
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].type !== _FlexColumn2.default) {
+        return new Error('FlexTable only accepts children of type FlexColumn');
+      }
+    }
+  },
+
+  /** Optional CSS class name */
+  className: _react.PropTypes.string,
+
+  /** Disable rendering the header at all */
+  disableHeader: _react.PropTypes.bool,
+
+  /**
+   * Used to estimate the total height of a FlexTable before all of its rows have actually been measured.
+   * The estimated total height is adjusted as rows are rendered.
+   */
+  estimatedRowSize: _react.PropTypes.number.isRequired,
+
+  /** Optional CSS class to apply to all column headers */
+  headerClassName: _react.PropTypes.string,
+
+  /** Fixed height of header row */
+  headerHeight: _react.PropTypes.number.isRequired,
+
+  /** Fixed/available height for out DOM element */
+  height: _react.PropTypes.number.isRequired,
+
+  /** Optional renderer to be used in place of table body rows when rowCount is 0 */
+  noRowsRenderer: _react.PropTypes.func,
+
+  /**
+  * Optional callback when a column's header is clicked.
+  * ({ columnData: any, dataKey: string }): void
+  */
+  onHeaderClick: _react.PropTypes.func,
+
+  /** Optional custom inline style to attach to table header columns. */
+  headerStyle: _react.PropTypes.object,
+
+  /**
+   * Callback invoked when a user clicks on a table row.
+   * ({ index: number }): void
+   */
+  onRowClick: _react.PropTypes.func,
+
+  /**
+   * Callback invoked with information about the slice of rows that were just rendered.
+   * ({ startIndex, stopIndex }): void
+   */
+  onRowsRendered: _react.PropTypes.func,
+
+  /**
+   * Callback invoked whenever the scroll offset changes within the inner scrollable region.
+   * This callback can be used to sync scrolling between lists, tables, or grids.
+   * ({ clientHeight, scrollHeight, scrollTop }): void
+   */
+  onScroll: _react.PropTypes.func.isRequired,
+
+  /**
+   * Number of rows to render above/below the visible bounds of the list.
+   * These rows can help for smoother scrolling on touch devices.
+   */
+  overscanRowCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Optional CSS class to apply to all table rows (including the header row).
+   * This property can be a CSS class name (string) or a function that returns a class name.
+   * If a function is provided its signature should be: ({ index: number }): string
+   */
+  rowClassName: _react.PropTypes.oneOfType([_react.PropTypes.string, _react.PropTypes.func]),
+
+  /**
+   * Callback responsible for returning a data row given an index.
+   * ({ index: number }): any
+   */
+  rowGetter: _react.PropTypes.func.isRequired,
+
+  /**
+   * Either a fixed row height (number) or a function that returns the height of a row given its index.
+   * ({ index: number }): number
+   */
+  rowHeight: _react.PropTypes.oneOfType([_react.PropTypes.number, _react.PropTypes.func]).isRequired,
+
+  /** Number of rows in table. */
+  rowCount: _react.PropTypes.number.isRequired,
+
+  /** Optional custom inline style to attach to table rows. */
+  rowStyle: _react.PropTypes.object,
+
+  /** See Grid#scrollToAlignment */
+  scrollToAlignment: _react.PropTypes.oneOf(['auto', 'end', 'start', 'center']).isRequired,
+
+  /** Row index to ensure visible (by forcefully scrolling if necessary) */
+  scrollToIndex: _react.PropTypes.number,
+
+  /** Vertical offset. */
+  scrollTop: _react.PropTypes.number,
+
+  /**
+   * Sort function to be called if a sortable header is clicked.
+   * ({ sortBy: string, sortDirection: SortDirection }): void
+   */
+  sort: _react.PropTypes.func,
+
+  /** FlexTable data is currently sorted by this :dataKey (if it is sorted at all) */
+  sortBy: _react.PropTypes.string,
+
+  /** FlexTable data is currently sorted in this direction (if it is sorted at all) */
+  sortDirection: _react.PropTypes.oneOf([_SortDirection2.default.ASC, _SortDirection2.default.DESC]),
+
+  /** Optional inline style */
+  style: _react.PropTypes.object,
+
+  /** Width of list */
+  width: _react.PropTypes.number.isRequired
+};
+FlexTable.defaultProps = {
+  disableHeader: false,
+  estimatedRowSize: 30,
+  headerHeight: 0,
+  headerStyle: {},
+  noRowsRenderer: function noRowsRenderer() {
+    return null;
+  },
+  onRowsRendered: function onRowsRendered() {
+    return null;
+  },
+  onScroll: function onScroll() {
+    return null;
+  },
+  overscanRowCount: 10,
+  rowStyle: {},
+  scrollToAlignment: 'auto',
+  style: {}
+};
+exports.default = FlexTable;
+},{"../Grid":678,"./FlexColumn":668,"./SortDirection":670,"classnames":11,"react":840,"react-addons-shallow-compare":579,"react-dom":591}],670:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var SortDirection = {
+  /**
+   * Sort items in ascending order.
+   * This means arranging from the lowest value to the highest (e.g. a-z, 0-9).
+   */
+  ASC: 'ASC',
+
+  /**
+   * Sort items in descending order.
+   * This means arranging from the highest value to the lowest (e.g. z-a, 9-0).
+   */
+  DESC: 'DESC'
+};
+
+exports.default = SortDirection;
+},{}],671:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = SortIndicator;
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _classnames = require('classnames');
+
+var _classnames2 = _interopRequireDefault(_classnames);
+
+var _SortDirection = require('./SortDirection');
+
+var _SortDirection2 = _interopRequireDefault(_SortDirection);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * Displayed beside a header to indicate that a FlexTable is currently sorted by this column.
+ */
+function SortIndicator(_ref) {
+  var sortDirection = _ref.sortDirection;
+
+  var classNames = (0, _classnames2.default)('FlexTable__sortableHeaderIcon', {
+    'FlexTable__sortableHeaderIcon--ASC': sortDirection === _SortDirection2.default.ASC,
+    'FlexTable__sortableHeaderIcon--DESC': sortDirection === _SortDirection2.default.DESC
+  });
+
+  return _react2.default.createElement(
+    'svg',
+    {
+      className: classNames,
+      width: 18,
+      height: 18,
+      viewBox: '0 0 24 24',
+      xmlns: 'http://www.w3.org/2000/svg'
+    },
+    sortDirection === _SortDirection2.default.ASC ? _react2.default.createElement('path', { d: 'M7 14l5-5 5 5z' }) : _react2.default.createElement('path', { d: 'M7 10l5 5 5-5z' }),
+    _react2.default.createElement('path', { d: 'M0 0h24v24H0z', fill: 'none' })
+  );
+}
+SortIndicator.propTypes = {
+  sortDirection: _react.PropTypes.oneOf([_SortDirection2.default.ASC, _SortDirection2.default.DESC])
+};
+},{"./SortDirection":670,"classnames":11,"react":840}],672:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = defaultCellDataGetter;
+
+
+/**
+ * Default accessor for returning a cell value for a given attribute.
+ * This function expects to operate on either a vanilla Object or an Immutable Map.
+ * You should override the column's cellDataGetter if your data is some other type of object.
+ */
+function defaultCellDataGetter(_ref) {
+  var columnData = _ref.columnData;
+  var dataKey = _ref.dataKey;
+  var rowData = _ref.rowData;
+
+  if (rowData.get instanceof Function) {
+    return rowData.get(dataKey);
+  } else {
+    return rowData[dataKey];
+  }
+}
+},{}],673:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = defaultCellRenderer;
+
+
+/**
+ * Default cell renderer that displays an attribute as a simple string
+ * You should override the column's cellRenderer if your data is some other type of object.
+ */
+function defaultCellRenderer(_ref) {
+  var cellData = _ref.cellData;
+  var cellDataKey = _ref.cellDataKey;
+  var columnData = _ref.columnData;
+  var rowData = _ref.rowData;
+  var rowIndex = _ref.rowIndex;
+
+  if (cellData == null) {
+    return '';
+  } else {
+    return String(cellData);
+  }
+}
+},{}],674:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = defaultHeaderRenderer;
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _SortIndicator = require('./SortIndicator');
+
+var _SortIndicator2 = _interopRequireDefault(_SortIndicator);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * Default table header renderer.
+ */
+function defaultHeaderRenderer(_ref) {
+  var columnData = _ref.columnData;
+  var dataKey = _ref.dataKey;
+  var disableSort = _ref.disableSort;
+  var label = _ref.label;
+  var sortBy = _ref.sortBy;
+  var sortDirection = _ref.sortDirection;
+
+  var showSortIndicator = sortBy === dataKey;
+  var children = [_react2.default.createElement(
+    'div',
+    {
+      className: 'FlexTable__headerTruncatedText',
+      key: 'label',
+      title: label
+    },
+    label
+  )];
+
+  if (showSortIndicator) {
+    children.push(_react2.default.createElement(_SortIndicator2.default, {
+      key: 'SortIndicator',
+      sortDirection: sortDirection
+    }));
+  }
+
+  return children;
+}
+},{"./SortIndicator":671,"react":840}],675:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.SortIndicator = exports.SortDirection = exports.FlexColumn = exports.FlexTable = exports.default = undefined;
+
+var _FlexTable2 = require('./FlexTable');
+
+var _FlexTable3 = _interopRequireDefault(_FlexTable2);
+
+var _FlexColumn2 = require('./FlexColumn');
+
+var _FlexColumn3 = _interopRequireDefault(_FlexColumn2);
+
+var _SortDirection2 = require('./SortDirection');
+
+var _SortDirection3 = _interopRequireDefault(_SortDirection2);
+
+var _SortIndicator2 = require('./SortIndicator');
+
+var _SortIndicator3 = _interopRequireDefault(_SortIndicator2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _FlexTable3.default;
+exports.FlexTable = _FlexTable3.default;
+exports.FlexColumn = _FlexColumn3.default;
+exports.SortDirection = _SortDirection3.default;
+exports.SortIndicator = _SortIndicator3.default;
+},{"./FlexColumn":668,"./FlexTable":669,"./SortDirection":670,"./SortIndicator":671}],676:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _classnames = require('classnames');
+
+var _classnames2 = _interopRequireDefault(_classnames);
+
+var _calculateSizeAndPositionDataAndUpdateScrollOffset = require('./utils/calculateSizeAndPositionDataAndUpdateScrollOffset');
+
+var _calculateSizeAndPositionDataAndUpdateScrollOffset2 = _interopRequireDefault(_calculateSizeAndPositionDataAndUpdateScrollOffset);
+
+var _ScalingCellSizeAndPositionManager = require('./utils/ScalingCellSizeAndPositionManager');
+
+var _ScalingCellSizeAndPositionManager2 = _interopRequireDefault(_ScalingCellSizeAndPositionManager);
+
+var _createCallbackMemoizer = require('../utils/createCallbackMemoizer');
+
+var _createCallbackMemoizer2 = _interopRequireDefault(_createCallbackMemoizer);
+
+var _getOverscanIndices = require('./utils/getOverscanIndices');
+
+var _getOverscanIndices2 = _interopRequireDefault(_getOverscanIndices);
+
+var _scrollbarSize = require('dom-helpers/util/scrollbarSize');
+
+var _scrollbarSize2 = _interopRequireDefault(_scrollbarSize);
+
+var _raf = require('raf');
+
+var _raf2 = _interopRequireDefault(_raf);
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+var _updateScrollIndexHelper = require('./utils/updateScrollIndexHelper');
+
+var _updateScrollIndexHelper2 = _interopRequireDefault(_updateScrollIndexHelper);
+
+var _defaultCellRangeRenderer = require('./defaultCellRangeRenderer');
+
+var _defaultCellRangeRenderer2 = _interopRequireDefault(_defaultCellRangeRenderer);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * Specifies the number of miliseconds during which to disable pointer events while a scroll is in progress.
+ * This improves performance and makes scrolling smoother.
+ */
+var IS_SCROLLING_TIMEOUT = 150;
+
+/**
+ * Controls whether the Grid updates the DOM element's scrollLeft/scrollTop based on the current state or just observes it.
+ * This prevents Grid from interrupting mouse-wheel animations (see issue #2).
+ */
+var SCROLL_POSITION_CHANGE_REASONS = {
+  OBSERVED: 'observed',
+  REQUESTED: 'requested'
+};
+
+/**
+ * Renders tabular data with virtualization along the vertical and horizontal axes.
+ * Row heights and column widths must be known ahead of time and specified as properties.
+ */
+
+var Grid = function (_Component) {
+  _inherits(Grid, _Component);
+
+  function Grid(props, context) {
+    _classCallCheck(this, Grid);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(Grid).call(this, props, context));
+
+    _this.state = {
+      isScrolling: false,
+      scrollLeft: 0,
+      scrollTop: 0
+    };
+
+    // Invokes onSectionRendered callback only when start/stop row or column indices change
+    _this._onGridRenderedMemoizer = (0, _createCallbackMemoizer2.default)();
+    _this._onScrollMemoizer = (0, _createCallbackMemoizer2.default)(false);
+
+    // Bind functions to instance so they don't lose context when passed around
+    _this._invokeOnGridRenderedHelper = _this._invokeOnGridRenderedHelper.bind(_this);
+    _this._onScroll = _this._onScroll.bind(_this);
+    _this._updateScrollLeftForScrollToColumn = _this._updateScrollLeftForScrollToColumn.bind(_this);
+    _this._updateScrollTopForScrollToRow = _this._updateScrollTopForScrollToRow.bind(_this);
+
+    _this._columnWidthGetter = _this._wrapSizeGetter(props.columnWidth);
+    _this._rowHeightGetter = _this._wrapSizeGetter(props.rowHeight);
+
+    _this._columnSizeAndPositionManager = new _ScalingCellSizeAndPositionManager2.default({
+      cellCount: props.columnCount,
+      cellSizeGetter: function cellSizeGetter(index) {
+        return _this._columnWidthGetter(index);
+      },
+      estimatedCellSize: _this._getEstimatedColumnSize(props)
+    });
+    _this._rowSizeAndPositionManager = new _ScalingCellSizeAndPositionManager2.default({
+      cellCount: props.rowCount,
+      cellSizeGetter: function cellSizeGetter(index) {
+        return _this._rowHeightGetter(index);
+      },
+      estimatedCellSize: _this._getEstimatedRowSize(props)
+    });
+
+    // See defaultCellRangeRenderer() for more information on the usage of this cache
+    _this._cellCache = {};
+    return _this;
+  }
+
+  /**
+   * Pre-measure all columns and rows in a Grid.
+   * Typically cells are only measured as needed and estimated sizes are used for cells that have not yet been measured.
+   * This method ensures that the next call to getTotalSize() returns an exact size (as opposed to just an estimated one).
+   */
+
+
+  _createClass(Grid, [{
+    key: 'measureAllCells',
+    value: function measureAllCells() {
+      var _props = this.props;
+      var columnCount = _props.columnCount;
+      var rowCount = _props.rowCount;
+
+
+      this._columnSizeAndPositionManager.getSizeAndPositionOfCell(columnCount - 1);
+      this._rowSizeAndPositionManager.getSizeAndPositionOfCell(rowCount - 1);
+    }
+
+    /**
+     * Forced recompute of row heights and column widths.
+     * This function should be called if dynamic column or row sizes have changed but nothing else has.
+     * Since Grid only receives :columnCount and :rowCount it has no way of detecting when the underlying data changes.
+     */
+
+  }, {
+    key: 'recomputeGridSize',
+    value: function recomputeGridSize() {
+      this._columnSizeAndPositionManager.resetCell(0);
+      this._rowSizeAndPositionManager.resetCell(0);
+    }
+  }, {
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      var _props2 = this.props;
+      var scrollLeft = _props2.scrollLeft;
+      var scrollToColumn = _props2.scrollToColumn;
+      var scrollTop = _props2.scrollTop;
+      var scrollToRow = _props2.scrollToRow;
+
+      // If this component was first rendered server-side, scrollbar size will be undefined.
+      // In that event we need to remeasure.
+
+      if (!this._scrollbarSizeMeasured) {
+        this._scrollbarSize = (0, _scrollbarSize2.default)();
+        this._scrollbarSizeMeasured = true;
+        this.setState({});
+      }
+
+      if (scrollLeft >= 0 || scrollTop >= 0) {
+        this._setScrollPosition({ scrollLeft: scrollLeft, scrollTop: scrollTop });
+      }
+
+      if (scrollToColumn >= 0 || scrollToRow >= 0) {
+        this._updateScrollLeftForScrollToColumn();
+        this._updateScrollTopForScrollToRow();
+      }
+
+      // Update onRowsRendered callback
+      this._invokeOnGridRenderedHelper();
+
+      // Initialize onScroll callback
+      this._invokeOnScrollMemoizer({
+        scrollLeft: scrollLeft || 0,
+        scrollTop: scrollTop || 0,
+        totalColumnsWidth: this._columnSizeAndPositionManager.getTotalSize(),
+        totalRowsHeight: this._rowSizeAndPositionManager.getTotalSize()
+      });
+    }
+
+    /**
+     * @private
+     * This method updates scrollLeft/scrollTop in state for the following conditions:
+     * 1) New scroll-to-cell props have been set
+     */
+
+  }, {
+    key: 'componentDidUpdate',
+    value: function componentDidUpdate(prevProps, prevState) {
+      var _this2 = this;
+
+      var _props3 = this.props;
+      var height = _props3.height;
+      var scrollToAlignment = _props3.scrollToAlignment;
+      var scrollToColumn = _props3.scrollToColumn;
+      var scrollToRow = _props3.scrollToRow;
+      var width = _props3.width;
+      var _state = this.state;
+      var scrollLeft = _state.scrollLeft;
+      var scrollPositionChangeReason = _state.scrollPositionChangeReason;
+      var scrollTop = _state.scrollTop;
+
+      // Make sure requested changes to :scrollLeft or :scrollTop get applied.
+      // Assigning to scrollLeft/scrollTop tells the browser to interrupt any running scroll animations,
+      // And to discard any pending async changes to the scroll position that may have happened in the meantime (e.g. on a separate scrolling thread).
+      // So we only set these when we require an adjustment of the scroll position.
+      // See issue #2 for more information.
+
+      if (scrollPositionChangeReason === SCROLL_POSITION_CHANGE_REASONS.REQUESTED) {
+        if (scrollLeft >= 0 && scrollLeft !== prevState.scrollLeft && scrollLeft !== this.refs.scrollingContainer.scrollLeft) {
+          this.refs.scrollingContainer.scrollLeft = scrollLeft;
+        }
+        if (scrollTop >= 0 && scrollTop !== prevState.scrollTop && scrollTop !== this.refs.scrollingContainer.scrollTop) {
+          this.refs.scrollingContainer.scrollTop = scrollTop;
+        }
+      }
+
+      // Update scroll offsets if the current :scrollToColumn or :scrollToRow values requires it
+      // @TODO Do we also need this check or can the one in componentWillUpdate() suffice?
+      (0, _updateScrollIndexHelper2.default)({
+        cellSizeAndPositionManager: this._columnSizeAndPositionManager,
+        previousCellsCount: prevProps.columnCount,
+        previousCellSize: prevProps.columnWidth,
+        previousScrollToAlignment: prevProps.scrollToAlignment,
+        previousScrollToIndex: prevProps.scrollToColumn,
+        previousSize: prevProps.width,
+        scrollOffset: scrollLeft,
+        scrollToAlignment: scrollToAlignment,
+        scrollToIndex: scrollToColumn,
+        size: width,
+        updateScrollIndexCallback: function updateScrollIndexCallback(scrollToColumn) {
+          return _this2._updateScrollLeftForScrollToColumn(_extends({}, _this2.props, { scrollToColumn: scrollToColumn }));
+        }
+      });
+      (0, _updateScrollIndexHelper2.default)({
+        cellSizeAndPositionManager: this._rowSizeAndPositionManager,
+        previousCellsCount: prevProps.rowCount,
+        previousCellSize: prevProps.rowHeight,
+        previousScrollToAlignment: prevProps.scrollToAlignment,
+        previousScrollToIndex: prevProps.scrollToRow,
+        previousSize: prevProps.height,
+        scrollOffset: scrollTop,
+        scrollToAlignment: scrollToAlignment,
+        scrollToIndex: scrollToRow,
+        size: height,
+        updateScrollIndexCallback: function updateScrollIndexCallback(scrollToRow) {
+          return _this2._updateScrollTopForScrollToRow(_extends({}, _this2.props, { scrollToRow: scrollToRow }));
+        }
+      });
+
+      // Update onRowsRendered callback if start/stop indices have changed
+      this._invokeOnGridRenderedHelper();
+    }
+  }, {
+    key: 'componentWillMount',
+    value: function componentWillMount() {
+      // If this component is being rendered server-side, getScrollbarSize() will return undefined.
+      // We handle this case in componentDidMount()
+      this._scrollbarSize = (0, _scrollbarSize2.default)();
+      if (this._scrollbarSize === undefined) {
+        this._scrollbarSizeMeasured = false;
+        this._scrollbarSize = 0;
+      } else {
+        this._scrollbarSizeMeasured = true;
+      }
+    }
+  }, {
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      if (this._disablePointerEventsTimeoutId) {
+        clearTimeout(this._disablePointerEventsTimeoutId);
+      }
+
+      if (this._setNextStateAnimationFrameId) {
+        _raf2.default.cancel(this._setNextStateAnimationFrameId);
+      }
+    }
+
+    /**
+     * @private
+     * This method updates scrollLeft/scrollTop in state for the following conditions:
+     * 1) Empty content (0 rows or columns)
+     * 2) New scroll props overriding the current state
+     * 3) Cells-count or cells-size has changed, making previous scroll offsets invalid
+     */
+
+  }, {
+    key: 'componentWillUpdate',
+    value: function componentWillUpdate(nextProps, nextState) {
+      var _this3 = this;
+
+      if (nextProps.columnCount === 0 && nextState.scrollLeft !== 0 || nextProps.rowCount === 0 && nextState.scrollTop !== 0) {
+        this._setScrollPosition({
+          scrollLeft: 0,
+          scrollTop: 0
+        });
+      } else if (nextProps.scrollLeft !== this.props.scrollLeft || nextProps.scrollTop !== this.props.scrollTop) {
+        this._setScrollPosition({
+          scrollLeft: nextProps.scrollLeft,
+          scrollTop: nextProps.scrollTop
+        });
+      }
+
+      this._columnWidthGetter = this._wrapSizeGetter(nextProps.columnWidth);
+      this._rowHeightGetter = this._wrapSizeGetter(nextProps.rowHeight);
+
+      this._columnSizeAndPositionManager.configure({
+        cellCount: nextProps.columnCount,
+        estimatedCellSize: this._getEstimatedColumnSize(nextProps)
+      });
+      this._rowSizeAndPositionManager.configure({
+        cellCount: nextProps.rowCount,
+        estimatedCellSize: this._getEstimatedRowSize(nextProps)
+      });
+
+      // Update scroll offsets if the size or number of cells have changed, invalidating the previous value
+      (0, _calculateSizeAndPositionDataAndUpdateScrollOffset2.default)({
+        cellCount: this.props.columnCount,
+        cellSize: this.props.columnWidth,
+        computeMetadataCallback: function computeMetadataCallback() {
+          return _this3._columnSizeAndPositionManager.resetCell(0);
+        },
+        computeMetadataCallbackProps: nextProps,
+        nextCellsCount: nextProps.columnCount,
+        nextCellSize: nextProps.columnWidth,
+        nextScrollToIndex: nextProps.scrollToColumn,
+        scrollToIndex: this.props.scrollToColumn,
+        updateScrollOffsetForScrollToIndex: function updateScrollOffsetForScrollToIndex() {
+          return _this3._updateScrollLeftForScrollToColumn(nextProps, nextState);
+        }
+      });
+      (0, _calculateSizeAndPositionDataAndUpdateScrollOffset2.default)({
+        cellCount: this.props.rowCount,
+        cellSize: this.props.rowHeight,
+        computeMetadataCallback: function computeMetadataCallback() {
+          return _this3._rowSizeAndPositionManager.resetCell(0);
+        },
+        computeMetadataCallbackProps: nextProps,
+        nextCellsCount: nextProps.rowCount,
+        nextCellSize: nextProps.rowHeight,
+        nextScrollToIndex: nextProps.scrollToRow,
+        scrollToIndex: this.props.scrollToRow,
+        updateScrollOffsetForScrollToIndex: function updateScrollOffsetForScrollToIndex() {
+          return _this3._updateScrollTopForScrollToRow(nextProps, nextState);
+        }
+      });
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _props4 = this.props;
+      var cellRenderer = _props4.cellRenderer;
+      var cellRangeRenderer = _props4.cellRangeRenderer;
+      var className = _props4.className;
+      var columnCount = _props4.columnCount;
+      var height = _props4.height;
+      var noContentRenderer = _props4.noContentRenderer;
+      var overscanColumnCount = _props4.overscanColumnCount;
+      var overscanRowCount = _props4.overscanRowCount;
+      var rowCount = _props4.rowCount;
+      var style = _props4.style;
+      var width = _props4.width;
+      var _state2 = this.state;
+      var isScrolling = _state2.isScrolling;
+      var scrollLeft = _state2.scrollLeft;
+      var scrollTop = _state2.scrollTop;
+
+
+      var childrenToDisplay = [];
+
+      // Render only enough columns and rows to cover the visible area of the grid.
+      if (height > 0 && width > 0) {
+        var visibleColumnIndices = this._columnSizeAndPositionManager.getVisibleCellRange({
+          containerSize: width,
+          offset: scrollLeft
+        });
+        var visibleRowIndices = this._rowSizeAndPositionManager.getVisibleCellRange({
+          containerSize: height,
+          offset: scrollTop
+        });
+
+        var horizontalOffsetAdjustment = this._columnSizeAndPositionManager.getOffsetAdjustment({
+          containerSize: width,
+          offset: scrollLeft
+        });
+        var verticalOffsetAdjustment = this._rowSizeAndPositionManager.getOffsetAdjustment({
+          containerSize: height,
+          offset: scrollTop
+        });
+
+        // Store for _invokeOnGridRenderedHelper()
+        this._renderedColumnStartIndex = visibleColumnIndices.start;
+        this._renderedColumnStopIndex = visibleColumnIndices.stop;
+        this._renderedRowStartIndex = visibleRowIndices.start;
+        this._renderedRowStopIndex = visibleRowIndices.stop;
+
+        var overscanColumnIndices = (0, _getOverscanIndices2.default)({
+          cellCount: columnCount,
+          overscanCellsCount: overscanColumnCount,
+          startIndex: this._renderedColumnStartIndex,
+          stopIndex: this._renderedColumnStopIndex
+        });
+
+        var overscanRowIndices = (0, _getOverscanIndices2.default)({
+          cellCount: rowCount,
+          overscanCellsCount: overscanRowCount,
+          startIndex: this._renderedRowStartIndex,
+          stopIndex: this._renderedRowStopIndex
+        });
+
+        // Store for _invokeOnGridRenderedHelper()
+        this._columnStartIndex = overscanColumnIndices.overscanStartIndex;
+        this._columnStopIndex = overscanColumnIndices.overscanStopIndex;
+        this._rowStartIndex = overscanRowIndices.overscanStartIndex;
+        this._rowStopIndex = overscanRowIndices.overscanStopIndex;
+
+        childrenToDisplay = cellRangeRenderer({
+          cellCache: this._cellCache,
+          cellRenderer: cellRenderer,
+          columnSizeAndPositionManager: this._columnSizeAndPositionManager,
+          columnStartIndex: this._columnStartIndex,
+          columnStopIndex: this._columnStopIndex,
+          horizontalOffsetAdjustment: horizontalOffsetAdjustment,
+          isScrolling: isScrolling,
+          rowSizeAndPositionManager: this._rowSizeAndPositionManager,
+          rowStartIndex: this._rowStartIndex,
+          rowStopIndex: this._rowStopIndex,
+          scrollLeft: scrollLeft,
+          scrollTop: scrollTop,
+          verticalOffsetAdjustment: verticalOffsetAdjustment
+        });
+      }
+
+      var gridStyle = _extends({}, style, {
+        height: height,
+        width: width
+      });
+
+      var totalColumnsWidth = this._columnSizeAndPositionManager.getTotalSize();
+      var totalRowsHeight = this._rowSizeAndPositionManager.getTotalSize();
+
+      // Force browser to hide scrollbars when we know they aren't necessary.
+      // Otherwise once scrollbars appear they may not disappear again.
+      // For more info see issue #116
+      var verticalScrollBarSize = totalRowsHeight > height ? this._scrollbarSize : 0;
+      var horizontalScrollBarSize = totalColumnsWidth > width ? this._scrollbarSize : 0;
+      if (totalColumnsWidth + verticalScrollBarSize <= width) {
+        gridStyle.overflowX = 'hidden';
+      }
+      if (totalRowsHeight + horizontalScrollBarSize <= height) {
+        gridStyle.overflowY = 'hidden';
+      }
+
+      var showNoContentRenderer = childrenToDisplay.length === 0 && height > 0 && width > 0;
+
+      return _react2.default.createElement(
+        'div',
+        {
+          ref: 'scrollingContainer',
+          'aria-label': this.props['aria-label'],
+          className: (0, _classnames2.default)('Grid', className),
+          onScroll: this._onScroll,
+          role: 'grid',
+          style: gridStyle,
+          tabIndex: 0
+        },
+        childrenToDisplay.length > 0 && _react2.default.createElement(
+          'div',
+          {
+            className: 'Grid__innerScrollContainer',
+            style: {
+              width: totalColumnsWidth,
+              height: totalRowsHeight,
+              maxWidth: totalColumnsWidth,
+              maxHeight: totalRowsHeight,
+              pointerEvents: isScrolling ? 'none' : 'auto'
+            }
+          },
+          childrenToDisplay
+        ),
+        showNoContentRenderer && noContentRenderer()
+      );
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+
+    /* ---------------------------- Helper methods ---------------------------- */
+
+    /**
+     * Sets an :isScrolling flag for a small window of time.
+     * This flag is used to disable pointer events on the scrollable portion of the Grid.
+     * This prevents jerky/stuttery mouse-wheel scrolling.
+     */
+
+  }, {
+    key: '_enablePointerEventsAfterDelay',
+    value: function _enablePointerEventsAfterDelay() {
+      var _this4 = this;
+
+      if (this._disablePointerEventsTimeoutId) {
+        clearTimeout(this._disablePointerEventsTimeoutId);
+      }
+
+      this._disablePointerEventsTimeoutId = setTimeout(function () {
+        _this4._disablePointerEventsTimeoutId = null;
+
+        // Throw away cell cache once scrolling is complete
+        _this4._cellCache = {};
+
+        _this4.setState({
+          isScrolling: false
+        });
+      }, IS_SCROLLING_TIMEOUT);
+    }
+  }, {
+    key: '_getEstimatedColumnSize',
+    value: function _getEstimatedColumnSize(props) {
+      return typeof props.columnWidth === 'number' ? props.columnWidth : props.estimatedColumnSize;
+    }
+  }, {
+    key: '_getEstimatedRowSize',
+    value: function _getEstimatedRowSize(props) {
+      return typeof props.rowHeight === 'number' ? props.rowHeight : props.estimatedRowSize;
+    }
+  }, {
+    key: '_invokeOnGridRenderedHelper',
+    value: function _invokeOnGridRenderedHelper() {
+      var onSectionRendered = this.props.onSectionRendered;
+
+
+      this._onGridRenderedMemoizer({
+        callback: onSectionRendered,
+        indices: {
+          columnOverscanStartIndex: this._columnStartIndex,
+          columnOverscanStopIndex: this._columnStopIndex,
+          columnStartIndex: this._renderedColumnStartIndex,
+          columnStopIndex: this._renderedColumnStopIndex,
+          rowOverscanStartIndex: this._rowStartIndex,
+          rowOverscanStopIndex: this._rowStopIndex,
+          rowStartIndex: this._renderedRowStartIndex,
+          rowStopIndex: this._renderedRowStopIndex
+        }
+      });
+    }
+  }, {
+    key: '_invokeOnScrollMemoizer',
+    value: function _invokeOnScrollMemoizer(_ref) {
+      var _this5 = this;
+
+      var scrollLeft = _ref.scrollLeft;
+      var scrollTop = _ref.scrollTop;
+      var totalColumnsWidth = _ref.totalColumnsWidth;
+      var totalRowsHeight = _ref.totalRowsHeight;
+
+      this._onScrollMemoizer({
+        callback: function callback(_ref2) {
+          var scrollLeft = _ref2.scrollLeft;
+          var scrollTop = _ref2.scrollTop;
+          var _props5 = _this5.props;
+          var height = _props5.height;
+          var onScroll = _props5.onScroll;
+          var width = _props5.width;
+
+
+          onScroll({
+            clientHeight: height,
+            clientWidth: width,
+            scrollHeight: totalRowsHeight,
+            scrollLeft: scrollLeft,
+            scrollTop: scrollTop,
+            scrollWidth: totalColumnsWidth
+          });
+        },
+        indices: {
+          scrollLeft: scrollLeft,
+          scrollTop: scrollTop
+        }
+      });
+    }
+
+    /**
+     * Updates the state during the next animation frame.
+     * Use this method to avoid multiple renders in a small span of time.
+     * This helps performance for bursty events (like onScroll).
+     */
+
+  }, {
+    key: '_setNextState',
+    value: function _setNextState(state) {
+      var _this6 = this;
+
+      if (this._setNextStateAnimationFrameId) {
+        _raf2.default.cancel(this._setNextStateAnimationFrameId);
+      }
+
+      this._setNextStateAnimationFrameId = (0, _raf2.default)(function () {
+        _this6._setNextStateAnimationFrameId = null;
+        _this6.setState(state);
+      });
+    }
+  }, {
+    key: '_setScrollPosition',
+    value: function _setScrollPosition(_ref3) {
+      var scrollLeft = _ref3.scrollLeft;
+      var scrollTop = _ref3.scrollTop;
+
+      var newState = {
+        scrollPositionChangeReason: SCROLL_POSITION_CHANGE_REASONS.REQUESTED
+      };
+
+      if (scrollLeft >= 0) {
+        newState.scrollLeft = scrollLeft;
+      }
+
+      if (scrollTop >= 0) {
+        newState.scrollTop = scrollTop;
+      }
+
+      if (scrollLeft >= 0 && scrollLeft !== this.state.scrollLeft || scrollTop >= 0 && scrollTop !== this.state.scrollTop) {
+        this.setState(newState);
+      }
+    }
+  }, {
+    key: '_wrapSizeGetter',
+    value: function _wrapSizeGetter(size) {
+      return typeof size === 'function' ? size : function () {
+        return size;
+      };
+    }
+  }, {
+    key: '_updateScrollLeftForScrollToColumn',
+    value: function _updateScrollLeftForScrollToColumn() {
+      var props = arguments.length <= 0 || arguments[0] === undefined ? this.props : arguments[0];
+      var state = arguments.length <= 1 || arguments[1] === undefined ? this.state : arguments[1];
+      var columnCount = props.columnCount;
+      var scrollToAlignment = props.scrollToAlignment;
+      var scrollToColumn = props.scrollToColumn;
+      var width = props.width;
+      var scrollLeft = state.scrollLeft;
+
+
+      if (scrollToColumn >= 0 && columnCount > 0) {
+        var targetIndex = Math.max(0, Math.min(columnCount - 1, scrollToColumn));
+
+        var calculatedScrollLeft = this._columnSizeAndPositionManager.getUpdatedOffsetForIndex({
+          align: scrollToAlignment,
+          containerSize: width,
+          currentOffset: scrollLeft,
+          targetIndex: targetIndex
+        });
+
+        if (scrollLeft !== calculatedScrollLeft) {
+          this._setScrollPosition({
+            scrollLeft: calculatedScrollLeft
+          });
+        }
+      }
+    }
+  }, {
+    key: '_updateScrollTopForScrollToRow',
+    value: function _updateScrollTopForScrollToRow() {
+      var props = arguments.length <= 0 || arguments[0] === undefined ? this.props : arguments[0];
+      var state = arguments.length <= 1 || arguments[1] === undefined ? this.state : arguments[1];
+      var height = props.height;
+      var rowCount = props.rowCount;
+      var scrollToAlignment = props.scrollToAlignment;
+      var scrollToRow = props.scrollToRow;
+      var scrollTop = state.scrollTop;
+
+
+      if (scrollToRow >= 0 && rowCount > 0) {
+        var targetIndex = Math.max(0, Math.min(rowCount - 1, scrollToRow));
+
+        var calculatedScrollTop = this._rowSizeAndPositionManager.getUpdatedOffsetForIndex({
+          align: scrollToAlignment,
+          containerSize: height,
+          currentOffset: scrollTop,
+          targetIndex: targetIndex
+        });
+
+        if (scrollTop !== calculatedScrollTop) {
+          this._setScrollPosition({
+            scrollTop: calculatedScrollTop
+          });
+        }
+      }
+    }
+  }, {
+    key: '_onScroll',
+    value: function _onScroll(event) {
+      // In certain edge-cases React dispatches an onScroll event with an invalid target.scrollLeft / target.scrollTop.
+      // This invalid event can be detected by comparing event.target to this component's scrollable DOM element.
+      // See issue #404 for more information.
+      if (event.target !== this.refs.scrollingContainer) {
+        return;
+      }
+
+      // Prevent pointer events from interrupting a smooth scroll
+      this._enablePointerEventsAfterDelay();
+
+      // When this component is shrunk drastically, React dispatches a series of back-to-back scroll events,
+      // Gradually converging on a scrollTop that is within the bounds of the new, smaller height.
+      // This causes a series of rapid renders that is slow for long lists.
+      // We can avoid that by doing some simple bounds checking to ensure that scrollTop never exceeds the total height.
+      var _props6 = this.props;
+      var height = _props6.height;
+      var width = _props6.width;
+
+      var scrollbarSize = this._scrollbarSize;
+      var totalRowsHeight = this._rowSizeAndPositionManager.getTotalSize();
+      var totalColumnsWidth = this._columnSizeAndPositionManager.getTotalSize();
+      var scrollLeft = Math.min(Math.max(0, totalColumnsWidth - width + scrollbarSize), event.target.scrollLeft);
+      var scrollTop = Math.min(Math.max(0, totalRowsHeight - height + scrollbarSize), event.target.scrollTop);
+
+      // Certain devices (like Apple touchpad) rapid-fire duplicate events.
+      // Don't force a re-render if this is the case.
+      // The mouse may move faster then the animation frame does.
+      // Use requestAnimationFrame to avoid over-updating.
+      if (this.state.scrollLeft !== scrollLeft || this.state.scrollTop !== scrollTop) {
+        // Browsers with cancelable scroll events (eg. Firefox) interrupt scrolling animations if scrollTop/scrollLeft is set.
+        // Other browsers (eg. Safari) don't scroll as well without the help under certain conditions (DOM or style changes during scrolling).
+        // All things considered, this seems to be the best current work around that I'm aware of.
+        // For more information see https://github.com/bvaughn/react-virtualized/pull/124
+        var scrollPositionChangeReason = event.cancelable ? SCROLL_POSITION_CHANGE_REASONS.OBSERVED : SCROLL_POSITION_CHANGE_REASONS.REQUESTED;
+
+        if (!this.state.isScrolling) {
+          this.setState({
+            isScrolling: true
+          });
+        }
+
+        this._setNextState({
+          isScrolling: true,
+          scrollLeft: scrollLeft,
+          scrollPositionChangeReason: scrollPositionChangeReason,
+          scrollTop: scrollTop
+        });
+      }
+
+      this._invokeOnScrollMemoizer({ scrollLeft: scrollLeft, scrollTop: scrollTop, totalColumnsWidth: totalColumnsWidth, totalRowsHeight: totalRowsHeight });
+    }
+  }]);
+
+  return Grid;
+}(_react.Component);
+
+Grid.propTypes = {
+  'aria-label': _react.PropTypes.string,
+
+  /**
+   * Responsible for rendering a cell given an row and column index.
+   * Should implement the following interface: ({ columnIndex: number, rowIndex: number }): PropTypes.node
+   */
+  cellRenderer: _react.PropTypes.func.isRequired,
+
+  /**
+   * Responsible for rendering a group of cells given their index ranges.
+   * Should implement the following interface: ({
+   *   cellCache: Map,
+   *   cellRenderer: Function,
+   *   columnSizeAndPositionManager: CellSizeAndPositionManager,
+   *   columnStartIndex: number,
+   *   columnStopIndex: number,
+   *   isScrolling: boolean,
+   *   rowSizeAndPositionManager: CellSizeAndPositionManager,
+   *   rowStartIndex: number,
+   *   rowStopIndex: number,
+   *   scrollLeft: number,
+   *   scrollTop: number
+   * }): Array<PropTypes.node>
+   */
+  cellRangeRenderer: _react.PropTypes.func.isRequired,
+
+  /**
+   * Optional custom CSS class name to attach to root Grid element.
+   */
+  className: _react.PropTypes.string,
+
+  /**
+   * Number of columns in grid.
+   */
+  columnCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Either a fixed column width (number) or a function that returns the width of a column given its index.
+   * Should implement the following interface: (index: number): number
+   */
+  columnWidth: _react.PropTypes.oneOfType([_react.PropTypes.number, _react.PropTypes.func]).isRequired,
+
+  /**
+   * Used to estimate the total width of a Grid before all of its columns have actually been measured.
+   * The estimated total width is adjusted as columns are rendered.
+   */
+  estimatedColumnSize: _react.PropTypes.number.isRequired,
+
+  /**
+   * Used to estimate the total height of a Grid before all of its rows have actually been measured.
+   * The estimated total height is adjusted as rows are rendered.
+   */
+  estimatedRowSize: _react.PropTypes.number.isRequired,
+
+  /**
+   * Height of Grid; this property determines the number of visible (vs virtualized) rows.
+   */
+  height: _react.PropTypes.number.isRequired,
+
+  /**
+   * Optional renderer to be used in place of rows when either :rowCount or :columnCount is 0.
+   */
+  noContentRenderer: _react.PropTypes.func.isRequired,
+
+  /**
+   * Callback invoked whenever the scroll offset changes within the inner scrollable region.
+   * This callback can be used to sync scrolling between lists, tables, or grids.
+   * ({ clientHeight, clientWidth, scrollHeight, scrollLeft, scrollTop, scrollWidth }): void
+   */
+  onScroll: _react.PropTypes.func.isRequired,
+
+  /**
+   * Callback invoked with information about the section of the Grid that was just rendered.
+   * ({ columnStartIndex, columnStopIndex, rowStartIndex, rowStopIndex }): void
+   */
+  onSectionRendered: _react.PropTypes.func.isRequired,
+
+  /**
+   * Number of columns to render before/after the visible section of the grid.
+   * These columns can help for smoother scrolling on touch devices or browsers that send scroll events infrequently.
+   */
+  overscanColumnCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Number of rows to render above/below the visible section of the grid.
+   * These rows can help for smoother scrolling on touch devices or browsers that send scroll events infrequently.
+   */
+  overscanRowCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Either a fixed row height (number) or a function that returns the height of a row given its index.
+   * Should implement the following interface: ({ index: number }): number
+   */
+  rowHeight: _react.PropTypes.oneOfType([_react.PropTypes.number, _react.PropTypes.func]).isRequired,
+
+  /**
+   * Number of rows in grid.
+   */
+  rowCount: _react.PropTypes.number.isRequired,
+
+  /** Horizontal offset. */
+  scrollLeft: _react.PropTypes.number,
+
+  /**
+   * Controls scroll-to-cell behavior of the Grid.
+   * The default ("auto") scrolls the least amount possible to ensure that the specified cell is fully visible.
+   * Use "start" to align cells to the top/left of the Grid and "end" to align bottom/right.
+   */
+  scrollToAlignment: _react.PropTypes.oneOf(['auto', 'end', 'start', 'center']).isRequired,
+
+  /**
+   * Column index to ensure visible (by forcefully scrolling if necessary)
+   */
+  scrollToColumn: _react.PropTypes.number,
+
+  /** Vertical offset. */
+  scrollTop: _react.PropTypes.number,
+
+  /**
+   * Row index to ensure visible (by forcefully scrolling if necessary)
+   */
+  scrollToRow: _react.PropTypes.number,
+
+  /** Optional inline style */
+  style: _react.PropTypes.object,
+
+  /**
+   * Width of Grid; this property determines the number of visible (vs virtualized) columns.
+   */
+  width: _react.PropTypes.number.isRequired
+};
+Grid.defaultProps = {
+  'aria-label': 'grid',
+  cellRangeRenderer: _defaultCellRangeRenderer2.default,
+  estimatedColumnSize: 100,
+  estimatedRowSize: 30,
+  noContentRenderer: function noContentRenderer() {
+    return null;
+  },
+  onScroll: function onScroll() {
+    return null;
+  },
+  onSectionRendered: function onSectionRendered() {
+    return null;
+  },
+  overscanColumnCount: 0,
+  overscanRowCount: 10,
+  scrollToAlignment: 'auto',
+  style: {}
+};
+exports.default = Grid;
+},{"../utils/createCallbackMemoizer":691,"./defaultCellRangeRenderer":677,"./utils/ScalingCellSizeAndPositionManager":680,"./utils/calculateSizeAndPositionDataAndUpdateScrollOffset":681,"./utils/getOverscanIndices":682,"./utils/updateScrollIndexHelper":683,"classnames":11,"dom-helpers/util/scrollbarSize":19,"raf":577,"react":840,"react-addons-shallow-compare":579}],677:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = defaultCellRangeRenderer;
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _CellSizeAndPositionManager = require('./utils/CellSizeAndPositionManager');
+
+var _CellSizeAndPositionManager2 = _interopRequireDefault(_CellSizeAndPositionManager);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * Default implementation of cellRangeRenderer used by Grid.
+ * This renderer supports cell-caching while the user is scrolling.
+ */
+function defaultCellRangeRenderer(_ref) {
+  var cellCache = _ref.cellCache;
+  var cellRenderer = _ref.cellRenderer;
+  var columnSizeAndPositionManager = _ref.columnSizeAndPositionManager;
+  var columnStartIndex = _ref.columnStartIndex;
+  var columnStopIndex = _ref.columnStopIndex;
+  var horizontalOffsetAdjustment = _ref.horizontalOffsetAdjustment;
+  var isScrolling = _ref.isScrolling;
+  var rowSizeAndPositionManager = _ref.rowSizeAndPositionManager;
+  var rowStartIndex = _ref.rowStartIndex;
+  var rowStopIndex = _ref.rowStopIndex;
+  var scrollLeft = _ref.scrollLeft;
+  var scrollTop = _ref.scrollTop;
+  var verticalOffsetAdjustment = _ref.verticalOffsetAdjustment;
+
+  var renderedCells = [];
+
+  for (var rowIndex = rowStartIndex; rowIndex <= rowStopIndex; rowIndex++) {
+    var rowDatum = rowSizeAndPositionManager.getSizeAndPositionOfCell(rowIndex);
+
+    for (var columnIndex = columnStartIndex; columnIndex <= columnStopIndex; columnIndex++) {
+      var columnDatum = columnSizeAndPositionManager.getSizeAndPositionOfCell(columnIndex);
+      var key = rowIndex + '-' + columnIndex;
+      var renderedCell = void 0;
+
+      // Avoid re-creating cells while scrolling.
+      // This can lead to the same cell being created many times and can cause performance issues for "heavy" cells.
+      // If a scroll is in progress- cache and reuse cells.
+      // This cache will be thrown away once scrolling complets.
+      if (isScrolling) {
+        if (!cellCache[key]) {
+          cellCache[key] = cellRenderer({
+            columnIndex: columnIndex,
+            isScrolling: isScrolling,
+            rowIndex: rowIndex
+          });
+        }
+        renderedCell = cellCache[key];
+        // If the user is no longer scrolling, don't cache cells.
+        // This makes dynamic cell content difficult for users and would also lead to a heavier memory footprint.
+      } else {
+          renderedCell = cellRenderer({
+            columnIndex: columnIndex,
+            isScrolling: isScrolling,
+            rowIndex: rowIndex
+          });
+        }
+
+      if (renderedCell == null || renderedCell === false) {
+        continue;
+      }
+
+      var child = _react2.default.createElement(
+        'div',
+        {
+          key: key,
+          className: 'Grid__cell',
+          style: {
+            height: rowDatum.size,
+            left: columnDatum.offset + horizontalOffsetAdjustment,
+            top: rowDatum.offset + verticalOffsetAdjustment,
+            width: columnDatum.size
+          }
+        },
+        renderedCell
+      );
+
+      renderedCells.push(child);
+    }
+  }
+
+  return renderedCells;
+}
+},{"./utils/CellSizeAndPositionManager":679,"react":840}],678:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.Grid = exports.default = undefined;
+
+var _Grid2 = require('./Grid');
+
+var _Grid3 = _interopRequireDefault(_Grid2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _Grid3.default;
+exports.Grid = _Grid3.default;
+},{"./Grid":676}],679:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/**
+ * Just-in-time calculates and caches size and position information for a collection of cells.
+ */
+
+var CellSizeAndPositionManager = function () {
+  function CellSizeAndPositionManager(_ref) {
+    var cellCount = _ref.cellCount;
+    var cellSizeGetter = _ref.cellSizeGetter;
+    var estimatedCellSize = _ref.estimatedCellSize;
+
+    _classCallCheck(this, CellSizeAndPositionManager);
+
+    this._cellSizeGetter = cellSizeGetter;
+    this._cellCount = cellCount;
+    this._estimatedCellSize = estimatedCellSize;
+
+    // Cache of size and position data for cells, mapped by cell index.
+    // Note that invalid values may exist in this map so only rely on cells up to this._lastMeasuredIndex
+    this._cellSizeAndPositionData = {};
+
+    // Measurements for cells up to this index can be trusted; cells afterward should be estimated.
+    this._lastMeasuredIndex = -1;
+  }
+
+  _createClass(CellSizeAndPositionManager, [{
+    key: 'configure',
+    value: function configure(_ref2) {
+      var cellCount = _ref2.cellCount;
+      var estimatedCellSize = _ref2.estimatedCellSize;
+
+      this._cellCount = cellCount;
+      this._estimatedCellSize = estimatedCellSize;
+    }
+  }, {
+    key: 'getCellCount',
+    value: function getCellCount() {
+      return this._cellCount;
+    }
+  }, {
+    key: 'getEstimatedCellSize',
+    value: function getEstimatedCellSize() {
+      return this._estimatedCellSize;
+    }
+  }, {
+    key: 'getLastMeasuredIndex',
+    value: function getLastMeasuredIndex() {
+      return this._lastMeasuredIndex;
+    }
+
+    /**
+     * This method returns the size and position for the cell at the specified index.
+     * It just-in-time calculates (or used cached values) for cells leading up to the index.
+     */
+
+  }, {
+    key: 'getSizeAndPositionOfCell',
+    value: function getSizeAndPositionOfCell(index) {
+      if (index < 0 || index >= this._cellCount) {
+        throw Error('Requested index ' + index + ' is outside of range 0..' + this._cellCount);
+      }
+
+      if (index > this._lastMeasuredIndex) {
+        var lastMeasuredCellSizeAndPosition = this.getSizeAndPositionOfLastMeasuredCell();
+        var _offset = lastMeasuredCellSizeAndPosition.offset + lastMeasuredCellSizeAndPosition.size;
+
+        for (var i = this._lastMeasuredIndex + 1; i <= index; i++) {
+          var _size = this._cellSizeGetter({ index: i });
+
+          if (_size == null || isNaN(_size)) {
+            throw Error('Invalid size returned for cell ' + i + ' of value ' + _size);
+          }
+
+          this._cellSizeAndPositionData[i] = {
+            offset: _offset,
+            size: _size
+          };
+
+          _offset += _size;
+        }
+
+        this._lastMeasuredIndex = index;
+      }
+
+      return this._cellSizeAndPositionData[index];
+    }
+  }, {
+    key: 'getSizeAndPositionOfLastMeasuredCell',
+    value: function getSizeAndPositionOfLastMeasuredCell() {
+      return this._lastMeasuredIndex >= 0 ? this._cellSizeAndPositionData[this._lastMeasuredIndex] : {
+        offset: 0,
+        size: 0
+      };
+    }
+
+    /**
+     * Total size of all cells being measured.
+     * This value will be completedly estimated initially.
+     * As cells as measured the estimate will be updated.
+     */
+
+  }, {
+    key: 'getTotalSize',
+    value: function getTotalSize() {
+      var lastMeasuredCellSizeAndPosition = this.getSizeAndPositionOfLastMeasuredCell();
+
+      return lastMeasuredCellSizeAndPosition.offset + lastMeasuredCellSizeAndPosition.size + (this._cellCount - this._lastMeasuredIndex - 1) * this._estimatedCellSize;
+    }
+
+    /**
+     * Determines a new offset that ensures a certain cell is visible, given the current offset.
+     * If the cell is already visible then the current offset will be returned.
+     * If the current offset is too great or small, it will be adjusted just enough to ensure the specified index is visible.
+     *
+     * @param align Desired alignment within container; one of "auto" (default), "start", or "end"
+     * @param containerSize Total size (width or height) of the container
+     * @param currentOffset Container's current (x or y) offset
+     * @return Offset to use to ensure the specified cell is visible
+     */
+
+  }, {
+    key: 'getUpdatedOffsetForIndex',
+    value: function getUpdatedOffsetForIndex(_ref3) {
+      var _ref3$align = _ref3.align;
+      var align = _ref3$align === undefined ? 'auto' : _ref3$align;
+      var containerSize = _ref3.containerSize;
+      var currentOffset = _ref3.currentOffset;
+      var targetIndex = _ref3.targetIndex;
+
+      var datum = this.getSizeAndPositionOfCell(targetIndex);
+      var maxOffset = datum.offset;
+      var minOffset = maxOffset - containerSize + datum.size;
+
+      switch (align) {
+        case 'start':
+          return maxOffset;
+        case 'end':
+          return minOffset;
+        case 'center':
+          return maxOffset - (containerSize + datum.size) / 2;
+        default:
+          return Math.max(minOffset, Math.min(maxOffset, currentOffset));
+      }
+    }
+  }, {
+    key: 'getVisibleCellRange',
+    value: function getVisibleCellRange(_ref4) {
+      var containerSize = _ref4.containerSize;
+      var offset = _ref4.offset;
+
+      var totalSize = this.getTotalSize();
+
+      if (totalSize === 0) {
+        return {};
+      }
+
+      var maxOffset = offset + containerSize;
+      var start = this._findNearestCell(offset);
+
+      var datum = this.getSizeAndPositionOfCell(start);
+      offset = datum.offset + datum.size;
+
+      var stop = start;
+
+      while (offset < maxOffset && stop < this._cellCount - 1) {
+        stop++;
+
+        offset += this.getSizeAndPositionOfCell(stop).size;
+      }
+
+      return {
+        start: start,
+        stop: stop
+      };
+    }
+
+    /**
+     * Clear all cached values for cells after the specified index.
+     * This method should be called for any cell that has changed its size.
+     * It will not immediately perform any calculations; they'll be performed the next time getSizeAndPositionOfCell() is called.
+     */
+
+  }, {
+    key: 'resetCell',
+    value: function resetCell(index) {
+      this._lastMeasuredIndex = index - 1;
+    }
+  }, {
+    key: '_binarySearch',
+    value: function _binarySearch(_ref5) {
+      var high = _ref5.high;
+      var low = _ref5.low;
+      var offset = _ref5.offset;
+
+      var middle = void 0;
+      var currentOffset = void 0;
+
+      while (low <= high) {
+        middle = low + Math.floor((high - low) / 2);
+        currentOffset = this.getSizeAndPositionOfCell(middle).offset;
+
+        if (currentOffset === offset) {
+          return middle;
+        } else if (currentOffset < offset) {
+          low = middle + 1;
+        } else if (currentOffset > offset) {
+          high = middle - 1;
+        }
+      }
+
+      if (low > 0) {
+        return low - 1;
+      }
+    }
+  }, {
+    key: '_exponentialSearch',
+    value: function _exponentialSearch(_ref6) {
+      var index = _ref6.index;
+      var offset = _ref6.offset;
+
+      var interval = 1;
+
+      while (index < this._cellCount && this.getSizeAndPositionOfCell(index).offset < offset) {
+        index += interval;
+        interval *= 2;
+      }
+
+      return this._binarySearch({
+        high: Math.min(index, this._cellCount - 1),
+        low: Math.floor(index / 2),
+        offset: offset
+      });
+    }
+
+    /**
+     * Searches for the cell (index) nearest the specified offset.
+     *
+     * If no exact match is found the next lowest cell index will be returned.
+     * This allows partially visible cells (with offsets just before/above the fold) to be visible.
+     */
+
+  }, {
+    key: '_findNearestCell',
+    value: function _findNearestCell(offset) {
+      if (isNaN(offset)) {
+        throw Error('Invalid offset ' + offset + ' specified');
+      }
+
+      // Our search algorithms find the nearest match at or below the specified offset.
+      // So make sure the offset is at least 0 or no match will be found.
+      offset = Math.max(0, offset);
+
+      var lastMeasuredCellSizeAndPosition = this.getSizeAndPositionOfLastMeasuredCell();
+      var lastMeasuredIndex = Math.max(0, this._lastMeasuredIndex);
+
+      if (lastMeasuredCellSizeAndPosition.offset >= offset) {
+        // If we've already measured cells within this range just use a binary search as it's faster.
+        return this._binarySearch({
+          high: lastMeasuredIndex,
+          low: 0,
+          offset: offset
+        });
+      } else {
+        // If we haven't yet measured this high, fallback to an exponential search with an inner binary search.
+        // The exponential search avoids pre-computing sizes for the full set of cells as a binary search would.
+        // The overall complexity for this approach is O(log n).
+        return this._exponentialSearch({
+          index: lastMeasuredIndex,
+          offset: offset
+        });
+      }
+    }
+  }]);
+
+  return CellSizeAndPositionManager;
+}();
+
+exports.default = CellSizeAndPositionManager;
+},{}],680:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.DEFAULT_MAX_SCROLL_SIZE = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+var _CellSizeAndPositionManager = require('./CellSizeAndPositionManager');
+
+var _CellSizeAndPositionManager2 = _interopRequireDefault(_CellSizeAndPositionManager);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * Browsers have scroll offset limitations (eg Chrome stops scrolling at ~33.5M pixels).
+ * After a certain position, the browser won't allow the user to scroll further (even via JavaScript scroll offset adjustments).
+ * This util picks a lower ceiling for max size and artificially adjusts positions within to make it transparent for users.
+ */
+var DEFAULT_MAX_SCROLL_SIZE = exports.DEFAULT_MAX_SCROLL_SIZE = 10000000;
+
+/**
+ * Extends CellSizeAndPositionManager and adds scaling behavior for lists that are too large to fit within a browser's native limits.
+ */
+
+var ScalingCellSizeAndPositionManager = function (_CellSizeAndPositionM) {
+  _inherits(ScalingCellSizeAndPositionManager, _CellSizeAndPositionM);
+
+  function ScalingCellSizeAndPositionManager(_ref) {
+    var _ref$maxScrollSize = _ref.maxScrollSize;
+    var maxScrollSize = _ref$maxScrollSize === undefined ? DEFAULT_MAX_SCROLL_SIZE : _ref$maxScrollSize;
+
+    var params = _objectWithoutProperties(_ref, ['maxScrollSize']);
+
+    _classCallCheck(this, ScalingCellSizeAndPositionManager);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(ScalingCellSizeAndPositionManager).call(this, params));
+
+    _this._maxScrollSize = maxScrollSize;
+    return _this;
+  }
+
+  /**
+   * Number of pixels a cell at the given position (offset) should be shifted in order to fit within the scaled container.
+   * The offset passed to this function is scalled (safe) as well.
+   */
+
+
+  _createClass(ScalingCellSizeAndPositionManager, [{
+    key: 'getOffsetAdjustment',
+    value: function getOffsetAdjustment(_ref2) {
+      var containerSize = _ref2.containerSize;
+      var offset // safe
+      = _ref2.offset;
+
+      var totalSize = _get(Object.getPrototypeOf(ScalingCellSizeAndPositionManager.prototype), 'getTotalSize', this).call(this);
+      var safeTotalSize = this.getTotalSize();
+      var offsetPercentage = this._getOffsetPercentage({
+        containerSize: containerSize,
+        offset: offset,
+        totalSize: safeTotalSize
+      });
+
+      return Math.round(offsetPercentage * (safeTotalSize - totalSize));
+    }
+
+    /** See CellSizeAndPositionManager#getTotalSize */
+
+  }, {
+    key: 'getTotalSize',
+    value: function getTotalSize() {
+      return Math.min(this._maxScrollSize, _get(Object.getPrototypeOf(ScalingCellSizeAndPositionManager.prototype), 'getTotalSize', this).call(this));
+    }
+
+    /** See CellSizeAndPositionManager#getUpdatedOffsetForIndex */
+
+  }, {
+    key: 'getUpdatedOffsetForIndex',
+    value: function getUpdatedOffsetForIndex(_ref3) {
+      var _ref3$align = _ref3.align;
+      var align = _ref3$align === undefined ? 'auto' : _ref3$align;
+      var containerSize = _ref3.containerSize;
+      var currentOffset = _ref3.currentOffset;
+      var // safe
+      targetIndex = _ref3.targetIndex;
+
+      currentOffset = this._safeOffsetToOffset({
+        containerSize: containerSize,
+        offset: currentOffset
+      });
+
+      var offset = _get(Object.getPrototypeOf(ScalingCellSizeAndPositionManager.prototype), 'getUpdatedOffsetForIndex', this).call(this, {
+        align: align,
+        containerSize: containerSize,
+        currentOffset: currentOffset,
+        targetIndex: targetIndex
+      });
+
+      return this._offsetToSafeOffset({
+        containerSize: containerSize,
+        offset: offset
+      });
+    }
+
+    /** See CellSizeAndPositionManager#getVisibleCellRange */
+
+  }, {
+    key: 'getVisibleCellRange',
+    value: function getVisibleCellRange(_ref4) {
+      var containerSize = _ref4.containerSize;
+      var offset // safe
+      = _ref4.offset;
+
+      offset = this._safeOffsetToOffset({
+        containerSize: containerSize,
+        offset: offset
+      });
+
+      return _get(Object.getPrototypeOf(ScalingCellSizeAndPositionManager.prototype), 'getVisibleCellRange', this).call(this, {
+        containerSize: containerSize,
+        offset: offset
+      });
+    }
+  }, {
+    key: '_getOffsetPercentage',
+    value: function _getOffsetPercentage(_ref5) {
+      var containerSize = _ref5.containerSize;
+      var offset = _ref5.offset;
+      var // safe
+      totalSize = _ref5.totalSize;
+
+      return totalSize <= containerSize ? 0 : offset / (totalSize - containerSize);
+    }
+  }, {
+    key: '_offsetToSafeOffset',
+    value: function _offsetToSafeOffset(_ref6) {
+      var containerSize = _ref6.containerSize;
+      var offset // unsafe
+      = _ref6.offset;
+
+      var totalSize = _get(Object.getPrototypeOf(ScalingCellSizeAndPositionManager.prototype), 'getTotalSize', this).call(this);
+      var safeTotalSize = this.getTotalSize();
+
+      if (totalSize === safeTotalSize) {
+        return offset;
+      } else {
+        var offsetPercentage = this._getOffsetPercentage({
+          containerSize: containerSize,
+          offset: offset,
+          totalSize: totalSize
+        });
+
+        return Math.round(offsetPercentage * (safeTotalSize - containerSize));
+      }
+    }
+  }, {
+    key: '_safeOffsetToOffset',
+    value: function _safeOffsetToOffset(_ref7) {
+      var containerSize = _ref7.containerSize;
+      var offset // safe
+      = _ref7.offset;
+
+      var totalSize = _get(Object.getPrototypeOf(ScalingCellSizeAndPositionManager.prototype), 'getTotalSize', this).call(this);
+      var safeTotalSize = this.getTotalSize();
+
+      if (totalSize === safeTotalSize) {
+        return offset;
+      } else {
+        var offsetPercentage = this._getOffsetPercentage({
+          containerSize: containerSize,
+          offset: offset,
+          totalSize: safeTotalSize
+        });
+
+        return Math.round(offsetPercentage * (totalSize - containerSize));
+      }
+    }
+  }]);
+
+  return ScalingCellSizeAndPositionManager;
+}(_CellSizeAndPositionManager2.default);
+
+exports.default = ScalingCellSizeAndPositionManager;
+},{"./CellSizeAndPositionManager":679}],681:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = calculateSizeAndPositionDataAndUpdateScrollOffset;
+/**
+ * Helper method that determines when to recalculate row or column metadata.
+ *
+ * @param cellCount Number of rows or columns in the current axis
+ * @param cellsSize Width or height of cells for the current axis
+ * @param computeMetadataCallback Method to invoke if cell metadata should be recalculated
+ * @param computeMetadataCallbackProps Parameters to pass to :computeMetadataCallback
+ * @param nextCellsCount Newly updated number of rows or columns in the current axis
+ * @param nextCellsSize Newly updated width or height of cells for the current axis
+ * @param nextScrollToIndex Newly updated scroll-to-index
+ * @param scrollToIndex Scroll-to-index
+ * @param updateScrollOffsetForScrollToIndex Callback to invoke if the scroll position should be recalculated
+ */
+function calculateSizeAndPositionDataAndUpdateScrollOffset(_ref) {
+  var cellCount = _ref.cellCount;
+  var cellSize = _ref.cellSize;
+  var computeMetadataCallback = _ref.computeMetadataCallback;
+  var computeMetadataCallbackProps = _ref.computeMetadataCallbackProps;
+  var nextCellsCount = _ref.nextCellsCount;
+  var nextCellSize = _ref.nextCellSize;
+  var nextScrollToIndex = _ref.nextScrollToIndex;
+  var scrollToIndex = _ref.scrollToIndex;
+  var updateScrollOffsetForScrollToIndex = _ref.updateScrollOffsetForScrollToIndex;
+
+  // Don't compare cell sizes if they are functions because inline functions would cause infinite loops.
+  // In that event users should use the manual recompute methods to inform of changes.
+  if (cellCount !== nextCellsCount || (typeof cellSize === 'number' || typeof nextCellSize === 'number') && cellSize !== nextCellSize) {
+    computeMetadataCallback(computeMetadataCallbackProps);
+
+    // Updated cell metadata may have hidden the previous scrolled-to item.
+    // In this case we should also update the scrollTop to ensure it stays visible.
+    if (scrollToIndex >= 0 && scrollToIndex === nextScrollToIndex) {
+      updateScrollOffsetForScrollToIndex();
+    }
+  }
+}
+},{}],682:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = getOverscanIndices;
+/**
+ * Calculates the number of cells to overscan before and after a specified range.
+ * This function ensures that overscanning doesn't exceed the available cells.
+ *
+ * @param cellCount Number of rows or columns in the current axis
+ * @param overscanCellsCount Maximum number of cells to over-render in either direction
+ * @param startIndex Begin of range of visible cells
+ * @param stopIndex End of range of visible cells
+ */
+function getOverscanIndices(_ref) {
+  var cellCount = _ref.cellCount;
+  var overscanCellsCount = _ref.overscanCellsCount;
+  var startIndex = _ref.startIndex;
+  var stopIndex = _ref.stopIndex;
+
+  return {
+    overscanStartIndex: Math.max(0, startIndex - overscanCellsCount),
+    overscanStopIndex: Math.min(cellCount - 1, stopIndex + overscanCellsCount)
+  };
+}
+},{}],683:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = updateScrollIndexHelper;
+
+var _getUpdatedOffsetForIndex = require('../../utils/getUpdatedOffsetForIndex');
+
+var _getUpdatedOffsetForIndex2 = _interopRequireDefault(_getUpdatedOffsetForIndex);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * Helper function that determines when to update scroll offsets to ensure that a scroll-to-index remains visible.
+ * This function also ensures that the scroll ofset isn't past the last column/row of cells.
+ *
+ * @param cellsSize Width or height of cells for the current axis
+ * @param cellSizeAndPositionManager Manages size and position metadata of cells
+ * @param previousCellsCount Previous number of rows or columns
+ * @param previousCellsSize Previous width or height of cells
+ * @param previousScrollToIndex Previous scroll-to-index
+ * @param previousSize Previous width or height of the virtualized container
+ * @param scrollOffset Current scrollLeft or scrollTop
+ * @param scrollToIndex Scroll-to-index
+ * @param size Width or height of the virtualized container
+ * @param updateScrollIndexCallback Callback to invoke with an scroll-to-index value
+ */
+function updateScrollIndexHelper(_ref) {
+  var cellSize = _ref.cellSize;
+  var cellSizeAndPositionManager = _ref.cellSizeAndPositionManager;
+  var previousCellsCount = _ref.previousCellsCount;
+  var previousCellSize = _ref.previousCellSize;
+  var previousScrollToAlignment = _ref.previousScrollToAlignment;
+  var previousScrollToIndex = _ref.previousScrollToIndex;
+  var previousSize = _ref.previousSize;
+  var scrollOffset = _ref.scrollOffset;
+  var scrollToAlignment = _ref.scrollToAlignment;
+  var scrollToIndex = _ref.scrollToIndex;
+  var size = _ref.size;
+  var updateScrollIndexCallback = _ref.updateScrollIndexCallback;
+
+  var cellCount = cellSizeAndPositionManager.getCellCount();
+  var hasScrollToIndex = scrollToIndex >= 0 && scrollToIndex < cellCount;
+  var sizeHasChanged = size !== previousSize || !previousCellSize || typeof cellSize === 'number' && cellSize !== previousCellSize;
+
+  // If we have a new scroll target OR if height/row-height has changed,
+  // We should ensure that the scroll target is visible.
+  if (hasScrollToIndex && (sizeHasChanged || scrollToAlignment !== previousScrollToAlignment || scrollToIndex !== previousScrollToIndex)) {
+    updateScrollIndexCallback(scrollToIndex);
+
+    // If we don't have a selected item but list size or number of children have decreased,
+    // Make sure we aren't scrolled too far past the current content.
+  } else if (!hasScrollToIndex && cellCount > 0 && (size < previousSize || cellCount < previousCellsCount)) {
+      scrollToIndex = cellCount - 1;
+
+      var cellMetadatum = cellSizeAndPositionManager.getSizeAndPositionOfCell(scrollToIndex);
+      var calculatedScrollOffset = (0, _getUpdatedOffsetForIndex2.default)({
+        cellOffset: cellMetadatum.offset,
+        cellSize: cellMetadatum.size,
+        containerSize: size,
+        currentOffset: scrollOffset
+      });
+
+      // Only adjust the scroll position if we've scrolled below the last set of rows.
+      if (calculatedScrollOffset < scrollOffset) {
+        updateScrollIndexCallback(cellCount - 1);
+      }
+    }
+}
+},{"../../utils/getUpdatedOffsetForIndex":692}],684:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+exports.isRangeVisible = isRangeVisible;
+exports.scanForUnloadedRanges = scanForUnloadedRanges;
+
+var _react = require('react');
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * Higher-order component that manages lazy-loading for "infinite" data.
+ * This component decorates a virtual component and just-in-time prefetches rows as a user scrolls.
+ * It is intended as a convenience component; fork it if you'd like finer-grained control over data-loading.
+ */
+
+var InfiniteLoader = function (_Component) {
+  _inherits(InfiniteLoader, _Component);
+
+  function InfiniteLoader(props, context) {
+    _classCallCheck(this, InfiniteLoader);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(InfiniteLoader).call(this, props, context));
+
+    _this._onRowsRendered = _this._onRowsRendered.bind(_this);
+    _this._registerChild = _this._registerChild.bind(_this);
+    return _this;
+  }
+
+  _createClass(InfiniteLoader, [{
+    key: 'render',
+    value: function render() {
+      var children = this.props.children;
+
+
+      return children({
+        onRowsRendered: this._onRowsRendered,
+        registerChild: this._registerChild
+      });
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+  }, {
+    key: '_onRowsRendered',
+    value: function _onRowsRendered(_ref) {
+      var _this2 = this;
+
+      var startIndex = _ref.startIndex;
+      var stopIndex = _ref.stopIndex;
+      var _props = this.props;
+      var isRowLoaded = _props.isRowLoaded;
+      var loadMoreRows = _props.loadMoreRows;
+      var minimumBatchSize = _props.minimumBatchSize;
+      var rowCount = _props.rowCount;
+      var threshold = _props.threshold;
+
+
+      this._lastRenderedStartIndex = startIndex;
+      this._lastRenderedStopIndex = stopIndex;
+
+      var unloadedRanges = scanForUnloadedRanges({
+        isRowLoaded: isRowLoaded,
+        minimumBatchSize: minimumBatchSize,
+        rowCount: rowCount,
+        startIndex: Math.max(0, startIndex - threshold),
+        stopIndex: Math.min(rowCount - 1, stopIndex + threshold)
+      });
+
+      unloadedRanges.forEach(function (unloadedRange) {
+        var promise = loadMoreRows(unloadedRange);
+        if (promise) {
+          promise.then(function () {
+            // Refresh the visible rows if any of them have just been loaded.
+            // Otherwise they will remain in their unloaded visual state.
+            if (isRangeVisible({
+              lastRenderedStartIndex: _this2._lastRenderedStartIndex,
+              lastRenderedStopIndex: _this2._lastRenderedStopIndex,
+              startIndex: unloadedRange.startIndex,
+              stopIndex: unloadedRange.stopIndex
+            })) {
+              if (_this2._registeredChild) {
+                _this2._registeredChild.forceUpdate();
+              }
+            }
+          });
+        }
+      });
+    }
+  }, {
+    key: '_registerChild',
+    value: function _registerChild(registeredChild) {
+      this._registeredChild = registeredChild;
+    }
+  }]);
+
+  return InfiniteLoader;
+}(_react.Component);
+
+/**
+ * Determines if the specified start/stop range is visible based on the most recently rendered range.
+ */
+
+
+InfiniteLoader.propTypes = {
+  /**
+   * Function respondible for rendering a virtualized component.
+   * This function should implement the following signature:
+   * ({ onRowsRendered, registerChild }) => PropTypes.element
+   *
+   * The specified :onRowsRendered function should be passed through to the child's :onRowsRendered property.
+   * The :registerChild callback should be set as the virtualized component's :ref.
+   */
+  children: _react.PropTypes.func.isRequired,
+
+  /**
+   * Function responsible for tracking the loaded state of each row.
+   * It should implement the following signature: ({ index: number }): boolean
+   */
+  isRowLoaded: _react.PropTypes.func.isRequired,
+
+  /**
+   * Callback to be invoked when more rows must be loaded.
+   * It should implement the following signature: ({ startIndex, stopIndex }): Promise
+   * The returned Promise should be resolved once row data has finished loading.
+   * It will be used to determine when to refresh the list with the newly-loaded data.
+   * This callback may be called multiple times in reaction to a single scroll event.
+   */
+  loadMoreRows: _react.PropTypes.func.isRequired,
+
+  /**
+   * Minimum number of rows to be loaded at a time.
+   * This property can be used to batch requests to reduce HTTP requests.
+   */
+  minimumBatchSize: _react.PropTypes.number.isRequired,
+
+  /**
+   * Number of rows in list; can be arbitrary high number if actual number is unknown.
+   */
+  rowCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Threshold at which to pre-fetch data.
+   * A threshold X means that data will start loading when a user scrolls within X rows.
+   * This value defaults to 15.
+   */
+  threshold: _react.PropTypes.number.isRequired
+};
+InfiniteLoader.defaultProps = {
+  minimumBatchSize: 10,
+  rowCount: 0,
+  threshold: 15
+};
+exports.default = InfiniteLoader;
+function isRangeVisible(_ref2) {
+  var lastRenderedStartIndex = _ref2.lastRenderedStartIndex;
+  var lastRenderedStopIndex = _ref2.lastRenderedStopIndex;
+  var startIndex = _ref2.startIndex;
+  var stopIndex = _ref2.stopIndex;
+
+  return !(startIndex > lastRenderedStopIndex || stopIndex < lastRenderedStartIndex);
+}
+
+/**
+ * Returns all of the ranges within a larger range that contain unloaded rows.
+ */
+function scanForUnloadedRanges(_ref3) {
+  var isRowLoaded = _ref3.isRowLoaded;
+  var minimumBatchSize = _ref3.minimumBatchSize;
+  var rowCount = _ref3.rowCount;
+  var startIndex = _ref3.startIndex;
+  var stopIndex = _ref3.stopIndex;
+
+  var unloadedRanges = [];
+
+  var rangeStartIndex = null;
+  var rangeStopIndex = null;
+
+  for (var index = startIndex; index <= stopIndex; index++) {
+    var loaded = isRowLoaded({ index: index });
+
+    if (!loaded) {
+      rangeStopIndex = index;
+      if (rangeStartIndex === null) {
+        rangeStartIndex = index;
+      }
+    } else if (rangeStopIndex !== null) {
+      unloadedRanges.push({
+        startIndex: rangeStartIndex,
+        stopIndex: rangeStopIndex
+      });
+
+      rangeStartIndex = rangeStopIndex = null;
+    }
+  }
+
+  // If :rangeStopIndex is not null it means we haven't ran out of unloaded rows.
+  // Scan forward to try filling our :minimumBatchSize.
+  if (rangeStopIndex !== null) {
+    var potentialStopIndex = Math.min(Math.max(rangeStopIndex, rangeStartIndex + minimumBatchSize - 1), rowCount - 1);
+
+    for (var _index = rangeStopIndex + 1; _index <= potentialStopIndex; _index++) {
+      if (!isRowLoaded({ index: _index })) {
+        rangeStopIndex = _index;
+      } else {
+        break;
+      }
+    }
+
+    unloadedRanges.push({
+      startIndex: rangeStartIndex,
+      stopIndex: rangeStopIndex
+    });
+  }
+
+  // Check to see if our first range ended prematurely.
+  // In this case we should scan backwards to try filling our :minimumBatchSize.
+  if (unloadedRanges.length) {
+    var firstUnloadedRange = unloadedRanges[0];
+
+    while (firstUnloadedRange.stopIndex - firstUnloadedRange.startIndex + 1 < minimumBatchSize && firstUnloadedRange.startIndex > 0) {
+      var _index2 = firstUnloadedRange.startIndex - 1;
+
+      if (!isRowLoaded({ index: _index2 })) {
+        firstUnloadedRange.startIndex = _index2;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return unloadedRanges;
+}
+},{"react":840,"react-addons-shallow-compare":579}],685:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.InfiniteLoader = exports.default = undefined;
+
+var _InfiniteLoader2 = require('./InfiniteLoader');
+
+var _InfiniteLoader3 = _interopRequireDefault(_InfiniteLoader2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _InfiniteLoader3.default;
+exports.InfiniteLoader = _InfiniteLoader3.default;
+},{"./InfiniteLoader":684}],686:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * HOC that simplifies the process of synchronizing scrolling between two or more virtualized components.
+ */
+
+var ScrollSync = function (_Component) {
+  _inherits(ScrollSync, _Component);
+
+  function ScrollSync(props, context) {
+    _classCallCheck(this, ScrollSync);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(ScrollSync).call(this, props, context));
+
+    _this.state = {
+      clientHeight: 0,
+      clientWidth: 0,
+      scrollHeight: 0,
+      scrollLeft: 0,
+      scrollTop: 0,
+      scrollWidth: 0
+    };
+
+    _this._onScroll = _this._onScroll.bind(_this);
+    return _this;
+  }
+
+  _createClass(ScrollSync, [{
+    key: 'render',
+    value: function render() {
+      var children = this.props.children;
+      var _state = this.state;
+      var clientHeight = _state.clientHeight;
+      var clientWidth = _state.clientWidth;
+      var scrollHeight = _state.scrollHeight;
+      var scrollLeft = _state.scrollLeft;
+      var scrollTop = _state.scrollTop;
+      var scrollWidth = _state.scrollWidth;
+
+
+      return children({
+        clientHeight: clientHeight,
+        clientWidth: clientWidth,
+        onScroll: this._onScroll,
+        scrollHeight: scrollHeight,
+        scrollLeft: scrollLeft,
+        scrollTop: scrollTop,
+        scrollWidth: scrollWidth
+      });
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+  }, {
+    key: '_onScroll',
+    value: function _onScroll(_ref) {
+      var clientHeight = _ref.clientHeight;
+      var clientWidth = _ref.clientWidth;
+      var scrollHeight = _ref.scrollHeight;
+      var scrollLeft = _ref.scrollLeft;
+      var scrollTop = _ref.scrollTop;
+      var scrollWidth = _ref.scrollWidth;
+
+      this.setState({ clientHeight: clientHeight, clientWidth: clientWidth, scrollHeight: scrollHeight, scrollLeft: scrollLeft, scrollTop: scrollTop, scrollWidth: scrollWidth });
+    }
+  }]);
+
+  return ScrollSync;
+}(_react.Component);
+
+ScrollSync.propTypes = {
+  /**
+   * Function respondible for rendering 2 or more virtualized components.
+   * This function should implement the following signature:
+   * ({ onScroll, scrollLeft, scrollTop }) => PropTypes.element
+   */
+  children: _react.PropTypes.func.isRequired
+};
+exports.default = ScrollSync;
+},{"react":840,"react-addons-shallow-compare":579}],687:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ScrollSync = exports.default = undefined;
+
+var _ScrollSync2 = require('./ScrollSync');
+
+var _ScrollSync3 = _interopRequireDefault(_ScrollSync2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _ScrollSync3.default;
+exports.ScrollSync = _ScrollSync3.default;
+},{"./ScrollSync":686}],688:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Grid = require('../Grid');
+
+var _Grid2 = _interopRequireDefault(_Grid);
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _classnames = require('classnames');
+
+var _classnames2 = _interopRequireDefault(_classnames);
+
+var _reactAddonsShallowCompare = require('react-addons-shallow-compare');
+
+var _reactAddonsShallowCompare2 = _interopRequireDefault(_reactAddonsShallowCompare);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+/**
+ * It is inefficient to create and manage a large list of DOM elements within a scrolling container
+ * if only a few of those elements are visible. The primary purpose of this component is to improve
+ * performance by only rendering the DOM nodes that a user is able to see based on their current
+ * scroll position.
+ *
+ * This component renders a virtualized list of elements with either fixed or dynamic heights.
+ */
+
+var VirtualScroll = function (_Component) {
+  _inherits(VirtualScroll, _Component);
+
+  function VirtualScroll() {
+    _classCallCheck(this, VirtualScroll);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(VirtualScroll).apply(this, arguments));
+  }
+
+  _createClass(VirtualScroll, [{
+    key: 'measureAllRows',
+
+
+    /** See Grid#measureAllCells */
+    value: function measureAllRows() {
+      this.refs.Grid.measureAllCells();
+    }
+
+    /** See Grid#recomputeGridSize */
+
+  }, {
+    key: 'recomputeRowHeights',
+    value: function recomputeRowHeights() {
+      this.refs.Grid.recomputeGridSize();
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _props = this.props;
+      var className = _props.className;
+      var estimatedRowSize = _props.estimatedRowSize;
+      var height = _props.height;
+      var noRowsRenderer = _props.noRowsRenderer;
+      var onRowsRendered = _props.onRowsRendered;
+      var _onScroll = _props.onScroll;
+      var rowHeight = _props.rowHeight;
+      var rowRenderer = _props.rowRenderer;
+      var overscanRowCount = _props.overscanRowCount;
+      var rowCount = _props.rowCount;
+      var scrollToAlignment = _props.scrollToAlignment;
+      var scrollToIndex = _props.scrollToIndex;
+      var scrollTop = _props.scrollTop;
+      var style = _props.style;
+      var width = _props.width;
+
+
+      var classNames = (0, _classnames2.default)('VirtualScroll', className);
+
+      return _react2.default.createElement(_Grid2.default, {
+        ref: 'Grid',
+        'aria-label': this.props['aria-label'],
+        className: classNames,
+        cellRenderer: function cellRenderer(_ref) {
+          var columnIndex = _ref.columnIndex;
+          var isScrolling = _ref.isScrolling;
+          var rowIndex = _ref.rowIndex;
+          return rowRenderer({
+            index: rowIndex,
+            isScrolling: isScrolling
+          });
+        },
+        columnWidth: width,
+        columnCount: 1,
+        estimatedRowSize: estimatedRowSize,
+        height: height,
+        noContentRenderer: noRowsRenderer,
+        onScroll: function onScroll(_ref2) {
+          var clientHeight = _ref2.clientHeight;
+          var scrollHeight = _ref2.scrollHeight;
+          var scrollTop = _ref2.scrollTop;
+          return _onScroll({ clientHeight: clientHeight, scrollHeight: scrollHeight, scrollTop: scrollTop });
+        },
+        onSectionRendered: function onSectionRendered(_ref3) {
+          var rowOverscanStartIndex = _ref3.rowOverscanStartIndex;
+          var rowOverscanStopIndex = _ref3.rowOverscanStopIndex;
+          var rowStartIndex = _ref3.rowStartIndex;
+          var rowStopIndex = _ref3.rowStopIndex;
+          return onRowsRendered({
+            overscanStartIndex: rowOverscanStartIndex,
+            overscanStopIndex: rowOverscanStopIndex,
+            startIndex: rowStartIndex,
+            stopIndex: rowStopIndex
+          });
+        },
+        overscanRowCount: overscanRowCount,
+        rowHeight: rowHeight,
+        rowCount: rowCount,
+        scrollToAlignment: scrollToAlignment,
+        scrollToRow: scrollToIndex,
+        scrollTop: scrollTop,
+        style: style,
+        width: width
+      });
+    }
+  }, {
+    key: 'shouldComponentUpdate',
+    value: function shouldComponentUpdate(nextProps, nextState) {
+      return (0, _reactAddonsShallowCompare2.default)(this, nextProps, nextState);
+    }
+  }]);
+
+  return VirtualScroll;
+}(_react.Component);
+
+VirtualScroll.propTypes = {
+  'aria-label': _react.PropTypes.string,
+
+  /** Optional CSS class name */
+  className: _react.PropTypes.string,
+
+  /**
+   * Used to estimate the total height of a VirtualScroll before all of its rows have actually been measured.
+   * The estimated total height is adjusted as rows are rendered.
+   */
+  estimatedRowSize: _react.PropTypes.number.isRequired,
+
+  /** Height constraint for list (determines how many actual rows are rendered) */
+  height: _react.PropTypes.number.isRequired,
+
+  /** Optional renderer to be used in place of rows when rowCount is 0 */
+  noRowsRenderer: _react.PropTypes.func.isRequired,
+
+  /**
+   * Callback invoked with information about the slice of rows that were just rendered.
+   * ({ startIndex, stopIndex }): void
+   */
+  onRowsRendered: _react.PropTypes.func.isRequired,
+
+  /**
+   * Number of rows to render above/below the visible bounds of the list.
+   * These rows can help for smoother scrolling on touch devices.
+   */
+  overscanRowCount: _react.PropTypes.number.isRequired,
+
+  /**
+   * Callback invoked whenever the scroll offset changes within the inner scrollable region.
+   * This callback can be used to sync scrolling between lists, tables, or grids.
+   * ({ clientHeight, scrollHeight, scrollTop }): void
+   */
+  onScroll: _react.PropTypes.func.isRequired,
+
+  /**
+   * Either a fixed row height (number) or a function that returns the height of a row given its index.
+   * ({ index: number }): number
+   */
+  rowHeight: _react.PropTypes.oneOfType([_react.PropTypes.number, _react.PropTypes.func]).isRequired,
+
+  /** Responsbile for rendering a row given an index; ({ index: number }): node */
+  rowRenderer: _react.PropTypes.func.isRequired,
+
+  /** Number of rows in list. */
+  rowCount: _react.PropTypes.number.isRequired,
+
+  /** See Grid#scrollToAlignment */
+  scrollToAlignment: _react.PropTypes.oneOf(['auto', 'end', 'start', 'center']).isRequired,
+
+  /** Row index to ensure visible (by forcefully scrolling if necessary) */
+  scrollToIndex: _react.PropTypes.number,
+
+  /** Vertical offset. */
+  scrollTop: _react.PropTypes.number,
+
+  /** Optional inline style */
+  style: _react.PropTypes.object,
+
+  /** Width of list */
+  width: _react.PropTypes.number.isRequired
+};
+VirtualScroll.defaultProps = {
+  estimatedRowSize: 30,
+  noRowsRenderer: function noRowsRenderer() {
+    return null;
+  },
+  onRowsRendered: function onRowsRendered() {
+    return null;
+  },
+  onScroll: function onScroll() {
+    return null;
+  },
+  overscanRowCount: 10,
+  scrollToAlignment: 'auto',
+  style: {}
+};
+exports.default = VirtualScroll;
+},{"../Grid":678,"classnames":11,"react":840,"react-addons-shallow-compare":579}],689:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.VirtualScroll = exports.default = undefined;
+
+var _VirtualScroll2 = require('./VirtualScroll');
+
+var _VirtualScroll3 = _interopRequireDefault(_VirtualScroll2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = _VirtualScroll3.default;
+exports.VirtualScroll = _VirtualScroll3.default;
+},{"./VirtualScroll":688}],690:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _ArrowKeyStepper = require('./ArrowKeyStepper');
+
+Object.defineProperty(exports, 'ArrowKeyStepper', {
+  enumerable: true,
+  get: function get() {
+    return _ArrowKeyStepper.ArrowKeyStepper;
+  }
+});
+
+var _AutoSizer = require('./AutoSizer');
+
+Object.defineProperty(exports, 'AutoSizer', {
+  enumerable: true,
+  get: function get() {
+    return _AutoSizer.AutoSizer;
+  }
+});
+
+var _CellMeasurer = require('./CellMeasurer');
+
+Object.defineProperty(exports, 'CellMeasurer', {
+  enumerable: true,
+  get: function get() {
+    return _CellMeasurer.CellMeasurer;
+  }
+});
+
+var _Collection = require('./Collection');
+
+Object.defineProperty(exports, 'Collection', {
+  enumerable: true,
+  get: function get() {
+    return _Collection.Collection;
+  }
+});
+
+var _ColumnSizer = require('./ColumnSizer');
+
+Object.defineProperty(exports, 'ColumnSizer', {
+  enumerable: true,
+  get: function get() {
+    return _ColumnSizer.ColumnSizer;
+  }
+});
+
+var _FlexTable = require('./FlexTable');
+
+Object.defineProperty(exports, 'FlexTable', {
+  enumerable: true,
+  get: function get() {
+    return _FlexTable.FlexTable;
+  }
+});
+Object.defineProperty(exports, 'FlexColumn', {
+  enumerable: true,
+  get: function get() {
+    return _FlexTable.FlexColumn;
+  }
+});
+Object.defineProperty(exports, 'SortDirection', {
+  enumerable: true,
+  get: function get() {
+    return _FlexTable.SortDirection;
+  }
+});
+Object.defineProperty(exports, 'SortIndicator', {
+  enumerable: true,
+  get: function get() {
+    return _FlexTable.SortIndicator;
+  }
+});
+
+var _Grid = require('./Grid');
+
+Object.defineProperty(exports, 'Grid', {
+  enumerable: true,
+  get: function get() {
+    return _Grid.Grid;
+  }
+});
+
+var _InfiniteLoader = require('./InfiniteLoader');
+
+Object.defineProperty(exports, 'InfiniteLoader', {
+  enumerable: true,
+  get: function get() {
+    return _InfiniteLoader.InfiniteLoader;
+  }
+});
+
+var _ScrollSync = require('./ScrollSync');
+
+Object.defineProperty(exports, 'ScrollSync', {
+  enumerable: true,
+  get: function get() {
+    return _ScrollSync.ScrollSync;
+  }
+});
+
+var _VirtualScroll = require('./VirtualScroll');
+
+Object.defineProperty(exports, 'VirtualScroll', {
+  enumerable: true,
+  get: function get() {
+    return _VirtualScroll.VirtualScroll;
+  }
+});
+},{"./ArrowKeyStepper":655,"./AutoSizer":657,"./CellMeasurer":659,"./Collection":664,"./ColumnSizer":667,"./FlexTable":675,"./Grid":678,"./InfiniteLoader":685,"./ScrollSync":687,"./VirtualScroll":689}],691:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = createCallbackMemoizer;
+/**
+ * Helper utility that updates the specified callback whenever any of the specified indices have changed.
+ */
+function createCallbackMemoizer() {
+  var requireAllKeys = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
+
+  var cachedIndices = {};
+
+  return function (_ref) {
+    var callback = _ref.callback;
+    var indices = _ref.indices;
+
+    var keys = Object.keys(indices);
+    var allInitialized = !requireAllKeys || keys.every(function (key) {
+      var value = indices[key];
+      return Array.isArray(value) ? value.length > 0 : value >= 0;
+    });
+    var indexChanged = keys.length !== Object.keys(cachedIndices).length || keys.some(function (key) {
+      var cachedValue = cachedIndices[key];
+      var value = indices[key];
+
+      return Array.isArray(value) ? cachedValue.join(',') !== value.join(',') : cachedValue !== value;
+    });
+
+    cachedIndices = indices;
+
+    if (allInitialized && indexChanged) {
+      callback(indices);
+    }
+  };
+}
+},{}],692:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = getUpdatedOffsetForIndex;
+/**
+ * Determines a new offset that ensures a certain cell is visible, given the current offset.
+ * If the cell is already visible then the current offset will be returned.
+ * If the current offset is too great or small, it will be adjusted just enough to ensure the specified index is visible.
+ *
+ * @param align Desired alignment within container; one of "auto" (default), "start", or "end"
+ * @param cellOffset Offset (x or y) position for cell
+ * @param cellSize Size (width or height) of cell
+ * @param containerSize Total size (width or height) of the container
+ * @param currentOffset Container's current (x or y) offset
+ * @return Offset to use to ensure the specified cell is visible
+ */
+function getUpdatedOffsetForIndex(_ref) {
+  var _ref$align = _ref.align;
+  var align = _ref$align === undefined ? 'auto' : _ref$align;
+  var cellOffset = _ref.cellOffset;
+  var cellSize = _ref.cellSize;
+  var containerSize = _ref.containerSize;
+  var currentOffset = _ref.currentOffset;
+
+  var maxOffset = cellOffset;
+  var minOffset = maxOffset - containerSize + cellSize;
+
+  switch (align) {
+    case 'start':
+      return maxOffset;
+    case 'end':
+      return minOffset;
+    case 'center':
+      return maxOffset - (containerSize + cellSize) / 2;
+    default:
+      return Math.max(minOffset, Math.min(maxOffset, currentOffset));
+  }
+}
+},{}],693:[function(require,module,exports){
+'use strict';
+
+/**
+* Detect Element Resize.
+* Forked in order to guard against unsafe 'window' and 'document' references.
+*
+* https://github.com/sdecima/javascript-detect-element-resize
+* Sebastian Decima
+*
+* version: 0.5.3
+**/
+
+// Check `document` and `window` in case of server-side rendering
+var _window;
+if (typeof window !== 'undefined') {
+  _window = window;
+} else if (typeof self !== 'undefined') {
+  _window = self;
+} else {
+  _window = undefined;
+}
+
+var attachEvent = typeof document !== 'undefined' && document.attachEvent;
+var stylesCreated = false;
+
+if (!attachEvent) {
+  var requestFrame = function () {
+    var raf = _window.requestAnimationFrame || _window.mozRequestAnimationFrame || _window.webkitRequestAnimationFrame || function (fn) {
+      return _window.setTimeout(fn, 20);
+    };
+    return function (fn) {
+      return raf(fn);
+    };
+  }();
+
+  var cancelFrame = function () {
+    var cancel = _window.cancelAnimationFrame || _window.mozCancelAnimationFrame || _window.webkitCancelAnimationFrame || _window.clearTimeout;
+    return function (id) {
+      return cancel(id);
+    };
+  }();
+
+  var resetTriggers = function resetTriggers(element) {
+    var triggers = element.__resizeTriggers__,
+        expand = triggers.firstElementChild,
+        contract = triggers.lastElementChild,
+        expandChild = expand.firstElementChild;
+    contract.scrollLeft = contract.scrollWidth;
+    contract.scrollTop = contract.scrollHeight;
+    expandChild.style.width = expand.offsetWidth + 1 + 'px';
+    expandChild.style.height = expand.offsetHeight + 1 + 'px';
+    expand.scrollLeft = expand.scrollWidth;
+    expand.scrollTop = expand.scrollHeight;
+  };
+
+  var checkTriggers = function checkTriggers(element) {
+    return element.offsetWidth != element.__resizeLast__.width || element.offsetHeight != element.__resizeLast__.height;
+  };
+
+  var scrollListener = function scrollListener(e) {
+    var element = this;
+    resetTriggers(this);
+    if (this.__resizeRAF__) cancelFrame(this.__resizeRAF__);
+    this.__resizeRAF__ = requestFrame(function () {
+      if (checkTriggers(element)) {
+        element.__resizeLast__.width = element.offsetWidth;
+        element.__resizeLast__.height = element.offsetHeight;
+        element.__resizeListeners__.forEach(function (fn) {
+          fn.call(element, e);
+        });
+      }
+    });
+  };
+
+  /* Detect CSS Animations support to detect element display/re-attach */
+  var animation = false,
+      animationstring = 'animation',
+      keyframeprefix = '',
+      animationstartevent = 'animationstart',
+      domPrefixes = 'Webkit Moz O ms'.split(' '),
+      startEvents = 'webkitAnimationStart animationstart oAnimationStart MSAnimationStart'.split(' '),
+      pfx = '';
+  {
+    var elm = document.createElement('fakeelement');
+    if (elm.style.animationName !== undefined) {
+      animation = true;
+    }
+
+    if (animation === false) {
+      for (var i = 0; i < domPrefixes.length; i++) {
+        if (elm.style[domPrefixes[i] + 'AnimationName'] !== undefined) {
+          pfx = domPrefixes[i];
+          animationstring = pfx + 'Animation';
+          keyframeprefix = '-' + pfx.toLowerCase() + '-';
+          animationstartevent = startEvents[i];
+          animation = true;
+          break;
+        }
+      }
+    }
+  }
+
+  var animationName = 'resizeanim';
+  var animationKeyframes = '@' + keyframeprefix + 'keyframes ' + animationName + ' { from { opacity: 0; } to { opacity: 0; } } ';
+  var animationStyle = keyframeprefix + 'animation: 1ms ' + animationName + '; ';
+}
+
+var createStyles = function createStyles() {
+  if (!stylesCreated) {
+    //opacity:0 works around a chrome bug https://code.google.com/p/chromium/issues/detail?id=286360
+    var css = (animationKeyframes ? animationKeyframes : '') + '.resize-triggers { ' + (animationStyle ? animationStyle : '') + 'visibility: hidden; opacity: 0; } ' + '.resize-triggers, .resize-triggers > div, .contract-trigger:before { content: \" \"; display: block; position: absolute; top: 0; left: 0; height: 100%; width: 100%; overflow: hidden; } .resize-triggers > div { background: #eee; overflow: auto; } .contract-trigger:before { width: 200%; height: 200%; }',
+        head = document.head || document.getElementsByTagName('head')[0],
+        style = document.createElement('style');
+
+    style.type = 'text/css';
+    if (style.styleSheet) {
+      style.styleSheet.cssText = css;
+    } else {
+      style.appendChild(document.createTextNode(css));
+    }
+
+    head.appendChild(style);
+    stylesCreated = true;
+  }
+};
+
+var addResizeListener = function addResizeListener(element, fn) {
+  if (attachEvent) element.attachEvent('onresize', fn);else {
+    if (!element.__resizeTriggers__) {
+      if (getComputedStyle(element).position == 'static') element.style.position = 'relative';
+      createStyles();
+      element.__resizeLast__ = {};
+      element.__resizeListeners__ = [];
+      (element.__resizeTriggers__ = document.createElement('div')).className = 'resize-triggers';
+      element.__resizeTriggers__.innerHTML = '<div class="expand-trigger"><div></div></div>' + '<div class="contract-trigger"></div>';
+      element.appendChild(element.__resizeTriggers__);
+      resetTriggers(element);
+      element.addEventListener('scroll', scrollListener, true);
+
+      /* Listen for a css animation to detect element display/re-attach */
+      animationstartevent && element.__resizeTriggers__.addEventListener(animationstartevent, function (e) {
+        if (e.animationName == animationName) resetTriggers(element);
+      });
+    }
+    element.__resizeListeners__.push(fn);
+  }
+};
+
+var removeResizeListener = function removeResizeListener(element, fn) {
+  if (attachEvent) element.detachEvent('onresize', fn);else {
+    element.__resizeListeners__.splice(element.__resizeListeners__.indexOf(fn), 1);
+    if (!element.__resizeListeners__.length) {
+      element.removeEventListener('scroll', scrollListener, true);
+      element.__resizeTriggers__ = !element.removeChild(element.__resizeTriggers__);
+    }
+  }
+};
+
+module.exports = {
+  addResizeListener: addResizeListener,
+  removeResizeListener: removeResizeListener
+};
+},{}],694:[function(require,module,exports){
+var css = "/* Collection default theme */\n.Collection {\n  position: relative;\n  overflow: auto;\n  -webkit-overflow-scrolling: touch;\n  /* Without this property, Chrome repaints the entire Collection any time a new row or column is added.\n     Firefox only repaints the new row or column (regardless of this property).\n     Safari and IE don't support the property at all. */\n  will-change: transform;\n}\n.Collection__innerScrollContainer {\n  box-sizing: border-box;\n  overflow: hidden;\n}\n.Collection__cell {\n  position: absolute;\n}\n/* Grid default theme */\n.Grid {\n  position: relative;\n  overflow: auto;\n  -webkit-overflow-scrolling: touch;\n  /* Without this property, Chrome repaints the entire Grid any time a new row or column is added.\n     Firefox only repaints the new row or column (regardless of this property).\n     Safari and IE don't support the property at all. */\n  will-change: transform;\n}\n.Grid__innerScrollContainer {\n  box-sizing: border-box;\n  overflow: hidden;\n}\n.Grid__cell {\n  position: absolute;\n}\n/* FlexTable default theme */\n\n.FlexTable__Grid {\n  overflow-x: hidden;\n  box-sizing: border-box;\n}\n.FlexTable__headerRow {\n  font-weight: 700;\n  text-transform: uppercase;\n  display: -webkit-box;\n  display: -webkit-flex;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-box-orient: horizontal;\n  -webkit-box-direction: normal;\n  -webkit-flex-direction: row;\n  -ms-flex-direction: row;\n  flex-direction: row;\n  -webkit-box-align: center;\n  -webkit-align-items: center;\n  -ms-flex-align: center;\n  align-items: center;\n  overflow: hidden;\n  box-sizing: border-box;\n}\n.FlexTable__headerTruncatedText {\n  white-space: nowrap;\n  text-overflow: ellipsis;\n  overflow: hidden;\n}\n.FlexTable__row {\n  display: -webkit-box;\n  display: -webkit-flex;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-box-orient: horizontal;\n  -webkit-box-direction: normal;\n  -webkit-flex-direction: row;\n  -ms-flex-direction: row;\n  flex-direction: row;\n  -webkit-box-align: center;\n  -webkit-align-items: center;\n  -ms-flex-align: center;\n  align-items: center;\n  overflow: hidden;\n}\n.FlexTable__headerColumn,\n.FlexTable__rowColumn {\n  margin-right: 10px;\n  min-width: 0px;\n}\n.FlexTable__headerColumn:first-of-type,\n.FlexTable__rowColumn:first-of-type {\n  margin-left: 10px;\n}\n.FlexTable__headerColumn {\n  -webkit-box-align: center;\n  -webkit-align-items: center;\n  -ms-flex-align: center;\n  align-items: center;\n  display: -webkit-box;\n  display: -webkit-flex;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-box-orient: horizontal;\n  -webkit-box-direction: normal;\n  -webkit-flex-direction: row;\n  -ms-flex-direction: row;\n  flex-direction: row;\n  overflow: hidden;\n}\n.FlexTable__sortableHeaderColumn {\n  cursor: pointer;\n}\n.FlexTable__rowColumn {\n  -webkit-box-pack: center;\n  -webkit-justify-content: center;\n  -ms-flex-pack: center;\n  justify-content: center;\n  -webkit-box-orient: vertical;\n  -webkit-box-direction: normal;\n  -webkit-flex-direction: column;\n  -ms-flex-direction: column;\n  flex-direction: column;\n  display: -webkit-box;\n  display: -webkit-flex;\n  display: -ms-flexbox;\n  display: flex;\n  overflow: hidden;\n  height: 100%;\n}\n.FlexTable__sortableHeaderIconContainer {\n  display: -webkit-box;\n  display: -webkit-flex;\n  display: -ms-flexbox;\n  display: flex;\n  -webkit-box-align: center;\n  -webkit-align-items: center;\n  -ms-flex-align: center;\n  align-items: center;\n}\n.FlexTable__sortableHeaderIcon {\n  -webkit-box-flex: 0;\n  -webkit-flex: 0 0 24px;\n  -ms-flex: 0 0 24px;\n  flex: 0 0 24px;\n  height: 1em;\n  width: 1em;\n  fill: currentColor;\n}\n.FlexTable__truncatedColumnText {\n  text-overflow: ellipsis;\n  overflow: hidden;\n}\n/* VirtualScroll default theme */\n.VirtualScroll {\n  position: relative;\n  overflow-y: auto;\n  overflow-x: hidden;\n  -webkit-overflow-scrolling: touch;\n}\n.VirtualScroll__innerScrollContainer {\n  box-sizing: border-box;\n  overflow: hidden;\n}\n.VirtualScroll__row {\n  position: absolute;\n}\n"; (require("browserify-css").createStyle(css, { "href": "node_modules/react-virtualized/styles.css"})); module.exports = css;
+},{"browserify-css":7}],695:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -72587,7 +78439,7 @@ var AutoFocusUtils = {
 };
 
 module.exports = AutoFocusUtils;
-},{"./ReactDOMComponentTree":689,"fbjs/lib/focusNode":30}],651:[function(require,module,exports){
+},{"./ReactDOMComponentTree":735,"fbjs/lib/focusNode":33}],696:[function(require,module,exports){
 /**
  * Copyright 2013-present Facebook, Inc.
  * All rights reserved.
@@ -72976,7 +78828,7 @@ var BeforeInputEventPlugin = {
 };
 
 module.exports = BeforeInputEventPlugin;
-},{"./EventConstants":665,"./EventPropagators":669,"./FallbackCompositionState":670,"./SyntheticCompositionEvent":748,"./SyntheticInputEvent":752,"fbjs/lib/ExecutionEnvironment":22,"fbjs/lib/keyOf":40}],652:[function(require,module,exports){
+},{"./EventConstants":710,"./EventPropagators":714,"./FallbackCompositionState":715,"./SyntheticCompositionEvent":796,"./SyntheticInputEvent":800,"fbjs/lib/ExecutionEnvironment":25,"fbjs/lib/keyOf":43}],697:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -73125,7 +78977,7 @@ var CSSProperty = {
 };
 
 module.exports = CSSProperty;
-},{}],653:[function(require,module,exports){
+},{}],698:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -73141,7 +78993,7 @@ module.exports = CSSProperty;
 
 var CSSProperty = require('./CSSProperty');
 var ExecutionEnvironment = require('fbjs/lib/ExecutionEnvironment');
-var ReactPerf = require('./ReactPerf');
+var ReactInstrumentation = require('./ReactInstrumentation');
 
 var camelizeStyleName = require('fbjs/lib/camelizeStyleName');
 var dangerousStyleValue = require('./dangerousStyleValue');
@@ -73295,6 +79147,10 @@ var CSSPropertyOperations = {
    * @param {ReactDOMComponent} component
    */
   setValueForStyles: function (node, styles, component) {
+    if ("production" !== 'production') {
+      ReactInstrumentation.debugTool.onNativeOperation(component._debugID, 'update styles', styles);
+    }
+
     var style = node.style;
     for (var styleName in styles) {
       if (!styles.hasOwnProperty(styleName)) {
@@ -73326,12 +79182,8 @@ var CSSPropertyOperations = {
 
 };
 
-ReactPerf.measureMethods(CSSPropertyOperations, 'CSSPropertyOperations', {
-  setValueForStyles: 'setValueForStyles'
-});
-
 module.exports = CSSPropertyOperations;
-},{"./CSSProperty":652,"./ReactPerf":731,"./dangerousStyleValue":765,"fbjs/lib/ExecutionEnvironment":22,"fbjs/lib/camelizeStyleName":24,"fbjs/lib/hyphenateStyleName":35,"fbjs/lib/memoizeStringOnly":42,"fbjs/lib/warning":46}],654:[function(require,module,exports){
+},{"./CSSProperty":697,"./ReactInstrumentation":766,"./dangerousStyleValue":813,"fbjs/lib/ExecutionEnvironment":25,"fbjs/lib/camelizeStyleName":27,"fbjs/lib/hyphenateStyleName":38,"fbjs/lib/memoizeStringOnly":45,"fbjs/lib/warning":49}],699:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -73437,7 +79289,7 @@ _assign(CallbackQueue.prototype, {
 PooledClass.addPoolingTo(CallbackQueue);
 
 module.exports = CallbackQueue;
-},{"./PooledClass":674,"fbjs/lib/invariant":36,"object-assign":565}],655:[function(require,module,exports){
+},{"./PooledClass":719,"fbjs/lib/invariant":39,"object-assign":564}],700:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -73763,7 +79615,7 @@ var ChangeEventPlugin = {
 };
 
 module.exports = ChangeEventPlugin;
-},{"./EventConstants":665,"./EventPluginHub":666,"./EventPropagators":669,"./ReactDOMComponentTree":689,"./ReactUpdates":741,"./SyntheticEvent":750,"./getEventTarget":773,"./isEventSupported":780,"./isTextInputElement":781,"fbjs/lib/ExecutionEnvironment":22,"fbjs/lib/keyOf":40}],656:[function(require,module,exports){
+},{"./EventConstants":710,"./EventPluginHub":711,"./EventPropagators":714,"./ReactDOMComponentTree":735,"./ReactUpdates":789,"./SyntheticEvent":798,"./getEventTarget":821,"./isEventSupported":828,"./isTextInputElement":829,"fbjs/lib/ExecutionEnvironment":25,"fbjs/lib/keyOf":43}],701:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -73780,7 +79632,8 @@ module.exports = ChangeEventPlugin;
 var DOMLazyTree = require('./DOMLazyTree');
 var Danger = require('./Danger');
 var ReactMultiChildUpdateTypes = require('./ReactMultiChildUpdateTypes');
-var ReactPerf = require('./ReactPerf');
+var ReactDOMComponentTree = require('./ReactDOMComponentTree');
+var ReactInstrumentation = require('./ReactInstrumentation');
 
 var createMicrosoftUnsafeLocalFunction = require('./createMicrosoftUnsafeLocalFunction');
 var setInnerHTML = require('./setInnerHTML');
@@ -73875,6 +79728,25 @@ function replaceDelimitedText(openingComment, closingComment, stringText) {
       removeDelimitedText(parentNode, openingComment, closingComment);
     }
   }
+
+  if ("production" !== 'production') {
+    ReactInstrumentation.debugTool.onNativeOperation(ReactDOMComponentTree.getInstanceFromNode(openingComment)._debugID, 'replace text', stringText);
+  }
+}
+
+var dangerouslyReplaceNodeWithMarkup = Danger.dangerouslyReplaceNodeWithMarkup;
+if ("production" !== 'production') {
+  dangerouslyReplaceNodeWithMarkup = function (oldChild, markup, prevInstance) {
+    Danger.dangerouslyReplaceNodeWithMarkup(oldChild, markup);
+    if (prevInstance._debugID !== 0) {
+      ReactInstrumentation.debugTool.onNativeOperation(prevInstance._debugID, 'replace with', markup.toString());
+    } else {
+      var nextInstance = ReactDOMComponentTree.getInstanceFromNode(markup.node);
+      if (nextInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onNativeOperation(nextInstance._debugID, 'mount', markup.toString());
+      }
+    }
+  };
 }
 
 /**
@@ -73882,7 +79754,7 @@ function replaceDelimitedText(openingComment, closingComment, stringText) {
  */
 var DOMChildrenOperations = {
 
-  dangerouslyReplaceNodeWithMarkup: Danger.dangerouslyReplaceNodeWithMarkup,
+  dangerouslyReplaceNodeWithMarkup: dangerouslyReplaceNodeWithMarkup,
 
   replaceDelimitedText: replaceDelimitedText,
 
@@ -73894,23 +79766,42 @@ var DOMChildrenOperations = {
    * @internal
    */
   processUpdates: function (parentNode, updates) {
+    if ("production" !== 'production') {
+      var parentNodeDebugID = ReactDOMComponentTree.getInstanceFromNode(parentNode)._debugID;
+    }
+
     for (var k = 0; k < updates.length; k++) {
       var update = updates[k];
       switch (update.type) {
         case ReactMultiChildUpdateTypes.INSERT_MARKUP:
           insertLazyTreeChildAt(parentNode, update.content, getNodeAfter(parentNode, update.afterNode));
+          if ("production" !== 'production') {
+            ReactInstrumentation.debugTool.onNativeOperation(parentNodeDebugID, 'insert child', { toIndex: update.toIndex, content: update.content.toString() });
+          }
           break;
         case ReactMultiChildUpdateTypes.MOVE_EXISTING:
           moveChild(parentNode, update.fromNode, getNodeAfter(parentNode, update.afterNode));
+          if ("production" !== 'production') {
+            ReactInstrumentation.debugTool.onNativeOperation(parentNodeDebugID, 'move child', { fromIndex: update.fromIndex, toIndex: update.toIndex });
+          }
           break;
         case ReactMultiChildUpdateTypes.SET_MARKUP:
           setInnerHTML(parentNode, update.content);
+          if ("production" !== 'production') {
+            ReactInstrumentation.debugTool.onNativeOperation(parentNodeDebugID, 'replace children', update.content.toString());
+          }
           break;
         case ReactMultiChildUpdateTypes.TEXT_CONTENT:
           setTextContent(parentNode, update.content);
+          if ("production" !== 'production') {
+            ReactInstrumentation.debugTool.onNativeOperation(parentNodeDebugID, 'replace text', update.content.toString());
+          }
           break;
         case ReactMultiChildUpdateTypes.REMOVE_NODE:
           removeChild(parentNode, update.fromNode);
+          if ("production" !== 'production') {
+            ReactInstrumentation.debugTool.onNativeOperation(parentNodeDebugID, 'remove child', { fromIndex: update.fromIndex });
+          }
           break;
       }
     }
@@ -73918,12 +79809,8 @@ var DOMChildrenOperations = {
 
 };
 
-ReactPerf.measureMethods(DOMChildrenOperations, 'DOMChildrenOperations', {
-  replaceDelimitedText: 'replaceDelimitedText'
-});
-
 module.exports = DOMChildrenOperations;
-},{"./DOMLazyTree":657,"./Danger":661,"./ReactMultiChildUpdateTypes":726,"./ReactPerf":731,"./createMicrosoftUnsafeLocalFunction":764,"./setInnerHTML":785,"./setTextContent":786}],657:[function(require,module,exports){
+},{"./DOMLazyTree":702,"./Danger":706,"./ReactDOMComponentTree":735,"./ReactInstrumentation":766,"./ReactMultiChildUpdateTypes":771,"./createMicrosoftUnsafeLocalFunction":812,"./setInnerHTML":833,"./setTextContent":834}],702:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -73937,8 +79824,13 @@ module.exports = DOMChildrenOperations;
 
 'use strict';
 
+var DOMNamespaces = require('./DOMNamespaces');
+
 var createMicrosoftUnsafeLocalFunction = require('./createMicrosoftUnsafeLocalFunction');
 var setTextContent = require('./setTextContent');
+
+var ELEMENT_NODE_TYPE = 1;
+var DOCUMENT_FRAGMENT_NODE_TYPE = 11;
 
 /**
  * In IE (8-11) and Edge, appending nodes with no children is dramatically
@@ -73974,8 +79866,10 @@ var insertTreeBefore = createMicrosoftUnsafeLocalFunction(function (parentNode, 
   // DocumentFragments aren't actually part of the DOM after insertion so
   // appending children won't update the DOM. We need to ensure the fragment
   // is properly populated first, breaking out of our lazy approach for just
-  // this level.
-  if (tree.node.nodeType === 11) {
+  // this level. Also, some <object> plugins (like Flash Player) will read
+  // <param> nodes immediately upon insertion into the DOM, so <object>
+  // must also be populated prior to insertion into the DOM.
+  if (tree.node.nodeType === DOCUMENT_FRAGMENT_NODE_TYPE || tree.node.nodeType === ELEMENT_NODE_TYPE && tree.node.nodeName.toLowerCase() === 'object' && (tree.node.namespaceURI == null || tree.node.namespaceURI === DOMNamespaces.html)) {
     insertTreeChildren(tree);
     parentNode.insertBefore(tree.node, referenceNode);
   } else {
@@ -74013,12 +79907,17 @@ function queueText(tree, text) {
   }
 }
 
+function toString() {
+  return this.node.nodeName;
+}
+
 function DOMLazyTree(node) {
   return {
     node: node,
     children: [],
     html: null,
-    text: null
+    text: null,
+    toString: toString
   };
 }
 
@@ -74029,7 +79928,7 @@ DOMLazyTree.queueHTML = queueHTML;
 DOMLazyTree.queueText = queueText;
 
 module.exports = DOMLazyTree;
-},{"./createMicrosoftUnsafeLocalFunction":764,"./setTextContent":786}],658:[function(require,module,exports){
+},{"./DOMNamespaces":703,"./createMicrosoftUnsafeLocalFunction":812,"./setTextContent":834}],703:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -74050,7 +79949,7 @@ var DOMNamespaces = {
 };
 
 module.exports = DOMNamespaces;
-},{}],659:[function(require,module,exports){
+},{}],704:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -74264,7 +80163,7 @@ var DOMProperty = {
 };
 
 module.exports = DOMProperty;
-},{"fbjs/lib/invariant":36}],660:[function(require,module,exports){
+},{"fbjs/lib/invariant":39}],705:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -74279,8 +80178,9 @@ module.exports = DOMProperty;
 'use strict';
 
 var DOMProperty = require('./DOMProperty');
+var ReactDOMComponentTree = require('./ReactDOMComponentTree');
 var ReactDOMInstrumentation = require('./ReactDOMInstrumentation');
-var ReactPerf = require('./ReactPerf');
+var ReactInstrumentation = require('./ReactInstrumentation');
 
 var quoteAttributeValueForBrowser = require('./quoteAttributeValueForBrowser');
 var warning = require('fbjs/lib/warning');
@@ -74388,9 +80288,6 @@ var DOMPropertyOperations = {
    * @param {*} value
    */
   setValueForProperty: function (node, name, value) {
-    if ("production" !== 'production') {
-      ReactDOMInstrumentation.debugTool.onSetValueForProperty(node, name, value);
-    }
     var propertyInfo = DOMProperty.properties.hasOwnProperty(name) ? DOMProperty.properties[name] : null;
     if (propertyInfo) {
       var mutationMethod = propertyInfo.mutationMethod;
@@ -74398,6 +80295,7 @@ var DOMPropertyOperations = {
         mutationMethod(node, value);
       } else if (shouldIgnoreValue(propertyInfo, value)) {
         this.deleteValueForProperty(node, name);
+        return;
       } else if (propertyInfo.mustUseProperty) {
         var propName = propertyInfo.propertyName;
         // Must explicitly cast values for HAS_SIDE_EFFECTS-properties to the
@@ -74422,6 +80320,14 @@ var DOMPropertyOperations = {
       }
     } else if (DOMProperty.isCustomAttribute(name)) {
       DOMPropertyOperations.setValueForAttribute(node, name, value);
+      return;
+    }
+
+    if ("production" !== 'production') {
+      ReactDOMInstrumentation.debugTool.onSetValueForProperty(node, name, value);
+      var payload = {};
+      payload[name] = value;
+      ReactInstrumentation.debugTool.onNativeOperation(ReactDOMComponentTree.getInstanceFromNode(node)._debugID, 'update attribute', payload);
     }
   },
 
@@ -74434,6 +80340,12 @@ var DOMPropertyOperations = {
     } else {
       node.setAttribute(name, '' + value);
     }
+
+    if ("production" !== 'production') {
+      var payload = {};
+      payload[name] = value;
+      ReactInstrumentation.debugTool.onNativeOperation(ReactDOMComponentTree.getInstanceFromNode(node)._debugID, 'update attribute', payload);
+    }
   },
 
   /**
@@ -74443,9 +80355,6 @@ var DOMPropertyOperations = {
    * @param {string} name
    */
   deleteValueForProperty: function (node, name) {
-    if ("production" !== 'production') {
-      ReactDOMInstrumentation.debugTool.onDeleteValueForProperty(node, name);
-    }
     var propertyInfo = DOMProperty.properties.hasOwnProperty(name) ? DOMProperty.properties[name] : null;
     if (propertyInfo) {
       var mutationMethod = propertyInfo.mutationMethod;
@@ -74467,18 +80376,17 @@ var DOMPropertyOperations = {
     } else if (DOMProperty.isCustomAttribute(name)) {
       node.removeAttribute(name);
     }
+
+    if ("production" !== 'production') {
+      ReactDOMInstrumentation.debugTool.onDeleteValueForProperty(node, name);
+      ReactInstrumentation.debugTool.onNativeOperation(ReactDOMComponentTree.getInstanceFromNode(node)._debugID, 'remove attribute', name);
+    }
   }
 
 };
 
-ReactPerf.measureMethods(DOMPropertyOperations, 'DOMPropertyOperations', {
-  setValueForProperty: 'setValueForProperty',
-  setValueForAttribute: 'setValueForAttribute',
-  deleteValueForProperty: 'deleteValueForProperty'
-});
-
 module.exports = DOMPropertyOperations;
-},{"./DOMProperty":659,"./ReactDOMInstrumentation":697,"./ReactPerf":731,"./quoteAttributeValueForBrowser":783,"fbjs/lib/warning":46}],661:[function(require,module,exports){
+},{"./DOMProperty":704,"./ReactDOMComponentTree":735,"./ReactDOMInstrumentation":743,"./ReactInstrumentation":766,"./quoteAttributeValueForBrowser":831,"fbjs/lib/warning":49}],706:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -74623,7 +80531,7 @@ var Danger = {
 };
 
 module.exports = Danger;
-},{"./DOMLazyTree":657,"fbjs/lib/ExecutionEnvironment":22,"fbjs/lib/createNodesFromMarkup":27,"fbjs/lib/emptyFunction":28,"fbjs/lib/getMarkupWrap":32,"fbjs/lib/invariant":36}],662:[function(require,module,exports){
+},{"./DOMLazyTree":702,"fbjs/lib/ExecutionEnvironment":25,"fbjs/lib/createNodesFromMarkup":30,"fbjs/lib/emptyFunction":31,"fbjs/lib/getMarkupWrap":35,"fbjs/lib/invariant":39}],707:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -74651,7 +80559,7 @@ var keyOf = require('fbjs/lib/keyOf');
 var DefaultEventPluginOrder = [keyOf({ ResponderEventPlugin: null }), keyOf({ SimpleEventPlugin: null }), keyOf({ TapEventPlugin: null }), keyOf({ EnterLeaveEventPlugin: null }), keyOf({ ChangeEventPlugin: null }), keyOf({ SelectEventPlugin: null }), keyOf({ BeforeInputEventPlugin: null })];
 
 module.exports = DefaultEventPluginOrder;
-},{"fbjs/lib/keyOf":40}],663:[function(require,module,exports){
+},{"fbjs/lib/keyOf":43}],708:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -74702,7 +80610,7 @@ var DisabledInputUtils = {
 };
 
 module.exports = DisabledInputUtils;
-},{}],664:[function(require,module,exports){
+},{}],709:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -74808,7 +80716,7 @@ var EnterLeaveEventPlugin = {
 };
 
 module.exports = EnterLeaveEventPlugin;
-},{"./EventConstants":665,"./EventPropagators":669,"./ReactDOMComponentTree":689,"./SyntheticMouseEvent":754,"fbjs/lib/keyOf":40}],665:[function(require,module,exports){
+},{"./EventConstants":710,"./EventPropagators":714,"./ReactDOMComponentTree":735,"./SyntheticMouseEvent":802,"fbjs/lib/keyOf":43}],710:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -74906,7 +80814,7 @@ var EventConstants = {
 };
 
 module.exports = EventConstants;
-},{"fbjs/lib/keyMirror":39}],666:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":42}],711:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -75142,7 +81050,7 @@ var EventPluginHub = {
 };
 
 module.exports = EventPluginHub;
-},{"./EventPluginRegistry":667,"./EventPluginUtils":668,"./ReactErrorUtils":713,"./accumulateInto":761,"./forEachAccumulated":769,"fbjs/lib/invariant":36}],667:[function(require,module,exports){
+},{"./EventPluginRegistry":712,"./EventPluginUtils":713,"./ReactErrorUtils":758,"./accumulateInto":809,"./forEachAccumulated":817,"fbjs/lib/invariant":39}],712:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -75384,7 +81292,7 @@ var EventPluginRegistry = {
 };
 
 module.exports = EventPluginRegistry;
-},{"fbjs/lib/invariant":36}],668:[function(require,module,exports){
+},{"fbjs/lib/invariant":39}],713:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -75612,7 +81520,7 @@ var EventPluginUtils = {
 };
 
 module.exports = EventPluginUtils;
-},{"./EventConstants":665,"./ReactErrorUtils":713,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],669:[function(require,module,exports){
+},{"./EventConstants":710,"./ReactErrorUtils":758,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],714:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -75750,7 +81658,7 @@ var EventPropagators = {
 };
 
 module.exports = EventPropagators;
-},{"./EventConstants":665,"./EventPluginHub":666,"./EventPluginUtils":668,"./accumulateInto":761,"./forEachAccumulated":769,"fbjs/lib/warning":46}],670:[function(require,module,exports){
+},{"./EventConstants":710,"./EventPluginHub":711,"./EventPluginUtils":713,"./accumulateInto":809,"./forEachAccumulated":817,"fbjs/lib/warning":49}],715:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -75846,7 +81754,7 @@ _assign(FallbackCompositionState.prototype, {
 PooledClass.addPoolingTo(FallbackCompositionState);
 
 module.exports = FallbackCompositionState;
-},{"./PooledClass":674,"./getTextContentAccessor":777,"object-assign":565}],671:[function(require,module,exports){
+},{"./PooledClass":719,"./getTextContentAccessor":825,"object-assign":564}],716:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -76056,7 +81964,7 @@ var HTMLDOMPropertyConfig = {
 };
 
 module.exports = HTMLDOMPropertyConfig;
-},{"./DOMProperty":659}],672:[function(require,module,exports){
+},{"./DOMProperty":704}],717:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -76115,7 +82023,7 @@ var KeyEscapeUtils = {
 };
 
 module.exports = KeyEscapeUtils;
-},{}],673:[function(require,module,exports){
+},{}],718:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -76249,7 +82157,7 @@ var LinkedValueUtils = {
 };
 
 module.exports = LinkedValueUtils;
-},{"./ReactPropTypeLocations":733,"./ReactPropTypes":734,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],674:[function(require,module,exports){
+},{"./ReactPropTypeLocations":778,"./ReactPropTypes":779,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],719:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -76369,7 +82277,7 @@ var PooledClass = {
 };
 
 module.exports = PooledClass;
-},{"fbjs/lib/invariant":36}],675:[function(require,module,exports){
+},{"fbjs/lib/invariant":39}],720:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -76457,7 +82365,7 @@ var React = {
 };
 
 module.exports = React;
-},{"./ReactChildren":678,"./ReactClass":679,"./ReactComponent":680,"./ReactDOMFactories":693,"./ReactElement":710,"./ReactElementValidator":711,"./ReactPropTypes":734,"./ReactVersion":742,"./onlyChild":782,"fbjs/lib/warning":46,"object-assign":565}],676:[function(require,module,exports){
+},{"./ReactChildren":723,"./ReactClass":724,"./ReactComponent":725,"./ReactDOMFactories":739,"./ReactElement":755,"./ReactElementValidator":756,"./ReactPropTypes":779,"./ReactVersion":790,"./onlyChild":830,"fbjs/lib/warning":49,"object-assign":564}],721:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -76775,7 +82683,7 @@ var ReactBrowserEventEmitter = _assign({}, ReactEventEmitterMixin, {
 });
 
 module.exports = ReactBrowserEventEmitter;
-},{"./EventConstants":665,"./EventPluginRegistry":667,"./ReactEventEmitterMixin":714,"./ViewportMetrics":760,"./getVendorPrefixedEventName":778,"./isEventSupported":780,"object-assign":565}],677:[function(require,module,exports){
+},{"./EventConstants":710,"./EventPluginRegistry":712,"./ReactEventEmitterMixin":759,"./ViewportMetrics":808,"./getVendorPrefixedEventName":826,"./isEventSupported":828,"object-assign":564}],722:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -76901,7 +82809,7 @@ var ReactChildReconciler = {
 };
 
 module.exports = ReactChildReconciler;
-},{"./KeyEscapeUtils":672,"./ReactReconciler":736,"./instantiateReactComponent":779,"./shouldUpdateReactComponent":787,"./traverseAllChildren":788,"fbjs/lib/warning":46}],678:[function(require,module,exports){
+},{"./KeyEscapeUtils":717,"./ReactReconciler":781,"./instantiateReactComponent":827,"./shouldUpdateReactComponent":836,"./traverseAllChildren":837,"fbjs/lib/warning":49}],723:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -76958,6 +82866,8 @@ function forEachSingleChild(bookKeeping, child, name) {
 
 /**
  * Iterates through children that are typically specified as `props.children`.
+ *
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.children.foreach
  *
  * The provided forEachFunc(child, index) will be called for each
  * leaf child.
@@ -77034,7 +82944,9 @@ function mapIntoWithKeyPrefixInternal(children, array, prefix, func, context) {
 /**
  * Maps children that are typically specified as `props.children`.
  *
- * The provided mapFunction(child, index) will be called for each
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.children.map
+ *
+ * The provided mapFunction(child, key, index) will be called for each
  * leaf child.
  *
  * @param {?*} children Children tree container.
@@ -77059,6 +82971,8 @@ function forEachSingleChildDummy(traverseContext, child, name) {
  * Count the number of children that are typically specified as
  * `props.children`.
  *
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.children.count
+ *
  * @param {?*} children Children tree container.
  * @return {number} The number of children.
  */
@@ -77069,6 +82983,8 @@ function countChildren(children, context) {
 /**
  * Flatten a children object (typically specified as `props.children`) and
  * return an array with appropriately re-keyed children.
+ *
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.children.toarray
  */
 function toArray(children) {
   var result = [];
@@ -77085,7 +83001,7 @@ var ReactChildren = {
 };
 
 module.exports = ReactChildren;
-},{"./PooledClass":674,"./ReactElement":710,"./traverseAllChildren":788,"fbjs/lib/emptyFunction":28}],679:[function(require,module,exports){
+},{"./PooledClass":719,"./ReactElement":755,"./traverseAllChildren":837,"fbjs/lib/emptyFunction":31}],724:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -77715,6 +83631,7 @@ var ReactClass = {
 
   /**
    * Creates a composite component class given a class specification.
+   * See https://facebook.github.io/react/docs/top-level-api.html#react.createclass
    *
    * @param {object} spec Class specification (which must define `render`).
    * @return {function} Component constructor function.
@@ -77809,7 +83726,7 @@ var ReactClass = {
 };
 
 module.exports = ReactClass;
-},{"./ReactComponent":680,"./ReactElement":710,"./ReactNoopUpdateQueue":729,"./ReactPropTypeLocationNames":732,"./ReactPropTypeLocations":733,"fbjs/lib/emptyObject":29,"fbjs/lib/invariant":36,"fbjs/lib/keyMirror":39,"fbjs/lib/keyOf":40,"fbjs/lib/warning":46,"object-assign":565}],680:[function(require,module,exports){
+},{"./ReactComponent":725,"./ReactElement":755,"./ReactNoopUpdateQueue":775,"./ReactPropTypeLocationNames":777,"./ReactPropTypeLocations":778,"fbjs/lib/emptyObject":32,"fbjs/lib/invariant":39,"fbjs/lib/keyMirror":42,"fbjs/lib/keyOf":43,"fbjs/lib/warning":49,"object-assign":564}],725:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -77931,7 +83848,7 @@ if ("production" !== 'production') {
 }
 
 module.exports = ReactComponent;
-},{"./ReactInstrumentation":721,"./ReactNoopUpdateQueue":729,"./canDefineProperty":763,"fbjs/lib/emptyObject":29,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],681:[function(require,module,exports){
+},{"./ReactInstrumentation":766,"./ReactNoopUpdateQueue":775,"./canDefineProperty":811,"fbjs/lib/emptyObject":32,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],726:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -77947,7 +83864,6 @@ module.exports = ReactComponent;
 
 var DOMChildrenOperations = require('./DOMChildrenOperations');
 var ReactDOMIDOperations = require('./ReactDOMIDOperations');
-var ReactPerf = require('./ReactPerf');
 
 /**
  * Abstracts away all functionality of the reconciler that requires knowledge of
@@ -77971,12 +83887,8 @@ var ReactComponentBrowserEnvironment = {
 
 };
 
-ReactPerf.measureMethods(ReactComponentBrowserEnvironment, 'ReactComponentBrowserEnvironment', {
-  replaceNodeWithMarkup: 'replaceNodeWithMarkup'
-});
-
 module.exports = ReactComponentBrowserEnvironment;
-},{"./DOMChildrenOperations":656,"./ReactDOMIDOperations":695,"./ReactPerf":731}],682:[function(require,module,exports){
+},{"./DOMChildrenOperations":701,"./ReactDOMIDOperations":741}],727:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -78028,7 +83940,153 @@ var ReactComponentEnvironment = {
 };
 
 module.exports = ReactComponentEnvironment;
-},{"fbjs/lib/invariant":36}],683:[function(require,module,exports){
+},{"fbjs/lib/invariant":39}],728:[function(require,module,exports){
+/**
+ * Copyright 2016-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ * @providesModule ReactComponentTreeDevtool
+ */
+
+'use strict';
+
+var invariant = require('fbjs/lib/invariant');
+
+var tree = {};
+var rootIDs = [];
+
+function updateTree(id, update) {
+  if (!tree[id]) {
+    tree[id] = {
+      parentID: null,
+      ownerID: null,
+      text: null,
+      childIDs: [],
+      displayName: 'Unknown',
+      isMounted: false,
+      updateCount: 0
+    };
+  }
+  update(tree[id]);
+}
+
+function purgeDeep(id) {
+  var item = tree[id];
+  if (item) {
+    var childIDs = item.childIDs;
+
+    delete tree[id];
+    childIDs.forEach(purgeDeep);
+  }
+}
+
+var ReactComponentTreeDevtool = {
+  onSetDisplayName: function (id, displayName) {
+    updateTree(id, function (item) {
+      return item.displayName = displayName;
+    });
+  },
+  onSetChildren: function (id, nextChildIDs) {
+    updateTree(id, function (item) {
+      var prevChildIDs = item.childIDs;
+      item.childIDs = nextChildIDs;
+
+      nextChildIDs.forEach(function (nextChildID) {
+        var nextChild = tree[nextChildID];
+        !nextChild ? "production" !== 'production' ? invariant(false, 'Expected devtool events to fire for the child ' + 'before its parent includes it in onSetChildren().') : invariant(false) : void 0;
+        !(nextChild.displayName != null) ? "production" !== 'production' ? invariant(false, 'Expected onSetDisplayName() to fire for the child ' + 'before its parent includes it in onSetChildren().') : invariant(false) : void 0;
+        !(nextChild.childIDs != null || nextChild.text != null) ? "production" !== 'production' ? invariant(false, 'Expected onSetChildren() or onSetText() to fire for the child ' + 'before its parent includes it in onSetChildren().') : invariant(false) : void 0;
+        !nextChild.isMounted ? "production" !== 'production' ? invariant(false, 'Expected onMountComponent() to fire for the child ' + 'before its parent includes it in onSetChildren().') : invariant(false) : void 0;
+
+        if (prevChildIDs.indexOf(nextChildID) === -1) {
+          nextChild.parentID = id;
+        }
+      });
+    });
+  },
+  onSetOwner: function (id, ownerID) {
+    updateTree(id, function (item) {
+      return item.ownerID = ownerID;
+    });
+  },
+  onSetText: function (id, text) {
+    updateTree(id, function (item) {
+      return item.text = text;
+    });
+  },
+  onMountComponent: function (id) {
+    updateTree(id, function (item) {
+      return item.isMounted = true;
+    });
+  },
+  onMountRootComponent: function (id) {
+    rootIDs.push(id);
+  },
+  onUpdateComponent: function (id) {
+    updateTree(id, function (item) {
+      return item.updateCount++;
+    });
+  },
+  onUnmountComponent: function (id) {
+    updateTree(id, function (item) {
+      return item.isMounted = false;
+    });
+    rootIDs = rootIDs.filter(function (rootID) {
+      return rootID !== id;
+    });
+  },
+  purgeUnmountedComponents: function () {
+    if (ReactComponentTreeDevtool._preventPurging) {
+      // Should only be used for testing.
+      return;
+    }
+
+    Object.keys(tree).filter(function (id) {
+      return !tree[id].isMounted;
+    }).forEach(purgeDeep);
+  },
+  isMounted: function (id) {
+    var item = tree[id];
+    return item ? item.isMounted : false;
+  },
+  getChildIDs: function (id) {
+    var item = tree[id];
+    return item ? item.childIDs : [];
+  },
+  getDisplayName: function (id) {
+    var item = tree[id];
+    return item ? item.displayName : 'Unknown';
+  },
+  getOwnerID: function (id) {
+    var item = tree[id];
+    return item ? item.ownerID : null;
+  },
+  getParentID: function (id) {
+    var item = tree[id];
+    return item ? item.parentID : null;
+  },
+  getText: function (id) {
+    var item = tree[id];
+    return item ? item.text : null;
+  },
+  getUpdateCount: function (id) {
+    var item = tree[id];
+    return item ? item.updateCount : 0;
+  },
+  getRootIDs: function () {
+    return rootIDs;
+  },
+  getRegisteredIDs: function () {
+    return Object.keys(tree);
+  }
+};
+
+module.exports = ReactComponentTreeDevtool;
+},{"fbjs/lib/invariant":39}],729:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -78051,7 +84109,6 @@ var ReactErrorUtils = require('./ReactErrorUtils');
 var ReactInstanceMap = require('./ReactInstanceMap');
 var ReactInstrumentation = require('./ReactInstrumentation');
 var ReactNodeTypes = require('./ReactNodeTypes');
-var ReactPerf = require('./ReactPerf');
 var ReactPropTypeLocations = require('./ReactPropTypeLocations');
 var ReactPropTypeLocationNames = require('./ReactPropTypeLocationNames');
 var ReactReconciler = require('./ReactReconciler');
@@ -78084,6 +84141,28 @@ StatelessComponent.prototype.render = function () {
 function warnIfInvalidElement(Component, element) {
   if ("production" !== 'production') {
     "production" !== 'production' ? warning(element === null || element === false || ReactElement.isValidElement(element), '%s(...): A valid React element (or null) must be returned. You may have ' + 'returned undefined, an array or some other invalid object.', Component.displayName || Component.name || 'Component') : void 0;
+  }
+}
+
+function invokeComponentDidMountWithTimer() {
+  var publicInstance = this._instance;
+  if (this._debugID !== 0) {
+    ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'componentDidMount');
+  }
+  publicInstance.componentDidMount();
+  if (this._debugID !== 0) {
+    ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'componentDidMount');
+  }
+}
+
+function invokeComponentDidUpdateWithTimer(prevProps, prevState, prevContext) {
+  var publicInstance = this._instance;
+  if (this._debugID !== 0) {
+    ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'componentDidUpdate');
+  }
+  publicInstance.componentDidUpdate(prevProps, prevState, prevContext);
+  if (this._debugID !== 0) {
+    ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'componentDidUpdate');
   }
 }
 
@@ -78146,6 +84225,7 @@ var ReactCompositeComponentMixin = {
     this._nativeContainerInfo = null;
 
     // See ReactUpdateQueue
+    this._updateBatchNumber = null;
     this._pendingElement = null;
     this._pendingStateQueue = null;
     this._pendingReplaceState = false;
@@ -78254,7 +84334,11 @@ var ReactCompositeComponentMixin = {
     }
 
     if (inst.componentDidMount) {
-      transaction.getReactMountReady().enqueue(inst.componentDidMount, inst);
+      if ("production" !== 'production') {
+        transaction.getReactMountReady().enqueue(invokeComponentDidMountWithTimer, this);
+      } else {
+        transaction.getReactMountReady().enqueue(inst.componentDidMount, inst);
+      }
     }
 
     return markup;
@@ -78275,11 +84359,35 @@ var ReactCompositeComponentMixin = {
 
   _constructComponentWithoutOwner: function (publicProps, publicContext) {
     var Component = this._currentElement.type;
+    var instanceOrElement;
     if (shouldConstruct(Component)) {
-      return new Component(publicProps, publicContext, ReactUpdateQueue);
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'ctor');
+        }
+      }
+      instanceOrElement = new Component(publicProps, publicContext, ReactUpdateQueue);
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'ctor');
+        }
+      }
     } else {
-      return Component(publicProps, publicContext, ReactUpdateQueue);
+      // This can still be an instance in case of factory components
+      // but we'll count this as time spent rendering as the more common case.
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'render');
+        }
+      }
+      instanceOrElement = Component(publicProps, publicContext, ReactUpdateQueue);
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'render');
+        }
+      }
     }
+    return instanceOrElement;
   },
 
   performInitialMountWithErrorHandling: function (renderedElement, nativeParent, nativeContainerInfo, transaction, context) {
@@ -78309,7 +84417,17 @@ var ReactCompositeComponentMixin = {
   performInitialMount: function (renderedElement, nativeParent, nativeContainerInfo, transaction, context) {
     var inst = this._instance;
     if (inst.componentWillMount) {
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'componentWillMount');
+        }
+      }
       inst.componentWillMount();
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'componentWillMount');
+        }
+      }
       // When mounting, calls to `setState` by `componentWillMount` will set
       // `this._pendingStateQueue` without triggering a re-render.
       if (this._pendingStateQueue) {
@@ -78326,6 +84444,12 @@ var ReactCompositeComponentMixin = {
     this._renderedComponent = this._instantiateReactComponent(renderedElement);
 
     var markup = ReactReconciler.mountComponent(this._renderedComponent, transaction, nativeParent, nativeContainerInfo, this._processChildContext(context));
+
+    if ("production" !== 'production') {
+      if (this._debugID !== 0) {
+        ReactInstrumentation.debugTool.onSetChildren(this._debugID, this._renderedComponent._debugID !== 0 ? [this._renderedComponent._debugID] : []);
+      }
+    }
 
     return markup;
   },
@@ -78348,11 +84472,21 @@ var ReactCompositeComponentMixin = {
 
     if (inst.componentWillUnmount && !inst._calledComponentWillUnmount) {
       inst._calledComponentWillUnmount = true;
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'componentWillUnmount');
+        }
+      }
       if (safely) {
         var name = this.getName() + '.componentWillUnmount()';
         ReactErrorUtils.invokeGuardedCallback(name, inst.componentWillUnmount.bind(inst));
       } else {
         inst.componentWillUnmount();
+      }
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'componentWillUnmount');
+        }
       }
     }
 
@@ -78536,10 +84670,10 @@ var ReactCompositeComponentMixin = {
   performUpdateIfNecessary: function (transaction) {
     if (this._pendingElement != null) {
       ReactReconciler.receiveComponent(this, this._pendingElement, transaction, this._context);
-    }
-
-    if (this._pendingStateQueue !== null || this._pendingForceUpdate) {
+    } else if (this._pendingStateQueue !== null || this._pendingForceUpdate) {
       this.updateComponent(transaction, this._currentElement, this._currentElement, this._context, this._context);
+    } else {
+      this._updateBatchNumber = null;
     }
   },
 
@@ -78586,17 +84720,41 @@ var ReactCompositeComponentMixin = {
     // _pendingStateQueue which will ensure that any state updates gets
     // immediately reconciled instead of waiting for the next batch.
     if (willReceive && inst.componentWillReceiveProps) {
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'componentWillReceiveProps');
+        }
+      }
       inst.componentWillReceiveProps(nextProps, nextContext);
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'componentWillReceiveProps');
+        }
+      }
     }
 
     var nextState = this._processPendingState(nextProps, nextContext);
+    var shouldUpdate = true;
 
-    var shouldUpdate = this._pendingForceUpdate || !inst.shouldComponentUpdate || inst.shouldComponentUpdate(nextProps, nextState, nextContext);
+    if (!this._pendingForceUpdate && inst.shouldComponentUpdate) {
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'shouldComponentUpdate');
+        }
+      }
+      shouldUpdate = inst.shouldComponentUpdate(nextProps, nextState, nextContext);
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'shouldComponentUpdate');
+        }
+      }
+    }
 
     if ("production" !== 'production') {
       "production" !== 'production' ? warning(shouldUpdate !== undefined, '%s.shouldComponentUpdate(): Returned undefined instead of a ' + 'boolean value. Make sure to return true or false.', this.getName() || 'ReactCompositeComponent') : void 0;
     }
 
+    this._updateBatchNumber = null;
     if (shouldUpdate) {
       this._pendingForceUpdate = false;
       // Will set `this.props`, `this.state` and `this.context`.
@@ -78662,7 +84820,17 @@ var ReactCompositeComponentMixin = {
     }
 
     if (inst.componentWillUpdate) {
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'componentWillUpdate');
+        }
+      }
       inst.componentWillUpdate(nextProps, nextState, nextContext);
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'componentWillUpdate');
+        }
+      }
     }
 
     this._currentElement = nextElement;
@@ -78674,7 +84842,11 @@ var ReactCompositeComponentMixin = {
     this._updateRenderedComponent(transaction, unmaskedContext);
 
     if (hasComponentDidUpdate) {
-      transaction.getReactMountReady().enqueue(inst.componentDidUpdate.bind(inst, prevProps, prevState, prevContext), inst);
+      if ("production" !== 'production') {
+        transaction.getReactMountReady().enqueue(invokeComponentDidUpdateWithTimer.bind(this, prevProps, prevState, prevContext), this);
+      } else {
+        transaction.getReactMountReady().enqueue(inst.componentDidUpdate.bind(inst, prevProps, prevState, prevContext), inst);
+      }
     }
   },
 
@@ -78696,8 +84868,16 @@ var ReactCompositeComponentMixin = {
 
       this._renderedNodeType = ReactNodeTypes.getType(nextRenderedElement);
       this._renderedComponent = this._instantiateReactComponent(nextRenderedElement);
+
       var nextMarkup = ReactReconciler.mountComponent(this._renderedComponent, transaction, this._nativeParent, this._nativeContainerInfo, this._processChildContext(context));
-      this._replaceNodeWithMarkup(oldNativeNode, nextMarkup);
+
+      if ("production" !== 'production') {
+        if (this._debugID !== 0) {
+          ReactInstrumentation.debugTool.onSetChildren(this._debugID, this._renderedComponent._debugID !== 0 ? [this._renderedComponent._debugID] : []);
+        }
+      }
+
+      this._replaceNodeWithMarkup(oldNativeNode, nextMarkup, prevComponentInstance);
     }
   },
 
@@ -78706,8 +84886,8 @@ var ReactCompositeComponentMixin = {
    *
    * @protected
    */
-  _replaceNodeWithMarkup: function (oldNativeNode, nextMarkup) {
-    ReactComponentEnvironment.replaceNodeWithMarkup(oldNativeNode, nextMarkup);
+  _replaceNodeWithMarkup: function (oldNativeNode, nextMarkup, prevInstance) {
+    ReactComponentEnvironment.replaceNodeWithMarkup(oldNativeNode, nextMarkup, prevInstance);
   },
 
   /**
@@ -78715,7 +84895,19 @@ var ReactCompositeComponentMixin = {
    */
   _renderValidatedComponentWithoutOwnerOrContext: function () {
     var inst = this._instance;
+
+    if ("production" !== 'production') {
+      if (this._debugID !== 0) {
+        ReactInstrumentation.debugTool.onBeginLifeCycleTimer(this._debugID, 'render');
+      }
+    }
     var renderedComponent = inst.render();
+    if ("production" !== 'production') {
+      if (this._debugID !== 0) {
+        ReactInstrumentation.debugTool.onEndLifeCycleTimer(this._debugID, 'render');
+      }
+    }
+
     if ("production" !== 'production') {
       // We allow auto-mocks to proceed as if they're returning null.
       if (renderedComponent === undefined && inst.render._isMockFunction) {
@@ -78742,6 +84934,7 @@ var ReactCompositeComponentMixin = {
     !(
     // TODO: An `isValidNode` function would probably be more appropriate
     renderedComponent === null || renderedComponent === false || ReactElement.isValidElement(renderedComponent)) ? "production" !== 'production' ? invariant(false, '%s.render(): A valid React element (or null) must be returned. You may have ' + 'returned undefined, an array or some other invalid object.', this.getName() || 'ReactCompositeComponent') : invariant(false) : void 0;
+
     return renderedComponent;
   },
 
@@ -78810,12 +85003,6 @@ var ReactCompositeComponentMixin = {
 
 };
 
-ReactPerf.measureMethods(ReactCompositeComponentMixin, 'ReactCompositeComponent', {
-  mountComponent: 'mountComponent',
-  updateComponent: 'updateComponent',
-  _renderValidatedComponent: '_renderValidatedComponent'
-});
-
 var ReactCompositeComponent = {
 
   Mixin: ReactCompositeComponentMixin
@@ -78823,7 +85010,7 @@ var ReactCompositeComponent = {
 };
 
 module.exports = ReactCompositeComponent;
-},{"./ReactComponentEnvironment":682,"./ReactCurrentOwner":684,"./ReactElement":710,"./ReactErrorUtils":713,"./ReactInstanceMap":720,"./ReactInstrumentation":721,"./ReactNodeTypes":728,"./ReactPerf":731,"./ReactPropTypeLocationNames":732,"./ReactPropTypeLocations":733,"./ReactReconciler":736,"./ReactUpdateQueue":740,"./shouldUpdateReactComponent":787,"fbjs/lib/emptyObject":29,"fbjs/lib/invariant":36,"fbjs/lib/warning":46,"object-assign":565}],684:[function(require,module,exports){
+},{"./ReactComponentEnvironment":727,"./ReactCurrentOwner":730,"./ReactElement":755,"./ReactErrorUtils":758,"./ReactInstanceMap":765,"./ReactInstrumentation":766,"./ReactNodeTypes":774,"./ReactPropTypeLocationNames":777,"./ReactPropTypeLocations":778,"./ReactReconciler":781,"./ReactUpdateQueue":788,"./shouldUpdateReactComponent":836,"fbjs/lib/emptyObject":32,"fbjs/lib/invariant":39,"fbjs/lib/warning":49,"object-assign":564}],730:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -78855,7 +85042,7 @@ var ReactCurrentOwner = {
 };
 
 module.exports = ReactCurrentOwner;
-},{}],685:[function(require,module,exports){
+},{}],731:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -78874,7 +85061,6 @@ module.exports = ReactCurrentOwner;
 var ReactDOMComponentTree = require('./ReactDOMComponentTree');
 var ReactDefaultInjection = require('./ReactDefaultInjection');
 var ReactMount = require('./ReactMount');
-var ReactPerf = require('./ReactPerf');
 var ReactReconciler = require('./ReactReconciler');
 var ReactUpdates = require('./ReactUpdates');
 var ReactVersion = require('./ReactVersion');
@@ -78886,11 +85072,9 @@ var warning = require('fbjs/lib/warning');
 
 ReactDefaultInjection.inject();
 
-var render = ReactPerf.measure('React', 'render', ReactMount.render);
-
 var React = {
   findDOMNode: findDOMNode,
-  render: render,
+  render: ReactMount.render,
   unmountComponentAtNode: ReactMount.unmountComponentAtNode,
   version: ReactVersion,
 
@@ -78960,7 +85144,7 @@ if ("production" !== 'production') {
 }
 
 module.exports = React;
-},{"./ReactDOMComponentTree":689,"./ReactDefaultInjection":707,"./ReactMount":724,"./ReactPerf":731,"./ReactReconciler":736,"./ReactUpdates":741,"./ReactVersion":742,"./findDOMNode":767,"./getNativeComponentFromComposite":775,"./renderSubtreeIntoContainer":784,"fbjs/lib/ExecutionEnvironment":22,"fbjs/lib/warning":46}],686:[function(require,module,exports){
+},{"./ReactDOMComponentTree":735,"./ReactDefaultInjection":754,"./ReactMount":769,"./ReactReconciler":781,"./ReactUpdates":789,"./ReactVersion":790,"./findDOMNode":815,"./getNativeComponentFromComposite":823,"./renderSubtreeIntoContainer":832,"fbjs/lib/ExecutionEnvironment":25,"fbjs/lib/warning":49}],732:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -78985,7 +85169,7 @@ var ReactDOMButton = {
 };
 
 module.exports = ReactDOMButton;
-},{"./DisabledInputUtils":663}],687:[function(require,module,exports){
+},{"./DisabledInputUtils":708}],733:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -79021,9 +85205,11 @@ var ReactDOMInput = require('./ReactDOMInput');
 var ReactDOMOption = require('./ReactDOMOption');
 var ReactDOMSelect = require('./ReactDOMSelect');
 var ReactDOMTextarea = require('./ReactDOMTextarea');
+var ReactInstrumentation = require('./ReactInstrumentation');
 var ReactMultiChild = require('./ReactMultiChild');
-var ReactPerf = require('./ReactPerf');
+var ReactServerRenderingTransaction = require('./ReactServerRenderingTransaction');
 
+var emptyFunction = require('fbjs/lib/emptyFunction');
 var escapeTextContentForBrowser = require('./escapeTextContentForBrowser');
 var invariant = require('fbjs/lib/invariant');
 var isEventSupported = require('./isEventSupported');
@@ -79142,6 +85328,9 @@ function assertValidProps(component, props) {
 }
 
 function enqueuePutListener(inst, registrationName, listener, transaction) {
+  if (transaction instanceof ReactServerRenderingTransaction) {
+    return;
+  }
   if ("production" !== 'production') {
     // IE8 has no API for event capturing and the `onScroll` event doesn't
     // bubble.
@@ -79150,10 +85339,6 @@ function enqueuePutListener(inst, registrationName, listener, transaction) {
   var containerInfo = inst._nativeContainerInfo;
   var isDocumentFragment = containerInfo._node && containerInfo._node.nodeType === DOC_FRAGMENT_TYPE;
   var doc = isDocumentFragment ? containerInfo._node : containerInfo._ownerDocument;
-  if (!doc) {
-    // Server rendering.
-    return;
-  }
   listenTo(registrationName, doc);
   transaction.getReactMountReady().enqueue(putListener, {
     inst: inst,
@@ -79170,6 +85355,19 @@ function putListener() {
 function optionPostMount() {
   var inst = this;
   ReactDOMOption.postMountWrapper(inst);
+}
+
+var setContentChildForInstrumentation = emptyFunction;
+if ("production" !== 'production') {
+  setContentChildForInstrumentation = function (contentToUse) {
+    var debugID = this._debugID;
+    var contentDebugID = debugID + '#text';
+    this._contentDebugID = contentDebugID;
+    ReactInstrumentation.debugTool.onSetDisplayName(contentDebugID, '#text');
+    ReactInstrumentation.debugTool.onSetText(contentDebugID, '' + contentToUse);
+    ReactInstrumentation.debugTool.onMountComponent(contentDebugID);
+    ReactInstrumentation.debugTool.onSetChildren(debugID, [contentDebugID]);
+  };
 }
 
 // There are so many media events, it makes sense to just
@@ -79332,6 +85530,7 @@ function ReactDOMComponent(element) {
   this._flags = 0;
   if ("production" !== 'production') {
     this._ancestorInfo = null;
+    this._contentDebugID = null;
   }
 }
 
@@ -79447,7 +85646,7 @@ ReactDOMComponent.Mixin = {
           div.innerHTML = '<' + type + '></' + type + '>';
           el = div.removeChild(div.firstChild);
         } else {
-          el = ownerDocument.createElement(this._currentElement.type);
+          el = ownerDocument.createElement(this._currentElement.type, props.is || null);
         }
       } else {
         el = ownerDocument.createElementNS(namespaceURI, this._currentElement.type);
@@ -79577,6 +85776,9 @@ ReactDOMComponent.Mixin = {
       if (contentToUse != null) {
         // TODO: Validate that text is allowed as a child of this node
         ret = escapeTextContentForBrowser(contentToUse);
+        if ("production" !== 'production') {
+          setContentChildForInstrumentation.call(this, contentToUse);
+        }
       } else if (childrenToUse != null) {
         var mountImages = this.mountChildren(childrenToUse, transaction, context);
         ret = mountImages.join('');
@@ -79611,6 +85813,9 @@ ReactDOMComponent.Mixin = {
       var childrenToUse = contentToUse != null ? null : props.children;
       if (contentToUse != null) {
         // TODO: Validate that text is allowed as a child of this node
+        if ("production" !== 'production') {
+          setContentChildForInstrumentation.call(this, contentToUse);
+        }
         DOMLazyTree.queueText(lazyTree, contentToUse);
       } else if (childrenToUse != null) {
         var mountImages = this.mountChildren(childrenToUse, transaction, context);
@@ -79819,17 +86024,34 @@ ReactDOMComponent.Mixin = {
       this.updateChildren(null, transaction, context);
     } else if (lastHasContentOrHtml && !nextHasContentOrHtml) {
       this.updateTextContent('');
+      if ("production" !== 'production') {
+        ReactInstrumentation.debugTool.onSetChildren(this._debugID, []);
+      }
     }
 
     if (nextContent != null) {
       if (lastContent !== nextContent) {
         this.updateTextContent('' + nextContent);
+        if ("production" !== 'production') {
+          this._contentDebugID = this._debugID + '#text';
+          setContentChildForInstrumentation.call(this, nextContent);
+        }
       }
     } else if (nextHtml != null) {
       if (lastHtml !== nextHtml) {
         this.updateMarkup('' + nextHtml);
       }
+      if ("production" !== 'production') {
+        ReactInstrumentation.debugTool.onSetChildren(this._debugID, []);
+      }
     } else if (nextChildren != null) {
+      if ("production" !== 'production') {
+        if (this._contentDebugID) {
+          ReactInstrumentation.debugTool.onUnmountComponent(this._contentDebugID);
+          this._contentDebugID = null;
+        }
+      }
+
       this.updateChildren(nextChildren, transaction, context);
     }
   },
@@ -79879,6 +86101,13 @@ ReactDOMComponent.Mixin = {
     this._rootNodeID = null;
     this._domID = null;
     this._wrapperState = null;
+
+    if ("production" !== 'production') {
+      if (this._contentDebugID) {
+        ReactInstrumentation.debugTool.onUnmountComponent(this._contentDebugID);
+        this._contentDebugID = null;
+      }
+    }
   },
 
   getPublicInstance: function () {
@@ -79887,15 +86116,10 @@ ReactDOMComponent.Mixin = {
 
 };
 
-ReactPerf.measureMethods(ReactDOMComponent.Mixin, 'ReactDOMComponent', {
-  mountComponent: 'mountComponent',
-  receiveComponent: 'receiveComponent'
-});
-
 _assign(ReactDOMComponent.prototype, ReactDOMComponent.Mixin, ReactMultiChild.Mixin);
 
 module.exports = ReactDOMComponent;
-},{"./AutoFocusUtils":650,"./CSSPropertyOperations":653,"./DOMLazyTree":657,"./DOMNamespaces":658,"./DOMProperty":659,"./DOMPropertyOperations":660,"./EventConstants":665,"./EventPluginHub":666,"./EventPluginRegistry":667,"./ReactBrowserEventEmitter":676,"./ReactComponentBrowserEnvironment":681,"./ReactDOMButton":686,"./ReactDOMComponentFlags":688,"./ReactDOMComponentTree":689,"./ReactDOMInput":696,"./ReactDOMOption":698,"./ReactDOMSelect":699,"./ReactDOMTextarea":702,"./ReactMultiChild":725,"./ReactPerf":731,"./escapeTextContentForBrowser":766,"./isEventSupported":780,"./validateDOMNesting":790,"fbjs/lib/invariant":36,"fbjs/lib/keyOf":40,"fbjs/lib/shallowEqual":45,"fbjs/lib/warning":46,"object-assign":565}],688:[function(require,module,exports){
+},{"./AutoFocusUtils":695,"./CSSPropertyOperations":698,"./DOMLazyTree":702,"./DOMNamespaces":703,"./DOMProperty":704,"./DOMPropertyOperations":705,"./EventConstants":710,"./EventPluginHub":711,"./EventPluginRegistry":712,"./ReactBrowserEventEmitter":721,"./ReactComponentBrowserEnvironment":726,"./ReactDOMButton":732,"./ReactDOMComponentFlags":734,"./ReactDOMComponentTree":735,"./ReactDOMInput":742,"./ReactDOMOption":744,"./ReactDOMSelect":745,"./ReactDOMTextarea":749,"./ReactInstrumentation":766,"./ReactMultiChild":770,"./ReactServerRenderingTransaction":785,"./escapeTextContentForBrowser":814,"./isEventSupported":828,"./validateDOMNesting":839,"fbjs/lib/emptyFunction":31,"fbjs/lib/invariant":39,"fbjs/lib/keyOf":43,"fbjs/lib/shallowEqual":48,"fbjs/lib/warning":49,"object-assign":564}],734:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -79914,7 +86138,7 @@ var ReactDOMComponentFlags = {
 };
 
 module.exports = ReactDOMComponentFlags;
-},{}],689:[function(require,module,exports){
+},{}],735:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80101,7 +86325,7 @@ var ReactDOMComponentTree = {
 };
 
 module.exports = ReactDOMComponentTree;
-},{"./DOMProperty":659,"./ReactDOMComponentFlags":688,"fbjs/lib/invariant":36}],690:[function(require,module,exports){
+},{"./DOMProperty":704,"./ReactDOMComponentFlags":734,"fbjs/lib/invariant":39}],736:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80135,7 +86359,7 @@ function ReactDOMContainerInfo(topLevelWrapper, node) {
 }
 
 module.exports = ReactDOMContainerInfo;
-},{"./validateDOMNesting":790}],691:[function(require,module,exports){
+},{"./validateDOMNesting":839}],737:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80197,7 +86421,7 @@ var ReactDOMDebugTool = {
 ReactDOMDebugTool.addDevtool(ReactDOMUnknownPropertyDevtool);
 
 module.exports = ReactDOMDebugTool;
-},{"./ReactDOMUnknownPropertyDevtool":704,"fbjs/lib/warning":46}],692:[function(require,module,exports){
+},{"./ReactDOMUnknownPropertyDevtool":751,"fbjs/lib/warning":49}],738:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -80258,7 +86482,7 @@ _assign(ReactDOMEmptyComponent.prototype, {
 });
 
 module.exports = ReactDOMEmptyComponent;
-},{"./DOMLazyTree":657,"./ReactDOMComponentTree":689,"object-assign":565}],693:[function(require,module,exports){
+},{"./DOMLazyTree":702,"./ReactDOMComponentTree":735,"object-assign":564}],739:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80435,7 +86659,7 @@ var ReactDOMFactories = mapObject({
 }, createDOMFactory);
 
 module.exports = ReactDOMFactories;
-},{"./ReactElement":710,"./ReactElementValidator":711,"fbjs/lib/mapObject":41}],694:[function(require,module,exports){
+},{"./ReactElement":755,"./ReactElementValidator":756,"fbjs/lib/mapObject":44}],740:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80454,7 +86678,7 @@ var ReactDOMFeatureFlags = {
 };
 
 module.exports = ReactDOMFeatureFlags;
-},{}],695:[function(require,module,exports){
+},{}],741:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80470,7 +86694,6 @@ module.exports = ReactDOMFeatureFlags;
 
 var DOMChildrenOperations = require('./DOMChildrenOperations');
 var ReactDOMComponentTree = require('./ReactDOMComponentTree');
-var ReactPerf = require('./ReactPerf');
 
 /**
  * Operations used to process updates to DOM nodes.
@@ -80489,12 +86712,8 @@ var ReactDOMIDOperations = {
   }
 };
 
-ReactPerf.measureMethods(ReactDOMIDOperations, 'ReactDOMIDOperations', {
-  dangerouslyProcessChildrenUpdates: 'dangerouslyProcessChildrenUpdates'
-});
-
 module.exports = ReactDOMIDOperations;
-},{"./DOMChildrenOperations":656,"./ReactDOMComponentTree":689,"./ReactPerf":731}],696:[function(require,module,exports){
+},{"./DOMChildrenOperations":701,"./ReactDOMComponentTree":735}],742:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80582,6 +86801,8 @@ var ReactDOMInput = {
     if ("production" !== 'production') {
       LinkedValueUtils.checkPropTypes('input', props, inst._currentElement._owner);
 
+      var owner = inst._currentElement._owner;
+
       if (props.valueLink !== undefined && !didWarnValueLink) {
         "production" !== 'production' ? warning(false, '`valueLink` prop on `input` is deprecated; set `value` and `onChange` instead.') : void 0;
         didWarnValueLink = true;
@@ -80591,11 +86812,11 @@ var ReactDOMInput = {
         didWarnCheckedLink = true;
       }
       if (props.checked !== undefined && props.defaultChecked !== undefined && !didWarnCheckedDefaultChecked) {
-        "production" !== 'production' ? warning(false, 'Input elements must be either controlled or uncontrolled ' + '(specify either the checked prop, or the defaultChecked prop, but not ' + 'both). Decide between using a controlled or uncontrolled input ' + 'element and remove one of these props. More info: ' + 'https://fb.me/react-controlled-components') : void 0;
+        "production" !== 'production' ? warning(false, '%s contains an input of type %s with both checked and defaultChecked props. ' + 'Input elements must be either controlled or uncontrolled ' + '(specify either the checked prop, or the defaultChecked prop, but not ' + 'both). Decide between using a controlled or uncontrolled input ' + 'element and remove one of these props. More info: ' + 'https://fb.me/react-controlled-components', owner && owner.getName() || 'A component', props.type) : void 0;
         didWarnCheckedDefaultChecked = true;
       }
       if (props.value !== undefined && props.defaultValue !== undefined && !didWarnValueDefaultValue) {
-        "production" !== 'production' ? warning(false, 'Input elements must be either controlled or uncontrolled ' + '(specify either the value prop, or the defaultValue prop, but not ' + 'both). Decide between using a controlled or uncontrolled input ' + 'element and remove one of these props. More info: ' + 'https://fb.me/react-controlled-components') : void 0;
+        "production" !== 'production' ? warning(false, '%s contains an input of type %s with both value and defaultValue props. ' + 'Input elements must be either controlled or uncontrolled ' + '(specify either the value prop, or the defaultValue prop, but not ' + 'both). Decide between using a controlled or uncontrolled input ' + 'element and remove one of these props. More info: ' + 'https://fb.me/react-controlled-components', owner && owner.getName() || 'A component', props.type) : void 0;
         didWarnValueDefaultValue = true;
       }
       warnIfValueIsNull(props);
@@ -80626,7 +86847,7 @@ var ReactDOMInput = {
       var owner = inst._currentElement._owner;
 
       if ((initialValue || !inst._wrapperState.controlled) && controlled && !didWarnUncontrolledToControlled) {
-        "production" !== 'production' ? warning(false, '%s is changing a uncontrolled input of type %s to be controlled. ' + 'Input elements should not switch from uncontrolled to controlled (or vice versa). ' + 'Decide between using a controlled or uncontrolled input ' + 'element for the lifetime of the component. More info: https://fb.me/react-controlled-components', owner && owner.getName() || 'A component', props.type) : void 0;
+        "production" !== 'production' ? warning(false, '%s is changing an uncontrolled input of type %s to be controlled. ' + 'Input elements should not switch from uncontrolled to controlled (or vice versa). ' + 'Decide between using a controlled or uncontrolled input ' + 'element for the lifetime of the component. More info: https://fb.me/react-controlled-components', owner && owner.getName() || 'A component', props.type) : void 0;
         didWarnUncontrolledToControlled = true;
       }
       if (inst._wrapperState.controlled && (defaultValue || !controlled) && !didWarnControlledToUncontrolled) {
@@ -80699,7 +86920,7 @@ function _handleChange(event) {
 }
 
 module.exports = ReactDOMInput;
-},{"./DOMPropertyOperations":660,"./DisabledInputUtils":663,"./LinkedValueUtils":673,"./ReactDOMComponentTree":689,"./ReactUpdates":741,"fbjs/lib/invariant":36,"fbjs/lib/warning":46,"object-assign":565}],697:[function(require,module,exports){
+},{"./DOMPropertyOperations":705,"./DisabledInputUtils":708,"./LinkedValueUtils":718,"./ReactDOMComponentTree":735,"./ReactUpdates":789,"fbjs/lib/invariant":39,"fbjs/lib/warning":49,"object-assign":564}],743:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80716,7 +86937,7 @@ module.exports = ReactDOMInput;
 var ReactDOMDebugTool = require('./ReactDOMDebugTool');
 
 module.exports = { debugTool: ReactDOMDebugTool };
-},{"./ReactDOMDebugTool":691}],698:[function(require,module,exports){
+},{"./ReactDOMDebugTool":737}],744:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -80826,7 +87047,7 @@ var ReactDOMOption = {
 };
 
 module.exports = ReactDOMOption;
-},{"./ReactChildren":678,"./ReactDOMComponentTree":689,"./ReactDOMSelect":699,"fbjs/lib/warning":46,"object-assign":565}],699:[function(require,module,exports){
+},{"./ReactChildren":723,"./ReactDOMComponentTree":735,"./ReactDOMSelect":745,"fbjs/lib/warning":49,"object-assign":564}],745:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -81040,7 +87261,7 @@ function _handleChange(event) {
 }
 
 module.exports = ReactDOMSelect;
-},{"./DisabledInputUtils":663,"./LinkedValueUtils":673,"./ReactDOMComponentTree":689,"./ReactUpdates":741,"fbjs/lib/warning":46,"object-assign":565}],700:[function(require,module,exports){
+},{"./DisabledInputUtils":708,"./LinkedValueUtils":718,"./ReactDOMComponentTree":735,"./ReactUpdates":789,"fbjs/lib/warning":49,"object-assign":564}],746:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -81253,7 +87474,34 @@ var ReactDOMSelection = {
 };
 
 module.exports = ReactDOMSelection;
-},{"./getNodeForCharacterOffset":776,"./getTextContentAccessor":777,"fbjs/lib/ExecutionEnvironment":22}],701:[function(require,module,exports){
+},{"./getNodeForCharacterOffset":824,"./getTextContentAccessor":825,"fbjs/lib/ExecutionEnvironment":25}],747:[function(require,module,exports){
+/**
+ * Copyright 2013-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ * @providesModule ReactDOMServer
+ */
+
+'use strict';
+
+var ReactDefaultInjection = require('./ReactDefaultInjection');
+var ReactServerRendering = require('./ReactServerRendering');
+var ReactVersion = require('./ReactVersion');
+
+ReactDefaultInjection.inject();
+
+var ReactDOMServer = {
+  renderToString: ReactServerRendering.renderToString,
+  renderToStaticMarkup: ReactServerRendering.renderToStaticMarkup,
+  version: ReactVersion
+};
+
+module.exports = ReactDOMServer;
+},{"./ReactDefaultInjection":754,"./ReactServerRendering":784,"./ReactVersion":790}],748:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -81272,7 +87520,7 @@ var _assign = require('object-assign');
 var DOMChildrenOperations = require('./DOMChildrenOperations');
 var DOMLazyTree = require('./DOMLazyTree');
 var ReactDOMComponentTree = require('./ReactDOMComponentTree');
-var ReactPerf = require('./ReactPerf');
+var ReactInstrumentation = require('./ReactInstrumentation');
 
 var escapeTextContentForBrowser = require('./escapeTextContentForBrowser');
 var invariant = require('fbjs/lib/invariant');
@@ -81320,6 +87568,8 @@ _assign(ReactDOMTextComponent.prototype, {
    */
   mountComponent: function (transaction, nativeParent, nativeContainerInfo, context) {
     if ("production" !== 'production') {
+      ReactInstrumentation.debugTool.onSetText(this._debugID, this._stringText);
+
       var parentInfo;
       if (nativeParent != null) {
         parentInfo = nativeParent._ancestorInfo;
@@ -81383,6 +87633,10 @@ _assign(ReactDOMTextComponent.prototype, {
         this._stringText = nextStringText;
         var commentNodes = this.getNativeNode();
         DOMChildrenOperations.replaceDelimitedText(commentNodes[0], commentNodes[1], nextStringText);
+
+        if ("production" !== 'production') {
+          ReactInstrumentation.debugTool.onSetText(this._debugID, nextStringText);
+        }
       }
     }
   },
@@ -81417,13 +87671,8 @@ _assign(ReactDOMTextComponent.prototype, {
 
 });
 
-ReactPerf.measureMethods(ReactDOMTextComponent.prototype, 'ReactDOMTextComponent', {
-  mountComponent: 'mountComponent',
-  receiveComponent: 'receiveComponent'
-});
-
 module.exports = ReactDOMTextComponent;
-},{"./DOMChildrenOperations":656,"./DOMLazyTree":657,"./ReactDOMComponentTree":689,"./ReactPerf":731,"./escapeTextContentForBrowser":766,"./validateDOMNesting":790,"fbjs/lib/invariant":36,"object-assign":565}],702:[function(require,module,exports){
+},{"./DOMChildrenOperations":701,"./DOMLazyTree":702,"./ReactDOMComponentTree":735,"./ReactInstrumentation":766,"./escapeTextContentForBrowser":814,"./validateDOMNesting":839,"fbjs/lib/invariant":39,"object-assign":564}],749:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -81566,7 +87815,7 @@ function _handleChange(event) {
 }
 
 module.exports = ReactDOMTextarea;
-},{"./DOMPropertyOperations":660,"./DisabledInputUtils":663,"./LinkedValueUtils":673,"./ReactDOMComponentTree":689,"./ReactUpdates":741,"fbjs/lib/invariant":36,"fbjs/lib/warning":46,"object-assign":565}],703:[function(require,module,exports){
+},{"./DOMPropertyOperations":705,"./DisabledInputUtils":708,"./LinkedValueUtils":718,"./ReactDOMComponentTree":735,"./ReactUpdates":789,"fbjs/lib/invariant":39,"fbjs/lib/warning":49,"object-assign":564}],750:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -81701,7 +87950,7 @@ module.exports = {
   traverseTwoPhase: traverseTwoPhase,
   traverseEnterLeave: traverseEnterLeave
 };
-},{"fbjs/lib/invariant":36}],704:[function(require,module,exports){
+},{"fbjs/lib/invariant":39}],751:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -81766,7 +88015,7 @@ var ReactDOMUnknownPropertyDevtool = {
 };
 
 module.exports = ReactDOMUnknownPropertyDevtool;
-},{"./DOMProperty":659,"./EventPluginRegistry":667,"fbjs/lib/warning":46}],705:[function(require,module,exports){
+},{"./DOMProperty":704,"./EventPluginRegistry":712,"fbjs/lib/warning":49}],752:[function(require,module,exports){
 /**
  * Copyright 2016-present, Facebook, Inc.
  * All rights reserved.
@@ -81780,7 +88029,9 @@ module.exports = ReactDOMUnknownPropertyDevtool;
 
 'use strict';
 
-var ReactInvalidSetStateWarningDevTool = require('./ReactInvalidSetStateWarningDevTool');
+var ExecutionEnvironment = require('fbjs/lib/ExecutionEnvironment');
+
+var performanceNow = require('fbjs/lib/performanceNow');
 var warning = require('fbjs/lib/warning');
 
 var eventHandlers = [];
@@ -81801,6 +88052,70 @@ function emitEvent(handlerFunctionName, arg1, arg2, arg3, arg4, arg5) {
   }
 }
 
+var isProfiling = false;
+var flushHistory = [];
+var currentFlushNesting = 0;
+var currentFlushMeasurements = null;
+var currentFlushStartTime = null;
+var currentTimerDebugID = null;
+var currentTimerStartTime = null;
+var currentTimerType = null;
+
+function clearHistory() {
+  ReactComponentTreeDevtool.purgeUnmountedComponents();
+  ReactNativeOperationHistoryDevtool.clearHistory();
+}
+
+function getTreeSnapshot(registeredIDs) {
+  return registeredIDs.reduce(function (tree, id) {
+    var ownerID = ReactComponentTreeDevtool.getOwnerID(id);
+    var parentID = ReactComponentTreeDevtool.getParentID(id);
+    tree[id] = {
+      displayName: ReactComponentTreeDevtool.getDisplayName(id),
+      text: ReactComponentTreeDevtool.getText(id),
+      updateCount: ReactComponentTreeDevtool.getUpdateCount(id),
+      childIDs: ReactComponentTreeDevtool.getChildIDs(id),
+      // Text nodes don't have owners but this is close enough.
+      ownerID: ownerID || ReactComponentTreeDevtool.getOwnerID(parentID),
+      parentID: parentID
+    };
+    return tree;
+  }, {});
+}
+
+function resetMeasurements() {
+  if ("production" !== 'production') {
+    var previousStartTime = currentFlushStartTime;
+    var previousMeasurements = currentFlushMeasurements || [];
+    var previousOperations = ReactNativeOperationHistoryDevtool.getHistory();
+
+    if (!isProfiling || currentFlushNesting === 0) {
+      currentFlushStartTime = null;
+      currentFlushMeasurements = null;
+      clearHistory();
+      return;
+    }
+
+    if (previousMeasurements.length || previousOperations.length) {
+      var registeredIDs = ReactComponentTreeDevtool.getRegisteredIDs();
+      flushHistory.push({
+        duration: performanceNow() - previousStartTime,
+        measurements: previousMeasurements || [],
+        operations: previousOperations || [],
+        treeSnapshot: getTreeSnapshot(registeredIDs)
+      });
+    }
+
+    clearHistory();
+    currentFlushStartTime = performanceNow();
+    currentFlushMeasurements = [];
+  }
+}
+
+function checkDebugID(debugID) {
+  "production" !== 'production' ? warning(debugID, 'ReactDebugTool: debugID may not be empty.') : void 0;
+}
+
 var ReactDebugTool = {
   addDevtool: function (devtool) {
     eventHandlers.push(devtool);
@@ -81813,33 +88128,145 @@ var ReactDebugTool = {
       }
     }
   },
+  beginProfiling: function () {
+    if ("production" !== 'production') {
+      if (isProfiling) {
+        return;
+      }
+
+      isProfiling = true;
+      flushHistory.length = 0;
+      resetMeasurements();
+    }
+  },
+  endProfiling: function () {
+    if ("production" !== 'production') {
+      if (!isProfiling) {
+        return;
+      }
+
+      isProfiling = false;
+      resetMeasurements();
+    }
+  },
+  getFlushHistory: function () {
+    if ("production" !== 'production') {
+      return flushHistory;
+    }
+  },
+  onBeginFlush: function () {
+    if ("production" !== 'production') {
+      currentFlushNesting++;
+      resetMeasurements();
+    }
+    emitEvent('onBeginFlush');
+  },
+  onEndFlush: function () {
+    if ("production" !== 'production') {
+      resetMeasurements();
+      currentFlushNesting--;
+    }
+    emitEvent('onEndFlush');
+  },
+  onBeginLifeCycleTimer: function (debugID, timerType) {
+    checkDebugID(debugID);
+    emitEvent('onBeginLifeCycleTimer', debugID, timerType);
+    if ("production" !== 'production') {
+      if (isProfiling && currentFlushNesting > 0) {
+        "production" !== 'production' ? warning(!currentTimerType, 'There is an internal error in the React performance measurement code. ' + 'Did not expect %s timer to start while %s timer is still in ' + 'progress for %s instance.', timerType, currentTimerType || 'no', debugID === currentTimerDebugID ? 'the same' : 'another') : void 0;
+        currentTimerStartTime = performanceNow();
+        currentTimerDebugID = debugID;
+        currentTimerType = timerType;
+      }
+    }
+  },
+  onEndLifeCycleTimer: function (debugID, timerType) {
+    checkDebugID(debugID);
+    if ("production" !== 'production') {
+      if (isProfiling && currentFlushNesting > 0) {
+        "production" !== 'production' ? warning(currentTimerType === timerType, 'There is an internal error in the React performance measurement code. ' + 'We did not expect %s timer to stop while %s timer is still in ' + 'progress for %s instance. Please report this as a bug in React.', timerType, currentTimerType || 'no', debugID === currentTimerDebugID ? 'the same' : 'another') : void 0;
+        currentFlushMeasurements.push({
+          timerType: timerType,
+          instanceID: debugID,
+          duration: performanceNow() - currentTimerStartTime
+        });
+        currentTimerStartTime = null;
+        currentTimerDebugID = null;
+        currentTimerType = null;
+      }
+    }
+    emitEvent('onEndLifeCycleTimer', debugID, timerType);
+  },
+  onBeginReconcilerTimer: function (debugID, timerType) {
+    checkDebugID(debugID);
+    emitEvent('onBeginReconcilerTimer', debugID, timerType);
+  },
+  onEndReconcilerTimer: function (debugID, timerType) {
+    checkDebugID(debugID);
+    emitEvent('onEndReconcilerTimer', debugID, timerType);
+  },
   onBeginProcessingChildContext: function () {
     emitEvent('onBeginProcessingChildContext');
   },
   onEndProcessingChildContext: function () {
     emitEvent('onEndProcessingChildContext');
   },
+  onNativeOperation: function (debugID, type, payload) {
+    checkDebugID(debugID);
+    emitEvent('onNativeOperation', debugID, type, payload);
+  },
   onSetState: function () {
     emitEvent('onSetState');
   },
-  onMountRootComponent: function (internalInstance) {
-    emitEvent('onMountRootComponent', internalInstance);
+  onSetDisplayName: function (debugID, displayName) {
+    checkDebugID(debugID);
+    emitEvent('onSetDisplayName', debugID, displayName);
   },
-  onMountComponent: function (internalInstance) {
-    emitEvent('onMountComponent', internalInstance);
+  onSetChildren: function (debugID, childDebugIDs) {
+    checkDebugID(debugID);
+    emitEvent('onSetChildren', debugID, childDebugIDs);
   },
-  onUpdateComponent: function (internalInstance) {
-    emitEvent('onUpdateComponent', internalInstance);
+  onSetOwner: function (debugID, ownerDebugID) {
+    checkDebugID(debugID);
+    emitEvent('onSetOwner', debugID, ownerDebugID);
   },
-  onUnmountComponent: function (internalInstance) {
-    emitEvent('onUnmountComponent', internalInstance);
+  onSetText: function (debugID, text) {
+    checkDebugID(debugID);
+    emitEvent('onSetText', debugID, text);
+  },
+  onMountRootComponent: function (debugID) {
+    checkDebugID(debugID);
+    emitEvent('onMountRootComponent', debugID);
+  },
+  onMountComponent: function (debugID) {
+    checkDebugID(debugID);
+    emitEvent('onMountComponent', debugID);
+  },
+  onUpdateComponent: function (debugID) {
+    checkDebugID(debugID);
+    emitEvent('onUpdateComponent', debugID);
+  },
+  onUnmountComponent: function (debugID) {
+    checkDebugID(debugID);
+    emitEvent('onUnmountComponent', debugID);
   }
 };
 
-ReactDebugTool.addDevtool(ReactInvalidSetStateWarningDevTool);
+if ("production" !== 'production') {
+  var ReactInvalidSetStateWarningDevTool = require('./ReactInvalidSetStateWarningDevTool');
+  var ReactNativeOperationHistoryDevtool = require('./ReactNativeOperationHistoryDevtool');
+  var ReactComponentTreeDevtool = require('./ReactComponentTreeDevtool');
+  ReactDebugTool.addDevtool(ReactInvalidSetStateWarningDevTool);
+  ReactDebugTool.addDevtool(ReactComponentTreeDevtool);
+  ReactDebugTool.addDevtool(ReactNativeOperationHistoryDevtool);
+  var url = ExecutionEnvironment.canUseDOM && window.location.href || '';
+  if (/[?&]react_perf\b/.test(url)) {
+    ReactDebugTool.beginProfiling();
+  }
+}
 
 module.exports = ReactDebugTool;
-},{"./ReactInvalidSetStateWarningDevTool":722,"fbjs/lib/warning":46}],706:[function(require,module,exports){
+},{"./ReactComponentTreeDevtool":728,"./ReactInvalidSetStateWarningDevTool":767,"./ReactNativeOperationHistoryDevtool":773,"fbjs/lib/ExecutionEnvironment":25,"fbjs/lib/performanceNow":47,"fbjs/lib/warning":49}],753:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -81908,7 +88335,7 @@ var ReactDefaultBatchingStrategy = {
 };
 
 module.exports = ReactDefaultBatchingStrategy;
-},{"./ReactUpdates":741,"./Transaction":759,"fbjs/lib/emptyFunction":28,"object-assign":565}],707:[function(require,module,exports){
+},{"./ReactUpdates":789,"./Transaction":807,"fbjs/lib/emptyFunction":31,"object-assign":564}],754:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -81926,7 +88353,6 @@ var BeforeInputEventPlugin = require('./BeforeInputEventPlugin');
 var ChangeEventPlugin = require('./ChangeEventPlugin');
 var DefaultEventPluginOrder = require('./DefaultEventPluginOrder');
 var EnterLeaveEventPlugin = require('./EnterLeaveEventPlugin');
-var ExecutionEnvironment = require('fbjs/lib/ExecutionEnvironment');
 var HTMLDOMPropertyConfig = require('./HTMLDOMPropertyConfig');
 var ReactComponentBrowserEnvironment = require('./ReactComponentBrowserEnvironment');
 var ReactDOMComponent = require('./ReactDOMComponent');
@@ -81989,548 +88415,12 @@ function inject() {
   ReactInjection.Updates.injectBatchingStrategy(ReactDefaultBatchingStrategy);
 
   ReactInjection.Component.injectEnvironment(ReactComponentBrowserEnvironment);
-
-  if ("production" !== 'production') {
-    var url = ExecutionEnvironment.canUseDOM && window.location.href || '';
-    if (/[?&]react_perf\b/.test(url)) {
-      var ReactDefaultPerf = require('./ReactDefaultPerf');
-      ReactDefaultPerf.start();
-    }
-  }
 }
 
 module.exports = {
   inject: inject
 };
-},{"./BeforeInputEventPlugin":651,"./ChangeEventPlugin":655,"./DefaultEventPluginOrder":662,"./EnterLeaveEventPlugin":664,"./HTMLDOMPropertyConfig":671,"./ReactComponentBrowserEnvironment":681,"./ReactDOMComponent":687,"./ReactDOMComponentTree":689,"./ReactDOMEmptyComponent":692,"./ReactDOMTextComponent":701,"./ReactDOMTreeTraversal":703,"./ReactDefaultBatchingStrategy":706,"./ReactDefaultPerf":708,"./ReactEventListener":715,"./ReactInjection":718,"./ReactReconcileTransaction":735,"./SVGDOMPropertyConfig":743,"./SelectEventPlugin":744,"./SimpleEventPlugin":745,"fbjs/lib/ExecutionEnvironment":22}],708:[function(require,module,exports){
-/**
- * Copyright 2013-present, Facebook, Inc.
- * All rights reserved.
- *
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant
- * of patent rights can be found in the PATENTS file in the same directory.
- *
- * @providesModule ReactDefaultPerf
- */
-
-'use strict';
-
-var DOMProperty = require('./DOMProperty');
-var ReactDOMComponentTree = require('./ReactDOMComponentTree');
-var ReactDefaultPerfAnalysis = require('./ReactDefaultPerfAnalysis');
-var ReactMount = require('./ReactMount');
-var ReactPerf = require('./ReactPerf');
-
-var performanceNow = require('fbjs/lib/performanceNow');
-var warning = require('fbjs/lib/warning');
-
-function roundFloat(val) {
-  return Math.floor(val * 100) / 100;
-}
-
-function addValue(obj, key, val) {
-  obj[key] = (obj[key] || 0) + val;
-}
-
-// Composite/text components don't have any built-in ID: we have to make our own
-var compositeIDMap;
-var compositeIDCounter = 17000;
-function getIDOfComposite(inst) {
-  if (!compositeIDMap) {
-    compositeIDMap = new WeakMap();
-  }
-  if (compositeIDMap.has(inst)) {
-    return compositeIDMap.get(inst);
-  } else {
-    var id = compositeIDCounter++;
-    compositeIDMap.set(inst, id);
-    return id;
-  }
-}
-
-function getID(inst) {
-  if (inst.hasOwnProperty('_rootNodeID')) {
-    return inst._rootNodeID;
-  } else {
-    return getIDOfComposite(inst);
-  }
-}
-
-function stripComplexValues(key, value) {
-  if (typeof value !== 'object' || Array.isArray(value) || value == null) {
-    return value;
-  }
-  var prototype = Object.getPrototypeOf(value);
-  if (!prototype || prototype === Object.prototype) {
-    return value;
-  }
-  return '<not serializable>';
-}
-
-// This implementation of ReactPerf is going away some time mid 15.x.
-// While we plan to keep most of the API, the actual format of measurements
-// will change dramatically. To signal this, we wrap them into an opaque-ish
-// object to discourage reaching into it until the API stabilizes.
-function wrapLegacyMeasurements(measurements) {
-  return { __unstable_this_format_will_change: measurements };
-}
-function unwrapLegacyMeasurements(measurements) {
-  return measurements && measurements.__unstable_this_format_will_change || measurements;
-}
-
-var warnedAboutPrintDOM = false;
-var warnedAboutGetMeasurementsSummaryMap = false;
-
-var ReactDefaultPerf = {
-  _allMeasurements: [], // last item in the list is the current one
-  _mountStack: [0],
-  _compositeStack: [],
-  _injected: false,
-
-  start: function () {
-    if (!ReactDefaultPerf._injected) {
-      ReactPerf.injection.injectMeasure(ReactDefaultPerf.measure);
-    }
-
-    ReactDefaultPerf._allMeasurements.length = 0;
-    ReactPerf.enableMeasure = true;
-  },
-
-  stop: function () {
-    ReactPerf.enableMeasure = false;
-  },
-
-  getLastMeasurements: function () {
-    return wrapLegacyMeasurements(ReactDefaultPerf._allMeasurements);
-  },
-
-  printExclusive: function (measurements) {
-    measurements = unwrapLegacyMeasurements(measurements || ReactDefaultPerf._allMeasurements);
-    var summary = ReactDefaultPerfAnalysis.getExclusiveSummary(measurements);
-    console.table(summary.map(function (item) {
-      return {
-        'Component class name': item.componentName,
-        'Total inclusive time (ms)': roundFloat(item.inclusive),
-        'Exclusive mount time (ms)': roundFloat(item.exclusive),
-        'Exclusive render time (ms)': roundFloat(item.render),
-        'Mount time per instance (ms)': roundFloat(item.exclusive / item.count),
-        'Render time per instance (ms)': roundFloat(item.render / item.count),
-        'Instances': item.count
-      };
-    }));
-    // TODO: ReactDefaultPerfAnalysis.getTotalTime() does not return the correct
-    // number.
-  },
-
-  printInclusive: function (measurements) {
-    measurements = unwrapLegacyMeasurements(measurements || ReactDefaultPerf._allMeasurements);
-    var summary = ReactDefaultPerfAnalysis.getInclusiveSummary(measurements);
-    console.table(summary.map(function (item) {
-      return {
-        'Owner > component': item.componentName,
-        'Inclusive time (ms)': roundFloat(item.time),
-        'Instances': item.count
-      };
-    }));
-    console.log('Total time:', ReactDefaultPerfAnalysis.getTotalTime(measurements).toFixed(2) + ' ms');
-  },
-
-  getMeasurementsSummaryMap: function (measurements) {
-    "production" !== 'production' ? warning(warnedAboutGetMeasurementsSummaryMap, '`ReactPerf.getMeasurementsSummaryMap(...)` is deprecated. Use ' + '`ReactPerf.getWasted(...)` instead.') : void 0;
-    warnedAboutGetMeasurementsSummaryMap = true;
-    return ReactDefaultPerf.getWasted(measurements);
-  },
-
-  getWasted: function (measurements) {
-    measurements = unwrapLegacyMeasurements(measurements);
-    var summary = ReactDefaultPerfAnalysis.getInclusiveSummary(measurements, true);
-    return summary.map(function (item) {
-      return {
-        'Owner > component': item.componentName,
-        'Wasted time (ms)': item.time,
-        'Instances': item.count
-      };
-    });
-  },
-
-  printWasted: function (measurements) {
-    measurements = unwrapLegacyMeasurements(measurements || ReactDefaultPerf._allMeasurements);
-    console.table(ReactDefaultPerf.getWasted(measurements));
-    console.log('Total time:', ReactDefaultPerfAnalysis.getTotalTime(measurements).toFixed(2) + ' ms');
-  },
-
-  printDOM: function (measurements) {
-    "production" !== 'production' ? warning(warnedAboutPrintDOM, '`ReactPerf.printDOM(...)` is deprecated. Use ' + '`ReactPerf.printOperations(...)` instead.') : void 0;
-    warnedAboutPrintDOM = true;
-    return ReactDefaultPerf.printOperations(measurements);
-  },
-
-  printOperations: function (measurements) {
-    measurements = unwrapLegacyMeasurements(measurements || ReactDefaultPerf._allMeasurements);
-    var summary = ReactDefaultPerfAnalysis.getDOMSummary(measurements);
-    console.table(summary.map(function (item) {
-      var result = {};
-      result[DOMProperty.ID_ATTRIBUTE_NAME] = item.id;
-      result.type = item.type;
-      result.args = JSON.stringify(item.args, stripComplexValues);
-      return result;
-    }));
-    console.log('Total time:', ReactDefaultPerfAnalysis.getTotalTime(measurements).toFixed(2) + ' ms');
-  },
-
-  _recordWrite: function (id, fnName, totalTime, args) {
-    // TODO: totalTime isn't that useful since it doesn't count paints/reflows
-    var entry = ReactDefaultPerf._allMeasurements[ReactDefaultPerf._allMeasurements.length - 1];
-    var writes = entry.writes;
-    writes[id] = writes[id] || [];
-    writes[id].push({
-      type: fnName,
-      time: totalTime,
-      args: args
-    });
-  },
-
-  measure: function (moduleName, fnName, func) {
-    return function () {
-      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-        args[_key] = arguments[_key];
-      }
-
-      var totalTime;
-      var rv;
-      var start;
-
-      var entry = ReactDefaultPerf._allMeasurements[ReactDefaultPerf._allMeasurements.length - 1];
-
-      if (fnName === '_renderNewRootComponent' || fnName === 'flushBatchedUpdates') {
-        // A "measurement" is a set of metrics recorded for each flush. We want
-        // to group the metrics for a given flush together so we can look at the
-        // components that rendered and the DOM operations that actually
-        // happened to determine the amount of "wasted work" performed.
-        ReactDefaultPerf._allMeasurements.push(entry = {
-          exclusive: {},
-          inclusive: {},
-          render: {},
-          counts: {},
-          writes: {},
-          displayNames: {},
-          hierarchy: {},
-          totalTime: 0,
-          created: {}
-        });
-        start = performanceNow();
-        rv = func.apply(this, args);
-        entry.totalTime = performanceNow() - start;
-        return rv;
-      } else if (fnName === '_mountImageIntoNode' || moduleName === 'ReactDOMIDOperations' || moduleName === 'CSSPropertyOperations' || moduleName === 'DOMChildrenOperations' || moduleName === 'DOMPropertyOperations' || moduleName === 'ReactComponentBrowserEnvironment') {
-        start = performanceNow();
-        rv = func.apply(this, args);
-        totalTime = performanceNow() - start;
-
-        if (fnName === '_mountImageIntoNode') {
-          ReactDefaultPerf._recordWrite('', fnName, totalTime, args[0]);
-        } else if (fnName === 'dangerouslyProcessChildrenUpdates') {
-          // special format
-          args[1].forEach(function (update) {
-            var writeArgs = {};
-            if (update.fromIndex !== null) {
-              writeArgs.fromIndex = update.fromIndex;
-            }
-            if (update.toIndex !== null) {
-              writeArgs.toIndex = update.toIndex;
-            }
-            if (update.content !== null) {
-              writeArgs.content = update.content;
-            }
-            ReactDefaultPerf._recordWrite(args[0]._rootNodeID, update.type, totalTime, writeArgs);
-          });
-        } else {
-          // basic format
-          var id = args[0];
-          if (moduleName === 'EventPluginHub') {
-            id = id._rootNodeID;
-          } else if (fnName === 'replaceNodeWithMarkup') {
-            // Old node is already unmounted; can't get its instance
-            id = ReactDOMComponentTree.getInstanceFromNode(args[1].node)._rootNodeID;
-          } else if (fnName === 'replaceDelimitedText') {
-            id = getID(ReactDOMComponentTree.getInstanceFromNode(args[0]));
-          } else if (typeof id === 'object') {
-            id = getID(ReactDOMComponentTree.getInstanceFromNode(args[0]));
-          }
-          ReactDefaultPerf._recordWrite(id, fnName, totalTime, Array.prototype.slice.call(args, 1));
-        }
-        return rv;
-      } else if (moduleName === 'ReactCompositeComponent' && (fnName === 'mountComponent' || fnName === 'updateComponent' || // TODO: receiveComponent()?
-      fnName === '_renderValidatedComponent')) {
-
-        if (this._currentElement.type === ReactMount.TopLevelWrapper) {
-          return func.apply(this, args);
-        }
-
-        var rootNodeID = getIDOfComposite(this);
-        var isRender = fnName === '_renderValidatedComponent';
-        var isMount = fnName === 'mountComponent';
-
-        var mountStack = ReactDefaultPerf._mountStack;
-
-        if (isRender) {
-          addValue(entry.counts, rootNodeID, 1);
-        } else if (isMount) {
-          entry.created[rootNodeID] = true;
-          mountStack.push(0);
-        }
-
-        ReactDefaultPerf._compositeStack.push(rootNodeID);
-
-        start = performanceNow();
-        rv = func.apply(this, args);
-        totalTime = performanceNow() - start;
-
-        ReactDefaultPerf._compositeStack.pop();
-
-        if (isRender) {
-          addValue(entry.render, rootNodeID, totalTime);
-        } else if (isMount) {
-          var subMountTime = mountStack.pop();
-          mountStack[mountStack.length - 1] += totalTime;
-          addValue(entry.exclusive, rootNodeID, totalTime - subMountTime);
-          addValue(entry.inclusive, rootNodeID, totalTime);
-        } else {
-          addValue(entry.inclusive, rootNodeID, totalTime);
-        }
-
-        entry.displayNames[rootNodeID] = {
-          current: this.getName(),
-          owner: this._currentElement._owner ? this._currentElement._owner.getName() : '<root>'
-        };
-
-        return rv;
-      } else if ((moduleName === 'ReactDOMComponent' || moduleName === 'ReactDOMTextComponent') && (fnName === 'mountComponent' || fnName === 'receiveComponent')) {
-
-        rv = func.apply(this, args);
-        entry.hierarchy[getID(this)] = ReactDefaultPerf._compositeStack.slice();
-        return rv;
-      } else {
-        return func.apply(this, args);
-      }
-    };
-  }
-};
-
-module.exports = ReactDefaultPerf;
-},{"./DOMProperty":659,"./ReactDOMComponentTree":689,"./ReactDefaultPerfAnalysis":709,"./ReactMount":724,"./ReactPerf":731,"fbjs/lib/performanceNow":44,"fbjs/lib/warning":46}],709:[function(require,module,exports){
-/**
- * Copyright 2013-present, Facebook, Inc.
- * All rights reserved.
- *
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant
- * of patent rights can be found in the PATENTS file in the same directory.
- *
- * @providesModule ReactDefaultPerfAnalysis
- */
-
-'use strict';
-
-// Don't try to save users less than 1.2ms (a number I made up)
-
-var _assign = require('object-assign');
-
-var DONT_CARE_THRESHOLD = 1.2;
-var DOM_OPERATION_TYPES = {
-  '_mountImageIntoNode': 'set innerHTML',
-  INSERT_MARKUP: 'set innerHTML',
-  MOVE_EXISTING: 'move',
-  REMOVE_NODE: 'remove',
-  SET_MARKUP: 'set innerHTML',
-  TEXT_CONTENT: 'set textContent',
-  'setValueForProperty': 'update attribute',
-  'setValueForAttribute': 'update attribute',
-  'deleteValueForProperty': 'remove attribute',
-  'setValueForStyles': 'update styles',
-  'replaceNodeWithMarkup': 'replace',
-  'replaceDelimitedText': 'replace'
-};
-
-function getTotalTime(measurements) {
-  // TODO: return number of DOM ops? could be misleading.
-  // TODO: measure dropped frames after reconcile?
-  // TODO: log total time of each reconcile and the top-level component
-  // class that triggered it.
-  var totalTime = 0;
-  for (var i = 0; i < measurements.length; i++) {
-    var measurement = measurements[i];
-    totalTime += measurement.totalTime;
-  }
-  return totalTime;
-}
-
-function getDOMSummary(measurements) {
-  var items = [];
-  measurements.forEach(function (measurement) {
-    Object.keys(measurement.writes).forEach(function (id) {
-      measurement.writes[id].forEach(function (write) {
-        items.push({
-          id: id,
-          type: DOM_OPERATION_TYPES[write.type] || write.type,
-          args: write.args
-        });
-      });
-    });
-  });
-  return items;
-}
-
-function getExclusiveSummary(measurements) {
-  var candidates = {};
-  var displayName;
-
-  for (var i = 0; i < measurements.length; i++) {
-    var measurement = measurements[i];
-    var allIDs = _assign({}, measurement.exclusive, measurement.inclusive);
-
-    for (var id in allIDs) {
-      displayName = measurement.displayNames[id].current;
-
-      candidates[displayName] = candidates[displayName] || {
-        componentName: displayName,
-        inclusive: 0,
-        exclusive: 0,
-        render: 0,
-        count: 0
-      };
-      if (measurement.render[id]) {
-        candidates[displayName].render += measurement.render[id];
-      }
-      if (measurement.exclusive[id]) {
-        candidates[displayName].exclusive += measurement.exclusive[id];
-      }
-      if (measurement.inclusive[id]) {
-        candidates[displayName].inclusive += measurement.inclusive[id];
-      }
-      if (measurement.counts[id]) {
-        candidates[displayName].count += measurement.counts[id];
-      }
-    }
-  }
-
-  // Now make a sorted array with the results.
-  var arr = [];
-  for (displayName in candidates) {
-    if (candidates[displayName].exclusive >= DONT_CARE_THRESHOLD) {
-      arr.push(candidates[displayName]);
-    }
-  }
-
-  arr.sort(function (a, b) {
-    return b.exclusive - a.exclusive;
-  });
-
-  return arr;
-}
-
-function getInclusiveSummary(measurements, onlyClean) {
-  var candidates = {};
-  var inclusiveKey;
-
-  for (var i = 0; i < measurements.length; i++) {
-    var measurement = measurements[i];
-    var allIDs = _assign({}, measurement.exclusive, measurement.inclusive);
-    var cleanComponents;
-
-    if (onlyClean) {
-      cleanComponents = getUnchangedComponents(measurement);
-    }
-
-    for (var id in allIDs) {
-      if (onlyClean && !cleanComponents[id]) {
-        continue;
-      }
-
-      var displayName = measurement.displayNames[id];
-
-      // Inclusive time is not useful for many components without knowing where
-      // they are instantiated. So we aggregate inclusive time with both the
-      // owner and current displayName as the key.
-      inclusiveKey = displayName.owner + ' > ' + displayName.current;
-
-      candidates[inclusiveKey] = candidates[inclusiveKey] || {
-        componentName: inclusiveKey,
-        time: 0,
-        count: 0
-      };
-
-      if (measurement.inclusive[id]) {
-        candidates[inclusiveKey].time += measurement.inclusive[id];
-      }
-      if (measurement.counts[id]) {
-        candidates[inclusiveKey].count += measurement.counts[id];
-      }
-    }
-  }
-
-  // Now make a sorted array with the results.
-  var arr = [];
-  for (inclusiveKey in candidates) {
-    if (candidates[inclusiveKey].time >= DONT_CARE_THRESHOLD) {
-      arr.push(candidates[inclusiveKey]);
-    }
-  }
-
-  arr.sort(function (a, b) {
-    return b.time - a.time;
-  });
-
-  return arr;
-}
-
-function getUnchangedComponents(measurement) {
-  // For a given reconcile, look at which components did not actually
-  // render anything to the DOM and return a mapping of their ID to
-  // the amount of time it took to render the entire subtree.
-  var cleanComponents = {};
-  var writes = measurement.writes;
-  var hierarchy = measurement.hierarchy;
-  var dirtyComposites = {};
-  Object.keys(writes).forEach(function (id) {
-    writes[id].forEach(function (write) {
-      // Root mounting (innerHTML set) is recorded with an ID of ''
-      if (id !== '' && hierarchy.hasOwnProperty(id)) {
-        hierarchy[id].forEach(function (c) {
-          return dirtyComposites[c] = true;
-        });
-      }
-    });
-  });
-  var allIDs = _assign({}, measurement.exclusive, measurement.inclusive);
-
-  for (var id in allIDs) {
-    var isDirty = false;
-    // See if any of the DOM operations applied to this component's subtree.
-    if (dirtyComposites[id]) {
-      isDirty = true;
-    }
-    // check if component newly created
-    if (measurement.created[id]) {
-      isDirty = true;
-    }
-    if (!isDirty && measurement.counts[id] > 0) {
-      cleanComponents[id] = true;
-    }
-  }
-  return cleanComponents;
-}
-
-var ReactDefaultPerfAnalysis = {
-  getExclusiveSummary: getExclusiveSummary,
-  getInclusiveSummary: getInclusiveSummary,
-  getDOMSummary: getDOMSummary,
-  getTotalTime: getTotalTime
-};
-
-module.exports = ReactDefaultPerfAnalysis;
-},{"object-assign":565}],710:[function(require,module,exports){
+},{"./BeforeInputEventPlugin":696,"./ChangeEventPlugin":700,"./DefaultEventPluginOrder":707,"./EnterLeaveEventPlugin":709,"./HTMLDOMPropertyConfig":716,"./ReactComponentBrowserEnvironment":726,"./ReactDOMComponent":733,"./ReactDOMComponentTree":735,"./ReactDOMEmptyComponent":738,"./ReactDOMTextComponent":748,"./ReactDOMTreeTraversal":750,"./ReactDefaultBatchingStrategy":753,"./ReactEventListener":760,"./ReactInjection":763,"./ReactReconcileTransaction":780,"./SVGDOMPropertyConfig":791,"./SelectEventPlugin":792,"./SimpleEventPlugin":793}],755:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -82646,6 +88536,10 @@ var ReactElement = function (type, key, ref, self, source, owner, props) {
   return element;
 };
 
+/**
+ * Create and return a new ReactElement of the given type.
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.createelement
+ */
 ReactElement.createElement = function (type, config, children) {
   var propName;
 
@@ -82659,6 +88553,11 @@ ReactElement.createElement = function (type, config, children) {
 
   if (config != null) {
     if ("production" !== 'production') {
+      "production" !== 'production' ? warning(
+      /* eslint-disable no-proto */
+      config.__proto__ == null || config.__proto__ === Object.prototype,
+      /* eslint-enable no-proto */
+      'React.createElement(...): Expected props argument to be a plain object. ' + 'Properties defined in its prototype chain will be ignored.') : void 0;
       ref = !config.hasOwnProperty('ref') || Object.getOwnPropertyDescriptor(config, 'ref').get ? null : config.ref;
       key = !config.hasOwnProperty('key') || Object.getOwnPropertyDescriptor(config, 'key').get ? null : '' + config.key;
     } else {
@@ -82730,6 +88629,10 @@ ReactElement.createElement = function (type, config, children) {
   return ReactElement(type, key, ref, self, source, ReactCurrentOwner.current, props);
 };
 
+/**
+ * Return a function that produces ReactElements of a given type.
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.createfactory
+ */
 ReactElement.createFactory = function (type) {
   var factory = ReactElement.createElement.bind(null, type);
   // Expose the type on the factory and the prototype so that it can be
@@ -82747,6 +88650,10 @@ ReactElement.cloneAndReplaceKey = function (oldElement, newKey) {
   return newElement;
 };
 
+/**
+ * Clone and return a new ReactElement using element as the starting point.
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.cloneelement
+ */
 ReactElement.cloneElement = function (element, config, children) {
   var propName;
 
@@ -82767,6 +88674,13 @@ ReactElement.cloneElement = function (element, config, children) {
   var owner = element._owner;
 
   if (config != null) {
+    if ("production" !== 'production') {
+      "production" !== 'production' ? warning(
+      /* eslint-disable no-proto */
+      config.__proto__ == null || config.__proto__ === Object.prototype,
+      /* eslint-enable no-proto */
+      'React.cloneElement(...): Expected props argument to be a plain object. ' + 'Properties defined in its prototype chain will be ignored.') : void 0;
+    }
     if (config.ref !== undefined) {
       // Silently steal the ref from the parent.
       ref = config.ref;
@@ -82809,6 +88723,8 @@ ReactElement.cloneElement = function (element, config, children) {
 };
 
 /**
+ * Verifies the object is a ReactElement.
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.isvalidelement
  * @param {?object} object
  * @return {boolean} True if `object` is a valid component.
  * @final
@@ -82818,7 +88734,7 @@ ReactElement.isValidElement = function (object) {
 };
 
 module.exports = ReactElement;
-},{"./ReactCurrentOwner":684,"./canDefineProperty":763,"fbjs/lib/warning":46,"object-assign":565}],711:[function(require,module,exports){
+},{"./ReactCurrentOwner":730,"./canDefineProperty":811,"fbjs/lib/warning":49,"object-assign":564}],756:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -83100,7 +89016,7 @@ var ReactElementValidator = {
 };
 
 module.exports = ReactElementValidator;
-},{"./ReactCurrentOwner":684,"./ReactElement":710,"./ReactPropTypeLocationNames":732,"./ReactPropTypeLocations":733,"./canDefineProperty":763,"./getIteratorFn":774,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],712:[function(require,module,exports){
+},{"./ReactCurrentOwner":730,"./ReactElement":755,"./ReactPropTypeLocationNames":777,"./ReactPropTypeLocations":778,"./canDefineProperty":811,"./getIteratorFn":822,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],757:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -83131,7 +89047,7 @@ var ReactEmptyComponent = {
 ReactEmptyComponent.injection = ReactEmptyComponentInjection;
 
 module.exports = ReactEmptyComponent;
-},{}],713:[function(require,module,exports){
+},{}],758:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83208,7 +89124,7 @@ if ("production" !== 'production') {
 }
 
 module.exports = ReactErrorUtils;
-},{}],714:[function(require,module,exports){
+},{}],759:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83242,7 +89158,7 @@ var ReactEventEmitterMixin = {
 };
 
 module.exports = ReactEventEmitterMixin;
-},{"./EventPluginHub":666}],715:[function(require,module,exports){
+},{"./EventPluginHub":711}],760:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83400,7 +89316,7 @@ var ReactEventListener = {
 };
 
 module.exports = ReactEventListener;
-},{"./PooledClass":674,"./ReactDOMComponentTree":689,"./ReactUpdates":741,"./getEventTarget":773,"fbjs/lib/EventListener":21,"fbjs/lib/ExecutionEnvironment":22,"fbjs/lib/getUnboundedScrollPosition":33,"object-assign":565}],716:[function(require,module,exports){
+},{"./PooledClass":719,"./ReactDOMComponentTree":735,"./ReactUpdates":789,"./getEventTarget":821,"fbjs/lib/EventListener":24,"fbjs/lib/ExecutionEnvironment":25,"fbjs/lib/getUnboundedScrollPosition":36,"object-assign":564}],761:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83422,7 +89338,7 @@ var ReactFeatureFlags = {
 };
 
 module.exports = ReactFeatureFlags;
-},{}],717:[function(require,module,exports){
+},{}],762:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -83456,8 +89372,11 @@ var numericPropertyRegex = /^\d+$/;
 var warnedAboutNumeric = false;
 
 var ReactFragment = {
-  // Wrap a keyed object in an opaque proxy that warns you if you access any
-  // of its properties.
+  /**
+   * Wrap a keyed object in an opaque proxy that warns you if you access any
+   * of its properties.
+   * See https://facebook.github.io/react/docs/create-fragment.html
+   */
   create: function (object) {
     if (typeof object !== 'object' || !object || Array.isArray(object)) {
       "production" !== 'production' ? warning(false, 'React.addons.createFragment only accepts a single object. Got: %s', object) : void 0;
@@ -83487,7 +89406,7 @@ var ReactFragment = {
 };
 
 module.exports = ReactFragment;
-},{"./ReactChildren":678,"./ReactElement":710,"fbjs/lib/emptyFunction":28,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],718:[function(require,module,exports){
+},{"./ReactChildren":723,"./ReactElement":755,"fbjs/lib/emptyFunction":31,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],763:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83509,7 +89428,6 @@ var ReactClass = require('./ReactClass');
 var ReactEmptyComponent = require('./ReactEmptyComponent');
 var ReactBrowserEventEmitter = require('./ReactBrowserEventEmitter');
 var ReactNativeComponent = require('./ReactNativeComponent');
-var ReactPerf = require('./ReactPerf');
 var ReactUpdates = require('./ReactUpdates');
 
 var ReactInjection = {
@@ -83521,12 +89439,11 @@ var ReactInjection = {
   EventPluginUtils: EventPluginUtils.injection,
   EventEmitter: ReactBrowserEventEmitter.injection,
   NativeComponent: ReactNativeComponent.injection,
-  Perf: ReactPerf.injection,
   Updates: ReactUpdates.injection
 };
 
 module.exports = ReactInjection;
-},{"./DOMProperty":659,"./EventPluginHub":666,"./EventPluginUtils":668,"./ReactBrowserEventEmitter":676,"./ReactClass":679,"./ReactComponentEnvironment":682,"./ReactEmptyComponent":712,"./ReactNativeComponent":727,"./ReactPerf":731,"./ReactUpdates":741}],719:[function(require,module,exports){
+},{"./DOMProperty":704,"./EventPluginHub":711,"./EventPluginUtils":713,"./ReactBrowserEventEmitter":721,"./ReactClass":724,"./ReactComponentEnvironment":727,"./ReactEmptyComponent":757,"./ReactNativeComponent":772,"./ReactUpdates":789}],764:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83651,7 +89568,7 @@ var ReactInputSelection = {
 };
 
 module.exports = ReactInputSelection;
-},{"./ReactDOMSelection":700,"fbjs/lib/containsNode":25,"fbjs/lib/focusNode":30,"fbjs/lib/getActiveElement":31}],720:[function(require,module,exports){
+},{"./ReactDOMSelection":746,"fbjs/lib/containsNode":28,"fbjs/lib/focusNode":33,"fbjs/lib/getActiveElement":34}],765:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83700,7 +89617,7 @@ var ReactInstanceMap = {
 };
 
 module.exports = ReactInstanceMap;
-},{}],721:[function(require,module,exports){
+},{}],766:[function(require,module,exports){
 /**
  * Copyright 2016-present, Facebook, Inc.
  * All rights reserved.
@@ -83717,7 +89634,7 @@ module.exports = ReactInstanceMap;
 var ReactDebugTool = require('./ReactDebugTool');
 
 module.exports = { debugTool: ReactDebugTool };
-},{"./ReactDebugTool":705}],722:[function(require,module,exports){
+},{"./ReactDebugTool":752}],767:[function(require,module,exports){
 /**
  * Copyright 2016-present, Facebook, Inc.
  * All rights reserved.
@@ -83754,7 +89671,7 @@ var ReactInvalidSetStateWarningDevTool = {
 };
 
 module.exports = ReactInvalidSetStateWarningDevTool;
-},{"fbjs/lib/warning":46}],723:[function(require,module,exports){
+},{"fbjs/lib/warning":49}],768:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83805,7 +89722,7 @@ var ReactMarkupChecksum = {
 };
 
 module.exports = ReactMarkupChecksum;
-},{"./adler32":762}],724:[function(require,module,exports){
+},{"./adler32":810}],769:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -83830,7 +89747,6 @@ var ReactElement = require('./ReactElement');
 var ReactFeatureFlags = require('./ReactFeatureFlags');
 var ReactInstrumentation = require('./ReactInstrumentation');
 var ReactMarkupChecksum = require('./ReactMarkupChecksum');
-var ReactPerf = require('./ReactPerf');
 var ReactReconciler = require('./ReactReconciler');
 var ReactUpdateQueue = require('./ReactUpdateQueue');
 var ReactUpdates = require('./ReactUpdates');
@@ -84068,6 +89984,10 @@ var ReactMount = {
    * @return {ReactComponent} nextComponent
    */
   _renderNewRootComponent: function (nextElement, container, shouldReuseMarkup, context) {
+    if ("production" !== 'production') {
+      ReactInstrumentation.debugTool.onBeginFlush();
+    }
+
     // Various parts of our code (such as ReactCompositeComponent's
     // _renderValidatedComponent) assume that calls to render aren't nested;
     // verify that that's the case.
@@ -84077,6 +89997,12 @@ var ReactMount = {
 
     ReactBrowserEventEmitter.ensureScrollValueMonitoring();
     var componentInstance = instantiateReactComponent(nextElement);
+
+    if ("production" !== 'production') {
+      // Mute future events from the top level wrapper.
+      // It is an implementation detail that devtools should not know about.
+      componentInstance._debugID = 0;
+    }
 
     // The initial render is synchronous but any updates that happen during
     // rendering, in componentWillMount or componentDidMount, will be batched
@@ -84088,7 +90014,9 @@ var ReactMount = {
     instancesByReactRootID[wrapperID] = componentInstance;
 
     if ("production" !== 'production') {
-      ReactInstrumentation.debugTool.onMountRootComponent(componentInstance);
+      // The instance here is TopLevelWrapper so we report mount for its child.
+      ReactInstrumentation.debugTool.onMountRootComponent(componentInstance._renderedComponent._debugID);
+      ReactInstrumentation.debugTool.onEndFlush();
     }
 
     return componentInstance;
@@ -84168,6 +90096,7 @@ var ReactMount = {
 
   /**
    * Renders a React component into the DOM in the supplied `container`.
+   * See https://facebook.github.io/react/docs/top-level-api.html#reactdom.render
    *
    * If the React component was previously rendered into `container`, this will
    * perform an update on it and only mutate the DOM as necessary to reflect the
@@ -84184,6 +90113,7 @@ var ReactMount = {
 
   /**
    * Unmounts and destroys the React component rendered in the `container`.
+   * See https://facebook.github.io/react/docs/top-level-api.html#reactdom.unmountcomponentatnode
    *
    * @param {DOMElement} container DOM element containing a React component.
    * @return {boolean} True if a component was found in and unmounted from
@@ -84275,16 +90205,18 @@ var ReactMount = {
       setInnerHTML(container, markup);
       ReactDOMComponentTree.precacheNode(instance, container.firstChild);
     }
+
+    if ("production" !== 'production') {
+      var nativeNode = ReactDOMComponentTree.getInstanceFromNode(container.firstChild);
+      if (nativeNode._debugID !== 0) {
+        ReactInstrumentation.debugTool.onNativeOperation(nativeNode._debugID, 'mount', markup.toString());
+      }
+    }
   }
 };
 
-ReactPerf.measureMethods(ReactMount, 'ReactMount', {
-  _renderNewRootComponent: '_renderNewRootComponent',
-  _mountImageIntoNode: '_mountImageIntoNode'
-});
-
 module.exports = ReactMount;
-},{"./DOMLazyTree":657,"./DOMProperty":659,"./ReactBrowserEventEmitter":676,"./ReactCurrentOwner":684,"./ReactDOMComponentTree":689,"./ReactDOMContainerInfo":690,"./ReactDOMFeatureFlags":694,"./ReactElement":710,"./ReactFeatureFlags":716,"./ReactInstrumentation":721,"./ReactMarkupChecksum":723,"./ReactPerf":731,"./ReactReconciler":736,"./ReactUpdateQueue":740,"./ReactUpdates":741,"./instantiateReactComponent":779,"./setInnerHTML":785,"./shouldUpdateReactComponent":787,"fbjs/lib/emptyObject":29,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],725:[function(require,module,exports){
+},{"./DOMLazyTree":702,"./DOMProperty":704,"./ReactBrowserEventEmitter":721,"./ReactCurrentOwner":730,"./ReactDOMComponentTree":735,"./ReactDOMContainerInfo":736,"./ReactDOMFeatureFlags":740,"./ReactElement":755,"./ReactFeatureFlags":761,"./ReactInstrumentation":766,"./ReactMarkupChecksum":768,"./ReactReconciler":781,"./ReactUpdateQueue":788,"./ReactUpdates":789,"./instantiateReactComponent":827,"./setInnerHTML":833,"./shouldUpdateReactComponent":836,"fbjs/lib/emptyObject":32,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],770:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -84299,12 +90231,14 @@ module.exports = ReactMount;
 'use strict';
 
 var ReactComponentEnvironment = require('./ReactComponentEnvironment');
+var ReactInstrumentation = require('./ReactInstrumentation');
 var ReactMultiChildUpdateTypes = require('./ReactMultiChildUpdateTypes');
 
 var ReactCurrentOwner = require('./ReactCurrentOwner');
 var ReactReconciler = require('./ReactReconciler');
 var ReactChildReconciler = require('./ReactChildReconciler');
 
+var emptyFunction = require('fbjs/lib/emptyFunction');
 var flattenChildren = require('./flattenChildren');
 var invariant = require('fbjs/lib/invariant');
 
@@ -84421,6 +90355,15 @@ function processQueue(inst, updateQueue) {
   ReactComponentEnvironment.processChildrenUpdates(inst, updateQueue);
 }
 
+var setChildrenForInstrumentation = emptyFunction;
+if ("production" !== 'production') {
+  setChildrenForInstrumentation = function (children) {
+    ReactInstrumentation.debugTool.onSetChildren(this._debugID, children ? Object.keys(children).map(function (key) {
+      return children[key]._debugID;
+    }) : []);
+  };
+}
+
 /**
  * ReactMultiChild are capable of reconciling multiple children.
  *
@@ -84482,6 +90425,7 @@ var ReactMultiChild = {
     mountChildren: function (nestedChildren, transaction, context) {
       var children = this._reconcilerInstantiateChildren(nestedChildren, transaction, context);
       this._renderedChildren = children;
+
       var mountImages = [];
       var index = 0;
       for (var name in children) {
@@ -84492,6 +90436,11 @@ var ReactMultiChild = {
           mountImages.push(mountImage);
         }
       }
+
+      if ("production" !== 'production') {
+        setChildrenForInstrumentation.call(this, children);
+      }
+
       return mountImages;
     },
 
@@ -84598,6 +90547,10 @@ var ReactMultiChild = {
         processQueue(this, updates);
       }
       this._renderedChildren = nextChildren;
+
+      if ("production" !== 'production') {
+        setChildrenForInstrumentation.call(this, nextChildren);
+      }
     },
 
     /**
@@ -84687,7 +90640,7 @@ var ReactMultiChild = {
 };
 
 module.exports = ReactMultiChild;
-},{"./ReactChildReconciler":677,"./ReactComponentEnvironment":682,"./ReactCurrentOwner":684,"./ReactMultiChildUpdateTypes":726,"./ReactReconciler":736,"./flattenChildren":768,"fbjs/lib/invariant":36}],726:[function(require,module,exports){
+},{"./ReactChildReconciler":722,"./ReactComponentEnvironment":727,"./ReactCurrentOwner":730,"./ReactInstrumentation":766,"./ReactMultiChildUpdateTypes":771,"./ReactReconciler":781,"./flattenChildren":816,"fbjs/lib/emptyFunction":31,"fbjs/lib/invariant":39}],771:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -84720,7 +90673,7 @@ var ReactMultiChildUpdateTypes = keyMirror({
 });
 
 module.exports = ReactMultiChildUpdateTypes;
-},{"fbjs/lib/keyMirror":39}],727:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":42}],772:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -84816,7 +90769,45 @@ var ReactNativeComponent = {
 };
 
 module.exports = ReactNativeComponent;
-},{"fbjs/lib/invariant":36,"object-assign":565}],728:[function(require,module,exports){
+},{"fbjs/lib/invariant":39,"object-assign":564}],773:[function(require,module,exports){
+/**
+ * Copyright 2016-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ * @providesModule ReactNativeOperationHistoryDevtool
+ */
+
+'use strict';
+
+var history = [];
+
+var ReactNativeOperationHistoryDevtool = {
+  onNativeOperation: function (debugID, type, payload) {
+    history.push({
+      instanceID: debugID,
+      type: type,
+      payload: payload
+    });
+  },
+  clearHistory: function () {
+    if (ReactNativeOperationHistoryDevtool._preventClearing) {
+      // Should only be used for tests.
+      return;
+    }
+
+    history = [];
+  },
+  getHistory: function () {
+    return history;
+  }
+};
+
+module.exports = ReactNativeOperationHistoryDevtool;
+},{}],774:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -84854,7 +90845,7 @@ var ReactNodeTypes = {
 };
 
 module.exports = ReactNodeTypes;
-},{"./ReactElement":710,"fbjs/lib/invariant":36}],729:[function(require,module,exports){
+},{"./ReactElement":755,"fbjs/lib/invariant":39}],775:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -84950,7 +90941,7 @@ var ReactNoopUpdateQueue = {
 };
 
 module.exports = ReactNoopUpdateQueue;
-},{"fbjs/lib/warning":46}],730:[function(require,module,exports){
+},{"fbjs/lib/warning":49}],776:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -85043,104 +91034,7 @@ var ReactOwner = {
 };
 
 module.exports = ReactOwner;
-},{"fbjs/lib/invariant":36}],731:[function(require,module,exports){
-/**
- * Copyright 2013-present, Facebook, Inc.
- * All rights reserved.
- *
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant
- * of patent rights can be found in the PATENTS file in the same directory.
- *
- * @providesModule ReactPerf
- */
-
-'use strict';
-
-/**
- * ReactPerf is a general AOP system designed to measure performance. This
- * module only has the hooks: see ReactDefaultPerf for the analysis tool.
- */
-
-var ReactPerf = {
-  /**
-   * Boolean to enable/disable measurement. Set to false by default to prevent
-   * accidental logging and perf loss.
-   */
-  enableMeasure: false,
-
-  /**
-   * Holds onto the measure function in use. By default, don't measure
-   * anything, but we'll override this if we inject a measure function.
-   */
-  storedMeasure: _noMeasure,
-
-  /**
-   * @param {object} object
-   * @param {string} objectName
-   * @param {object<string>} methodNames
-   */
-  measureMethods: function (object, objectName, methodNames) {
-    if ("production" !== 'production') {
-      for (var key in methodNames) {
-        if (!methodNames.hasOwnProperty(key)) {
-          continue;
-        }
-        object[key] = ReactPerf.measure(objectName, methodNames[key], object[key]);
-      }
-    }
-  },
-
-  /**
-   * Use this to wrap methods you want to measure. Zero overhead in production.
-   *
-   * @param {string} objName
-   * @param {string} fnName
-   * @param {function} func
-   * @return {function}
-   */
-  measure: function (objName, fnName, func) {
-    if ("production" !== 'production') {
-      var measuredFunc = null;
-      var wrapper = function () {
-        if (ReactPerf.enableMeasure) {
-          if (!measuredFunc) {
-            measuredFunc = ReactPerf.storedMeasure(objName, fnName, func);
-          }
-          return measuredFunc.apply(this, arguments);
-        }
-        return func.apply(this, arguments);
-      };
-      wrapper.displayName = objName + '_' + fnName;
-      return wrapper;
-    }
-    return func;
-  },
-
-  injection: {
-    /**
-     * @param {function} measure
-     */
-    injectMeasure: function (measure) {
-      ReactPerf.storedMeasure = measure;
-    }
-  }
-};
-
-/**
- * Simply passes through the measured function, without measuring it.
- *
- * @param {string} objName
- * @param {string} fnName
- * @param {function} func
- * @return {function}
- */
-function _noMeasure(objName, fnName, func) {
-  return func;
-}
-
-module.exports = ReactPerf;
-},{}],732:[function(require,module,exports){
+},{"fbjs/lib/invariant":39}],777:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -85165,7 +91059,7 @@ if ("production" !== 'production') {
 }
 
 module.exports = ReactPropTypeLocationNames;
-},{}],733:[function(require,module,exports){
+},{}],778:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -85188,7 +91082,7 @@ var ReactPropTypeLocations = keyMirror({
 });
 
 module.exports = ReactPropTypeLocations;
-},{"fbjs/lib/keyMirror":39}],734:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":42}],779:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -85569,7 +91463,7 @@ function getClassName(propValue) {
 }
 
 module.exports = ReactPropTypes;
-},{"./ReactElement":710,"./ReactPropTypeLocationNames":732,"./getIteratorFn":774,"fbjs/lib/emptyFunction":28}],735:[function(require,module,exports){
+},{"./ReactElement":755,"./ReactPropTypeLocationNames":777,"./getIteratorFn":822,"fbjs/lib/emptyFunction":31}],780:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -85732,7 +91626,7 @@ _assign(ReactReconcileTransaction.prototype, Transaction.Mixin, Mixin);
 PooledClass.addPoolingTo(ReactReconcileTransaction);
 
 module.exports = ReactReconcileTransaction;
-},{"./CallbackQueue":654,"./PooledClass":674,"./ReactBrowserEventEmitter":676,"./ReactInputSelection":719,"./Transaction":759,"object-assign":565}],736:[function(require,module,exports){
+},{"./CallbackQueue":699,"./PooledClass":719,"./ReactBrowserEventEmitter":721,"./ReactInputSelection":764,"./Transaction":807,"object-assign":564}],781:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -85748,6 +91642,8 @@ module.exports = ReactReconcileTransaction;
 
 var ReactRef = require('./ReactRef');
 var ReactInstrumentation = require('./ReactInstrumentation');
+
+var invariant = require('fbjs/lib/invariant');
 
 /**
  * Helper to call ReactRef.attachRefs with this composite component, split out
@@ -85771,12 +91667,20 @@ var ReactReconciler = {
    * @internal
    */
   mountComponent: function (internalInstance, transaction, nativeParent, nativeContainerInfo, context) {
+    if ("production" !== 'production') {
+      if (internalInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onBeginReconcilerTimer(internalInstance._debugID, 'mountComponent');
+      }
+    }
     var markup = internalInstance.mountComponent(transaction, nativeParent, nativeContainerInfo, context);
     if (internalInstance._currentElement && internalInstance._currentElement.ref != null) {
       transaction.getReactMountReady().enqueue(attachRefs, internalInstance);
     }
     if ("production" !== 'production') {
-      ReactInstrumentation.debugTool.onMountComponent(internalInstance);
+      if (internalInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onEndReconcilerTimer(internalInstance._debugID, 'mountComponent');
+        ReactInstrumentation.debugTool.onMountComponent(internalInstance._debugID);
+      }
     }
     return markup;
   },
@@ -85796,10 +91700,18 @@ var ReactReconciler = {
    * @internal
    */
   unmountComponent: function (internalInstance, safely) {
+    if ("production" !== 'production') {
+      if (internalInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onBeginReconcilerTimer(internalInstance._debugID, 'unmountComponent');
+      }
+    }
     ReactRef.detachRefs(internalInstance, internalInstance._currentElement);
     internalInstance.unmountComponent(safely);
     if ("production" !== 'production') {
-      ReactInstrumentation.debugTool.onUnmountComponent(internalInstance);
+      if (internalInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onEndReconcilerTimer(internalInstance._debugID, 'unmountComponent');
+        ReactInstrumentation.debugTool.onUnmountComponent(internalInstance._debugID);
+      }
     }
   },
 
@@ -85829,6 +91741,12 @@ var ReactReconciler = {
       return;
     }
 
+    if ("production" !== 'production') {
+      if (internalInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onBeginReconcilerTimer(internalInstance._debugID, 'receiveComponent');
+      }
+    }
+
     var refsChanged = ReactRef.shouldUpdateRefs(prevElement, nextElement);
 
     if (refsChanged) {
@@ -85842,7 +91760,10 @@ var ReactReconciler = {
     }
 
     if ("production" !== 'production') {
-      ReactInstrumentation.debugTool.onUpdateComponent(internalInstance);
+      if (internalInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onEndReconcilerTimer(internalInstance._debugID, 'receiveComponent');
+        ReactInstrumentation.debugTool.onUpdateComponent(internalInstance._debugID);
+      }
     }
   },
 
@@ -85853,17 +91774,31 @@ var ReactReconciler = {
    * @param {ReactReconcileTransaction} transaction
    * @internal
    */
-  performUpdateIfNecessary: function (internalInstance, transaction) {
+  performUpdateIfNecessary: function (internalInstance, transaction, updateBatchNumber) {
+    if (internalInstance._updateBatchNumber !== updateBatchNumber) {
+      // The component's enqueued batch number should always be the current
+      // batch or the following one.
+      !(internalInstance._updateBatchNumber == null || internalInstance._updateBatchNumber === updateBatchNumber + 1) ? "production" !== 'production' ? invariant(false, 'performUpdateIfNecessary: Unexpected batch number (current %s, ' + 'pending %s)', updateBatchNumber, internalInstance._updateBatchNumber) : invariant(false) : void 0;
+      return;
+    }
+    if ("production" !== 'production') {
+      if (internalInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onBeginReconcilerTimer(internalInstance._debugID, 'performUpdateIfNecessary');
+      }
+    }
     internalInstance.performUpdateIfNecessary(transaction);
     if ("production" !== 'production') {
-      ReactInstrumentation.debugTool.onUpdateComponent(internalInstance);
+      if (internalInstance._debugID !== 0) {
+        ReactInstrumentation.debugTool.onEndReconcilerTimer(internalInstance._debugID, 'performUpdateIfNecessary');
+        ReactInstrumentation.debugTool.onUpdateComponent(internalInstance._debugID);
+      }
     }
   }
 
 };
 
 module.exports = ReactReconciler;
-},{"./ReactInstrumentation":721,"./ReactRef":737}],737:[function(require,module,exports){
+},{"./ReactInstrumentation":766,"./ReactRef":782,"fbjs/lib/invariant":39}],782:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -85942,7 +91877,189 @@ ReactRef.detachRefs = function (instance, element) {
 };
 
 module.exports = ReactRef;
-},{"./ReactOwner":730}],738:[function(require,module,exports){
+},{"./ReactOwner":776}],783:[function(require,module,exports){
+/**
+ * Copyright 2014-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ * @providesModule ReactServerBatchingStrategy
+ */
+
+'use strict';
+
+var ReactServerBatchingStrategy = {
+  isBatchingUpdates: false,
+  batchedUpdates: function (callback) {
+    // Don't do anything here. During the server rendering we don't want to
+    // schedule any updates. We will simply ignore them.
+  }
+};
+
+module.exports = ReactServerBatchingStrategy;
+},{}],784:[function(require,module,exports){
+/**
+ * Copyright 2013-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ * @providesModule ReactServerRendering
+ */
+'use strict';
+
+var ReactDOMContainerInfo = require('./ReactDOMContainerInfo');
+var ReactDefaultBatchingStrategy = require('./ReactDefaultBatchingStrategy');
+var ReactElement = require('./ReactElement');
+var ReactInstrumentation = require('./ReactInstrumentation');
+var ReactMarkupChecksum = require('./ReactMarkupChecksum');
+var ReactReconciler = require('./ReactReconciler');
+var ReactServerBatchingStrategy = require('./ReactServerBatchingStrategy');
+var ReactServerRenderingTransaction = require('./ReactServerRenderingTransaction');
+var ReactUpdates = require('./ReactUpdates');
+
+var emptyObject = require('fbjs/lib/emptyObject');
+var instantiateReactComponent = require('./instantiateReactComponent');
+var invariant = require('fbjs/lib/invariant');
+
+/**
+ * @param {ReactElement} element
+ * @return {string} the HTML markup
+ */
+function renderToStringImpl(element, makeStaticMarkup) {
+  var transaction;
+  try {
+    ReactUpdates.injection.injectBatchingStrategy(ReactServerBatchingStrategy);
+
+    transaction = ReactServerRenderingTransaction.getPooled(makeStaticMarkup);
+
+    return transaction.perform(function () {
+      if ("production" !== 'production') {
+        ReactInstrumentation.debugTool.onBeginFlush();
+      }
+      var componentInstance = instantiateReactComponent(element);
+      var markup = ReactReconciler.mountComponent(componentInstance, transaction, null, ReactDOMContainerInfo(), emptyObject);
+      if ("production" !== 'production') {
+        ReactInstrumentation.debugTool.onUnmountComponent(componentInstance._debugID);
+        ReactInstrumentation.debugTool.onEndFlush();
+      }
+      if (!makeStaticMarkup) {
+        markup = ReactMarkupChecksum.addChecksumToMarkup(markup);
+      }
+      return markup;
+    }, null);
+  } finally {
+    ReactServerRenderingTransaction.release(transaction);
+    // Revert to the DOM batching strategy since these two renderers
+    // currently share these stateful modules.
+    ReactUpdates.injection.injectBatchingStrategy(ReactDefaultBatchingStrategy);
+  }
+}
+
+/**
+ * Render a ReactElement to its initial HTML. This should only be used on the
+ * server.
+ * See https://facebook.github.io/react/docs/top-level-api.html#reactdomserver.rendertostring
+ */
+function renderToString(element) {
+  !ReactElement.isValidElement(element) ? "production" !== 'production' ? invariant(false, 'renderToString(): You must pass a valid ReactElement.') : invariant(false) : void 0;
+  return renderToStringImpl(element, false);
+}
+
+/**
+ * Similar to renderToString, except this doesn't create extra DOM attributes
+ * such as data-react-id that React uses internally.
+ * See https://facebook.github.io/react/docs/top-level-api.html#reactdomserver.rendertostaticmarkup
+ */
+function renderToStaticMarkup(element) {
+  !ReactElement.isValidElement(element) ? "production" !== 'production' ? invariant(false, 'renderToStaticMarkup(): You must pass a valid ReactElement.') : invariant(false) : void 0;
+  return renderToStringImpl(element, true);
+}
+
+module.exports = {
+  renderToString: renderToString,
+  renderToStaticMarkup: renderToStaticMarkup
+};
+},{"./ReactDOMContainerInfo":736,"./ReactDefaultBatchingStrategy":753,"./ReactElement":755,"./ReactInstrumentation":766,"./ReactMarkupChecksum":768,"./ReactReconciler":781,"./ReactServerBatchingStrategy":783,"./ReactServerRenderingTransaction":785,"./ReactUpdates":789,"./instantiateReactComponent":827,"fbjs/lib/emptyObject":32,"fbjs/lib/invariant":39}],785:[function(require,module,exports){
+/**
+ * Copyright 2014-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+ * @providesModule ReactServerRenderingTransaction
+ */
+
+'use strict';
+
+var _assign = require('object-assign');
+
+var PooledClass = require('./PooledClass');
+var Transaction = require('./Transaction');
+
+/**
+ * Executed within the scope of the `Transaction` instance. Consider these as
+ * being member methods, but with an implied ordering while being isolated from
+ * each other.
+ */
+var TRANSACTION_WRAPPERS = [];
+
+var noopCallbackQueue = {
+  enqueue: function () {}
+};
+
+/**
+ * @class ReactServerRenderingTransaction
+ * @param {boolean} renderToStaticMarkup
+ */
+function ReactServerRenderingTransaction(renderToStaticMarkup) {
+  this.reinitializeTransaction();
+  this.renderToStaticMarkup = renderToStaticMarkup;
+  this.useCreateElement = false;
+}
+
+var Mixin = {
+  /**
+   * @see Transaction
+   * @abstract
+   * @final
+   * @return {array} Empty list of operation wrap procedures.
+   */
+  getTransactionWrappers: function () {
+    return TRANSACTION_WRAPPERS;
+  },
+
+  /**
+   * @return {object} The queue to collect `onDOMReady` callbacks with.
+   */
+  getReactMountReady: function () {
+    return noopCallbackQueue;
+  },
+
+  /**
+   * `PooledClass` looks for this, and will invoke this before allowing this
+   * instance to be reused.
+   */
+  destructor: function () {},
+
+  checkpoint: function () {},
+
+  rollback: function () {}
+};
+
+_assign(ReactServerRenderingTransaction.prototype, Transaction.Mixin, Mixin);
+
+PooledClass.addPoolingTo(ReactServerRenderingTransaction);
+
+module.exports = ReactServerRenderingTransaction;
+},{"./PooledClass":719,"./Transaction":807,"object-assign":564}],786:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -86040,7 +92157,7 @@ var ReactTransitionChildMapping = {
 };
 
 module.exports = ReactTransitionChildMapping;
-},{"./flattenChildren":768}],739:[function(require,module,exports){
+},{"./flattenChildren":816}],787:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -86061,6 +92178,11 @@ var ReactTransitionChildMapping = require('./ReactTransitionChildMapping');
 
 var emptyFunction = require('fbjs/lib/emptyFunction');
 
+/**
+ * A basis for animatins. When children are declaratively added or removed,
+ * special lifecycle hooks are called.
+ * See https://facebook.github.io/react/docs/animation.html#low-level-api-reacttransitiongroup
+ */
 var ReactTransitionGroup = React.createClass({
   displayName: 'ReactTransitionGroup',
 
@@ -86247,7 +92369,7 @@ var ReactTransitionGroup = React.createClass({
 });
 
 module.exports = ReactTransitionGroup;
-},{"./React":675,"./ReactTransitionChildMapping":738,"fbjs/lib/emptyFunction":28,"object-assign":565}],740:[function(require,module,exports){
+},{"./React":720,"./ReactTransitionChildMapping":786,"fbjs/lib/emptyFunction":31,"object-assign":564}],788:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -86463,7 +92585,7 @@ var ReactUpdateQueue = {
 };
 
 module.exports = ReactUpdateQueue;
-},{"./ReactCurrentOwner":684,"./ReactInstanceMap":720,"./ReactUpdates":741,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],741:[function(require,module,exports){
+},{"./ReactCurrentOwner":730,"./ReactInstanceMap":765,"./ReactUpdates":789,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],789:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -86482,13 +92604,14 @@ var _assign = require('object-assign');
 var CallbackQueue = require('./CallbackQueue');
 var PooledClass = require('./PooledClass');
 var ReactFeatureFlags = require('./ReactFeatureFlags');
-var ReactPerf = require('./ReactPerf');
+var ReactInstrumentation = require('./ReactInstrumentation');
 var ReactReconciler = require('./ReactReconciler');
 var Transaction = require('./Transaction');
 
 var invariant = require('fbjs/lib/invariant');
 
 var dirtyComponents = [];
+var updateBatchNumber = 0;
 var asapCallbackQueue = CallbackQueue.getPooled();
 var asapEnqueued = false;
 
@@ -86583,6 +92706,13 @@ function runBatchedUpdates(transaction) {
   // them before their children by sorting the array.
   dirtyComponents.sort(mountOrderComparator);
 
+  // Any updates enqueued while reconciling must be performed after this entire
+  // batch. Otherwise, if dirtyComponents is [A, B] where A has children B and
+  // C, B could update twice in a single batch if C's render enqueues an update
+  // to B (since B would have already updated, we should skip it, and the only
+  // way we can know to do so is by checking the batch counter).
+  updateBatchNumber++;
+
   for (var i = 0; i < len; i++) {
     // If a component is unmounted before pending changes apply, it will still
     // be here, but we assume that it has cleared its _pendingCallbacks and
@@ -86606,7 +92736,7 @@ function runBatchedUpdates(transaction) {
       console.time(markerName);
     }
 
-    ReactReconciler.performUpdateIfNecessary(component, transaction.reconcileTransaction);
+    ReactReconciler.performUpdateIfNecessary(component, transaction.reconcileTransaction, updateBatchNumber);
 
     if (markerName) {
       console.timeEnd(markerName);
@@ -86621,6 +92751,10 @@ function runBatchedUpdates(transaction) {
 }
 
 var flushBatchedUpdates = function () {
+  if ("production" !== 'production') {
+    ReactInstrumentation.debugTool.onBeginFlush();
+  }
+
   // ReactUpdatesFlushTransaction's wrappers will clear the dirtyComponents
   // array and perform any updates enqueued by mount-ready handlers (i.e.,
   // componentDidUpdate) but we need to check here too in order to catch
@@ -86640,8 +92774,11 @@ var flushBatchedUpdates = function () {
       CallbackQueue.release(queue);
     }
   }
+
+  if ("production" !== 'production') {
+    ReactInstrumentation.debugTool.onEndFlush();
+  }
 };
-flushBatchedUpdates = ReactPerf.measure('ReactUpdates', 'flushBatchedUpdates', flushBatchedUpdates);
 
 /**
  * Mark a component as needing a rerender, adding an optional callback to a
@@ -86662,6 +92799,9 @@ function enqueueUpdate(component) {
   }
 
   dirtyComponents.push(component);
+  if (component._updateBatchNumber == null) {
+    component._updateBatchNumber = updateBatchNumber + 1;
+  }
 }
 
 /**
@@ -86705,7 +92845,7 @@ var ReactUpdates = {
 };
 
 module.exports = ReactUpdates;
-},{"./CallbackQueue":654,"./PooledClass":674,"./ReactFeatureFlags":716,"./ReactPerf":731,"./ReactReconciler":736,"./Transaction":759,"fbjs/lib/invariant":36,"object-assign":565}],742:[function(require,module,exports){
+},{"./CallbackQueue":699,"./PooledClass":719,"./ReactFeatureFlags":761,"./ReactInstrumentation":766,"./ReactReconciler":781,"./Transaction":807,"fbjs/lib/invariant":39,"object-assign":564}],790:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -86719,8 +92859,8 @@ module.exports = ReactUpdates;
 
 'use strict';
 
-module.exports = '15.0.2';
-},{}],743:[function(require,module,exports){
+module.exports = '15.1.0';
+},{}],791:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -87021,7 +93161,7 @@ Object.keys(ATTRS).forEach(function (key) {
 });
 
 module.exports = SVGDOMPropertyConfig;
-},{}],744:[function(require,module,exports){
+},{}],792:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -87218,7 +93358,7 @@ var SelectEventPlugin = {
 };
 
 module.exports = SelectEventPlugin;
-},{"./EventConstants":665,"./EventPropagators":669,"./ReactDOMComponentTree":689,"./ReactInputSelection":719,"./SyntheticEvent":750,"./isTextInputElement":781,"fbjs/lib/ExecutionEnvironment":22,"fbjs/lib/getActiveElement":31,"fbjs/lib/keyOf":40,"fbjs/lib/shallowEqual":45}],745:[function(require,module,exports){
+},{"./EventConstants":710,"./EventPropagators":714,"./ReactDOMComponentTree":735,"./ReactInputSelection":764,"./SyntheticEvent":798,"./isTextInputElement":829,"fbjs/lib/ExecutionEnvironment":25,"fbjs/lib/getActiveElement":34,"fbjs/lib/keyOf":43,"fbjs/lib/shallowEqual":48}],793:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -87846,7 +93986,7 @@ var SimpleEventPlugin = {
 };
 
 module.exports = SimpleEventPlugin;
-},{"./EventConstants":665,"./EventPropagators":669,"./ReactDOMComponentTree":689,"./SyntheticAnimationEvent":746,"./SyntheticClipboardEvent":747,"./SyntheticDragEvent":749,"./SyntheticEvent":750,"./SyntheticFocusEvent":751,"./SyntheticKeyboardEvent":753,"./SyntheticMouseEvent":754,"./SyntheticTouchEvent":755,"./SyntheticTransitionEvent":756,"./SyntheticUIEvent":757,"./SyntheticWheelEvent":758,"./getEventCharCode":770,"fbjs/lib/EventListener":21,"fbjs/lib/emptyFunction":28,"fbjs/lib/invariant":36,"fbjs/lib/keyOf":40}],746:[function(require,module,exports){
+},{"./EventConstants":710,"./EventPropagators":714,"./ReactDOMComponentTree":735,"./SyntheticAnimationEvent":794,"./SyntheticClipboardEvent":795,"./SyntheticDragEvent":797,"./SyntheticEvent":798,"./SyntheticFocusEvent":799,"./SyntheticKeyboardEvent":801,"./SyntheticMouseEvent":802,"./SyntheticTouchEvent":803,"./SyntheticTransitionEvent":804,"./SyntheticUIEvent":805,"./SyntheticWheelEvent":806,"./getEventCharCode":818,"fbjs/lib/EventListener":24,"fbjs/lib/emptyFunction":31,"fbjs/lib/invariant":39,"fbjs/lib/keyOf":43}],794:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -87886,7 +94026,7 @@ function SyntheticAnimationEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticAnimationEvent, AnimationEventInterface);
 
 module.exports = SyntheticAnimationEvent;
-},{"./SyntheticEvent":750}],747:[function(require,module,exports){
+},{"./SyntheticEvent":798}],795:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -87925,7 +94065,7 @@ function SyntheticClipboardEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 
 module.exports = SyntheticClipboardEvent;
-},{"./SyntheticEvent":750}],748:[function(require,module,exports){
+},{"./SyntheticEvent":798}],796:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -87962,7 +94102,7 @@ function SyntheticCompositionEvent(dispatchConfig, dispatchMarker, nativeEvent, 
 SyntheticEvent.augmentClass(SyntheticCompositionEvent, CompositionEventInterface);
 
 module.exports = SyntheticCompositionEvent;
-},{"./SyntheticEvent":750}],749:[function(require,module,exports){
+},{"./SyntheticEvent":798}],797:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -87999,7 +94139,7 @@ function SyntheticDragEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeE
 SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 
 module.exports = SyntheticDragEvent;
-},{"./SyntheticMouseEvent":754}],750:[function(require,module,exports){
+},{"./SyntheticMouseEvent":802}],798:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88261,7 +94401,7 @@ function getPooledWarningPropertyDefinition(propName, getVal) {
     "production" !== 'production' ? warning(warningCondition, 'This synthetic event is reused for performance reasons. If you\'re seeing this, ' + 'you\'re %s `%s` on a released/nullified synthetic event. %s. ' + 'If you must keep the original synthetic event around, use event.persist(). ' + 'See https://fb.me/react-event-pooling for more information.', action, propName, result) : void 0;
   }
 }
-},{"./PooledClass":674,"fbjs/lib/emptyFunction":28,"fbjs/lib/warning":46,"object-assign":565}],751:[function(require,module,exports){
+},{"./PooledClass":719,"fbjs/lib/emptyFunction":31,"fbjs/lib/warning":49,"object-assign":564}],799:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88298,7 +94438,7 @@ function SyntheticFocusEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 
 module.exports = SyntheticFocusEvent;
-},{"./SyntheticUIEvent":757}],752:[function(require,module,exports){
+},{"./SyntheticUIEvent":805}],800:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88336,7 +94476,7 @@ function SyntheticInputEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticEvent.augmentClass(SyntheticInputEvent, InputEventInterface);
 
 module.exports = SyntheticInputEvent;
-},{"./SyntheticEvent":750}],753:[function(require,module,exports){
+},{"./SyntheticEvent":798}],801:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88421,7 +94561,7 @@ function SyntheticKeyboardEvent(dispatchConfig, dispatchMarker, nativeEvent, nat
 SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 
 module.exports = SyntheticKeyboardEvent;
-},{"./SyntheticUIEvent":757,"./getEventCharCode":770,"./getEventKey":771,"./getEventModifierState":772}],754:[function(require,module,exports){
+},{"./SyntheticUIEvent":805,"./getEventCharCode":818,"./getEventKey":819,"./getEventModifierState":820}],802:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88494,7 +94634,7 @@ function SyntheticMouseEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 
 module.exports = SyntheticMouseEvent;
-},{"./SyntheticUIEvent":757,"./ViewportMetrics":760,"./getEventModifierState":772}],755:[function(require,module,exports){
+},{"./SyntheticUIEvent":805,"./ViewportMetrics":808,"./getEventModifierState":820}],803:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88540,7 +94680,7 @@ function SyntheticTouchEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 
 module.exports = SyntheticTouchEvent;
-},{"./SyntheticUIEvent":757,"./getEventModifierState":772}],756:[function(require,module,exports){
+},{"./SyntheticUIEvent":805,"./getEventModifierState":820}],804:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88580,7 +94720,7 @@ function SyntheticTransitionEvent(dispatchConfig, dispatchMarker, nativeEvent, n
 SyntheticEvent.augmentClass(SyntheticTransitionEvent, TransitionEventInterface);
 
 module.exports = SyntheticTransitionEvent;
-},{"./SyntheticEvent":750}],757:[function(require,module,exports){
+},{"./SyntheticEvent":798}],805:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88640,7 +94780,7 @@ function SyntheticUIEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeEve
 SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 
 module.exports = SyntheticUIEvent;
-},{"./SyntheticEvent":750,"./getEventTarget":773}],758:[function(require,module,exports){
+},{"./SyntheticEvent":798,"./getEventTarget":821}],806:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88695,7 +94835,7 @@ function SyntheticWheelEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 
 module.exports = SyntheticWheelEvent;
-},{"./SyntheticMouseEvent":754}],759:[function(require,module,exports){
+},{"./SyntheticMouseEvent":802}],807:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88927,7 +95067,7 @@ var Transaction = {
 };
 
 module.exports = Transaction;
-},{"fbjs/lib/invariant":36}],760:[function(require,module,exports){
+},{"fbjs/lib/invariant":39}],808:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -88955,7 +95095,7 @@ var ViewportMetrics = {
 };
 
 module.exports = ViewportMetrics;
-},{}],761:[function(require,module,exports){
+},{}],809:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -89015,7 +95155,7 @@ function accumulateInto(current, next) {
 }
 
 module.exports = accumulateInto;
-},{"fbjs/lib/invariant":36}],762:[function(require,module,exports){
+},{"fbjs/lib/invariant":39}],810:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89059,7 +95199,7 @@ function adler32(data) {
 }
 
 module.exports = adler32;
-},{}],763:[function(require,module,exports){
+},{}],811:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89084,7 +95224,7 @@ if ("production" !== 'production') {
 }
 
 module.exports = canDefineProperty;
-},{}],764:[function(require,module,exports){
+},{}],812:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89117,7 +95257,7 @@ var createMicrosoftUnsafeLocalFunction = function (func) {
 };
 
 module.exports = createMicrosoftUnsafeLocalFunction;
-},{}],765:[function(require,module,exports){
+},{}],813:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89195,7 +95335,7 @@ function dangerousStyleValue(name, value, component) {
 }
 
 module.exports = dangerousStyleValue;
-},{"./CSSProperty":652,"fbjs/lib/warning":46}],766:[function(require,module,exports){
+},{"./CSSProperty":697,"fbjs/lib/warning":49}],814:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89234,7 +95374,7 @@ function escapeTextContentForBrowser(text) {
 }
 
 module.exports = escapeTextContentForBrowser;
-},{}],767:[function(require,module,exports){
+},{}],815:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89258,6 +95398,8 @@ var warning = require('fbjs/lib/warning');
 
 /**
  * Returns the DOM node rendered by this element.
+ *
+ * See https://facebook.github.io/react/docs/top-level-api.html#reactdom.finddomnode
  *
  * @param {ReactComponent|DOMElement} componentOrElement
  * @return {?DOMElement} The root node of this element.
@@ -89291,7 +95433,7 @@ function findDOMNode(componentOrElement) {
 }
 
 module.exports = findDOMNode;
-},{"./ReactCurrentOwner":684,"./ReactDOMComponentTree":689,"./ReactInstanceMap":720,"./getNativeComponentFromComposite":775,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],768:[function(require,module,exports){
+},{"./ReactCurrentOwner":730,"./ReactDOMComponentTree":735,"./ReactInstanceMap":765,"./getNativeComponentFromComposite":823,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],816:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89341,7 +95483,7 @@ function flattenChildren(children) {
 }
 
 module.exports = flattenChildren;
-},{"./KeyEscapeUtils":672,"./traverseAllChildren":788,"fbjs/lib/warning":46}],769:[function(require,module,exports){
+},{"./KeyEscapeUtils":717,"./traverseAllChildren":837,"fbjs/lib/warning":49}],817:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89372,7 +95514,7 @@ var forEachAccumulated = function (arr, cb, scope) {
 };
 
 module.exports = forEachAccumulated;
-},{}],770:[function(require,module,exports){
+},{}],818:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89423,7 +95565,7 @@ function getEventCharCode(nativeEvent) {
 }
 
 module.exports = getEventCharCode;
-},{}],771:[function(require,module,exports){
+},{}],819:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89526,7 +95668,7 @@ function getEventKey(nativeEvent) {
 }
 
 module.exports = getEventKey;
-},{"./getEventCharCode":770}],772:[function(require,module,exports){
+},{"./getEventCharCode":818}],820:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89570,7 +95712,7 @@ function getEventModifierState(nativeEvent) {
 }
 
 module.exports = getEventModifierState;
-},{}],773:[function(require,module,exports){
+},{}],821:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89606,7 +95748,7 @@ function getEventTarget(nativeEvent) {
 }
 
 module.exports = getEventTarget;
-},{}],774:[function(require,module,exports){
+},{}],822:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89647,7 +95789,7 @@ function getIteratorFn(maybeIterable) {
 }
 
 module.exports = getIteratorFn;
-},{}],775:[function(require,module,exports){
+},{}],823:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89678,7 +95820,7 @@ function getNativeComponentFromComposite(inst) {
 }
 
 module.exports = getNativeComponentFromComposite;
-},{"./ReactNodeTypes":728}],776:[function(require,module,exports){
+},{"./ReactNodeTypes":774}],824:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89753,7 +95895,7 @@ function getNodeForCharacterOffset(root, offset) {
 }
 
 module.exports = getNodeForCharacterOffset;
-},{}],777:[function(require,module,exports){
+},{}],825:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89787,7 +95929,7 @@ function getTextContentAccessor() {
 }
 
 module.exports = getTextContentAccessor;
-},{"fbjs/lib/ExecutionEnvironment":22}],778:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":25}],826:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89889,7 +96031,7 @@ function getVendorPrefixedEventName(eventName) {
 }
 
 module.exports = getVendorPrefixedEventName;
-},{"fbjs/lib/ExecutionEnvironment":22}],779:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":25}],827:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -89908,6 +96050,7 @@ var _assign = require('object-assign');
 var ReactCompositeComponent = require('./ReactCompositeComponent');
 var ReactEmptyComponent = require('./ReactEmptyComponent');
 var ReactNativeComponent = require('./ReactNativeComponent');
+var ReactInstrumentation = require('./ReactInstrumentation');
 
 var invariant = require('fbjs/lib/invariant');
 var warning = require('fbjs/lib/warning');
@@ -89930,6 +96073,21 @@ function getDeclarationErrorAddendum(owner) {
   return '';
 }
 
+function getDisplayName(instance) {
+  var element = instance._currentElement;
+  if (element == null) {
+    return '#empty';
+  } else if (typeof element === 'string' || typeof element === 'number') {
+    return '#text';
+  } else if (typeof element.type === 'string') {
+    return element.type;
+  } else if (instance.getName) {
+    return instance.getName() || 'Unknown';
+  } else {
+    return element.type.displayName || element.type.name || 'Unknown';
+  }
+}
+
 /**
  * Check if the type reference is a known internal type. I.e. not a user
  * provided composite type.
@@ -89941,6 +96099,8 @@ function isInternalComponentType(type) {
   return typeof type === 'function' && typeof type.prototype !== 'undefined' && typeof type.prototype.mountComponent === 'function' && typeof type.prototype.receiveComponent === 'function';
 }
 
+var nextDebugID = 1;
+
 /**
  * Given a ReactNode, create an instance that will actually be mounted.
  *
@@ -89951,7 +96111,8 @@ function isInternalComponentType(type) {
 function instantiateReactComponent(node) {
   var instance;
 
-  if (node === null || node === false) {
+  var isEmpty = node === null || node === false;
+  if (isEmpty) {
     instance = ReactEmptyComponent.create(instantiateReactComponent);
   } else if (typeof node === 'object') {
     var element = node;
@@ -89989,6 +96150,20 @@ function instantiateReactComponent(node) {
     instance._warnedAboutRefsInRender = false;
   }
 
+  if ("production" !== 'production') {
+    var debugID = isEmpty ? 0 : nextDebugID++;
+    instance._debugID = debugID;
+
+    if (debugID !== 0) {
+      var displayName = getDisplayName(instance);
+      ReactInstrumentation.debugTool.onSetDisplayName(debugID, displayName);
+      var owner = node && node._owner;
+      if (owner) {
+        ReactInstrumentation.debugTool.onSetOwner(debugID, owner._debugID);
+      }
+    }
+  }
+
   // Internal instances should fully constructed at this point, so they should
   // not get any new fields added to them at this point.
   if ("production" !== 'production') {
@@ -90001,7 +96176,7 @@ function instantiateReactComponent(node) {
 }
 
 module.exports = instantiateReactComponent;
-},{"./ReactCompositeComponent":683,"./ReactEmptyComponent":712,"./ReactNativeComponent":727,"fbjs/lib/invariant":36,"fbjs/lib/warning":46,"object-assign":565}],780:[function(require,module,exports){
+},{"./ReactCompositeComponent":729,"./ReactEmptyComponent":757,"./ReactInstrumentation":766,"./ReactNativeComponent":772,"fbjs/lib/invariant":39,"fbjs/lib/warning":49,"object-assign":564}],828:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90062,7 +96237,7 @@ function isEventSupported(eventNameSuffix, capture) {
 }
 
 module.exports = isEventSupported;
-},{"fbjs/lib/ExecutionEnvironment":22}],781:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":25}],829:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90104,7 +96279,7 @@ function isTextInputElement(elem) {
 }
 
 module.exports = isTextInputElement;
-},{}],782:[function(require,module,exports){
+},{}],830:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90123,10 +96298,13 @@ var invariant = require('fbjs/lib/invariant');
 
 /**
  * Returns the first child in a collection of children and verifies that there
- * is only one child in the collection. The current implementation of this
- * function assumes that a single child gets passed without a wrapper, but the
- * purpose of this helper function is to abstract away the particular structure
- * of children.
+ * is only one child in the collection.
+ *
+ * See https://facebook.github.io/react/docs/top-level-api.html#react.children.only
+ *
+ * The current implementation of this function assumes that a single child gets
+ * passed without a wrapper, but the purpose of this helper function is to
+ * abstract away the particular structure of children.
  *
  * @param {?object} children Child collection structure.
  * @return {ReactElement} The first and only `ReactElement` contained in the
@@ -90138,7 +96316,7 @@ function onlyChild(children) {
 }
 
 module.exports = onlyChild;
-},{"./ReactElement":710,"fbjs/lib/invariant":36}],783:[function(require,module,exports){
+},{"./ReactElement":755,"fbjs/lib/invariant":39}],831:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90165,7 +96343,7 @@ function quoteAttributeValueForBrowser(value) {
 }
 
 module.exports = quoteAttributeValueForBrowser;
-},{"./escapeTextContentForBrowser":766}],784:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":814}],832:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90182,7 +96360,7 @@ module.exports = quoteAttributeValueForBrowser;
 var ReactMount = require('./ReactMount');
 
 module.exports = ReactMount.renderSubtreeIntoContainer;
-},{"./ReactMount":724}],785:[function(require,module,exports){
+},{"./ReactMount":769}],833:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90265,7 +96443,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setInnerHTML;
-},{"./createMicrosoftUnsafeLocalFunction":764,"fbjs/lib/ExecutionEnvironment":22}],786:[function(require,module,exports){
+},{"./createMicrosoftUnsafeLocalFunction":812,"fbjs/lib/ExecutionEnvironment":25}],834:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90306,7 +96484,33 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setTextContent;
-},{"./escapeTextContentForBrowser":766,"./setInnerHTML":785,"fbjs/lib/ExecutionEnvironment":22}],787:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":814,"./setInnerHTML":833,"fbjs/lib/ExecutionEnvironment":25}],835:[function(require,module,exports){
+/**
+ * Copyright 2013-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ *
+* @providesModule shallowCompare
+*/
+
+'use strict';
+
+var shallowEqual = require('fbjs/lib/shallowEqual');
+
+/**
+ * Does a shallow comparison for props and state.
+ * See ReactComponentWithPureRenderMixin
+ * See also https://facebook.github.io/react/docs/shallow-compare.html
+ */
+function shallowCompare(instance, nextProps, nextState) {
+  return !shallowEqual(instance.props, nextProps) || !shallowEqual(instance.state, nextState);
+}
+
+module.exports = shallowCompare;
+},{"fbjs/lib/shallowEqual":48}],836:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90349,7 +96553,7 @@ function shouldUpdateReactComponent(prevElement, nextElement) {
 }
 
 module.exports = shouldUpdateReactComponent;
-},{}],788:[function(require,module,exports){
+},{}],837:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90508,7 +96712,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 }
 
 module.exports = traverseAllChildren;
-},{"./KeyEscapeUtils":672,"./ReactCurrentOwner":684,"./ReactElement":710,"./getIteratorFn":774,"fbjs/lib/invariant":36,"fbjs/lib/warning":46}],789:[function(require,module,exports){
+},{"./KeyEscapeUtils":717,"./ReactCurrentOwner":730,"./ReactElement":755,"./getIteratorFn":822,"fbjs/lib/invariant":39,"fbjs/lib/warning":49}],838:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -90561,6 +96765,10 @@ function invariantArrayCase(value, spec, command) {
   !Array.isArray(specValue) ? "production" !== 'production' ? invariant(false, 'update(): expected spec of %s to be an array; got %s. ' + 'Did you forget to wrap your parameter in an array?', command, specValue) : invariant(false) : void 0;
 }
 
+/**
+ * Returns a updated shallow copy of an object without mutating the original.
+ * See https://facebook.github.io/react/docs/update.html for details.
+ */
 function update(value, spec) {
   !(typeof spec === 'object') ? "production" !== 'production' ? invariant(false, 'update(): You provided a key path to update() that did not contain one ' + 'of %s. Did you forget to include {%s: ...}?', ALL_COMMANDS_LIST.join(', '), COMMAND_SET) : invariant(false) : void 0;
 
@@ -90617,7 +96825,7 @@ function update(value, spec) {
 }
 
 module.exports = update;
-},{"fbjs/lib/invariant":36,"fbjs/lib/keyOf":40,"object-assign":565}],790:[function(require,module,exports){
+},{"fbjs/lib/invariant":39,"fbjs/lib/keyOf":43,"object-assign":564}],839:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -90987,17 +97195,15 @@ if ("production" !== 'production') {
 }
 
 module.exports = validateDOMNesting;
-},{"fbjs/lib/emptyFunction":28,"fbjs/lib/warning":46,"object-assign":565}],791:[function(require,module,exports){
+},{"fbjs/lib/emptyFunction":31,"fbjs/lib/warning":49,"object-assign":564}],840:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/React');
 
-},{"./lib/React":675}],792:[function(require,module,exports){
+},{"./lib/React":720}],841:[function(require,module,exports){
 'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
+exports.__esModule = true;
 exports.internalCreateElement = undefined;
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -91048,22 +97254,129 @@ var createElement = function createElement(Component, props, children) {
 };
 
 exports.default = createElement;
-},{"./isReferentiallyTransparentFunctionComponent":796,"react":791}],793:[function(require,module,exports){
-arguments[4][523][0].apply(exports,arguments)
-},{"./wrapDisplayName":800,"_process":570,"dup":523}],794:[function(require,module,exports){
-arguments[4][524][0].apply(exports,arguments)
-},{"dup":524}],795:[function(require,module,exports){
-arguments[4][525][0].apply(exports,arguments)
-},{"dup":525}],796:[function(require,module,exports){
-arguments[4][526][0].apply(exports,arguments)
-},{"./isClassComponent.js":795,"dup":526}],797:[function(require,module,exports){
-arguments[4][527][0].apply(exports,arguments)
-},{"./createHelper":793,"./shallowEqual":798,"./shouldUpdate":799,"dup":527}],798:[function(require,module,exports){
+},{"./isReferentiallyTransparentFunctionComponent":845,"react":840}],842:[function(require,module,exports){
+(function (process){
 'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
+exports.__esModule = true;
+var createHelper = function createHelper(func, helperName) {
+  var setDisplayName = arguments.length <= 2 || arguments[2] === undefined ? true : arguments[2];
+  var noArgs = arguments.length <= 3 || arguments[3] === undefined ? false : arguments[3];
+
+  if (process.env.NODE_ENV !== 'production' && setDisplayName) {
+    var _ret = function () {
+      var wrapDisplayName = require('./wrapDisplayName').default;
+
+      if (noArgs) {
+        return {
+          v: function v(BaseComponent) {
+            var Component = func(BaseComponent);
+            Component.displayName = wrapDisplayName(BaseComponent, helperName);
+            return Component;
+          }
+        };
+      }
+
+      return {
+        v: function v() {
+          for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+            args[_key] = arguments[_key];
+          }
+
+          if (args.length > func.length) {
+            /* eslint-disable */
+            console.error(
+            /* eslint-enable */
+            'Too many arguments passed to ' + helperName + '(). It should called ' + ('like so: ' + helperName + '(...args)(BaseComponent).'));
+          }
+
+          return function (BaseComponent) {
+            var Component = func.apply(undefined, args)(BaseComponent);
+            Component.displayName = wrapDisplayName(BaseComponent, helperName);
+            return Component;
+          };
+        }
+      };
+    }();
+
+    if (typeof _ret === "object") return _ret.v;
+  }
+
+  return func;
+};
+
+exports.default = createHelper;
+}).call(this,require('_process'))
+},{"./wrapDisplayName":849,"_process":570}],843:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+var getDisplayName = function getDisplayName(Component) {
+  if (typeof Component === 'string') {
+    return Component;
+  }
+
+  if (!Component) {
+    return undefined;
+  }
+
+  return Component.displayName || Component.name || 'Component';
+};
+
+exports.default = getDisplayName;
+},{}],844:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+var isClassComponent = function isClassComponent(Component) {
+  return Boolean(Component && Component.prototype && typeof Component.prototype.isReactComponent === 'object');
+};
+
+exports.default = isClassComponent;
+},{}],845:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+var _isClassComponent = require('./isClassComponent.js');
+
+var _isClassComponent2 = _interopRequireDefault(_isClassComponent);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var isReferentiallyTransparentFunctionComponent = function isReferentiallyTransparentFunctionComponent(Component) {
+  return Boolean(typeof Component === 'function' && !(0, _isClassComponent2.default)(Component) && !Component.defaultProps && !Component.contextTypes && !Component.propTypes);
+};
+
+exports.default = isReferentiallyTransparentFunctionComponent;
+},{"./isClassComponent.js":844}],846:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+var _shouldUpdate = require('./shouldUpdate');
+
+var _shouldUpdate2 = _interopRequireDefault(_shouldUpdate);
+
+var _shallowEqual = require('./shallowEqual');
+
+var _shallowEqual2 = _interopRequireDefault(_shallowEqual);
+
+var _createHelper = require('./createHelper');
+
+var _createHelper2 = _interopRequireDefault(_createHelper);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var pure = (0, _shouldUpdate2.default)(function (props, nextProps) {
+  return !(0, _shallowEqual2.default)(props, nextProps);
 });
+
+exports.default = (0, _createHelper2.default)(pure, 'pure', true, true);
+},{"./createHelper":842,"./shallowEqual":847,"./shouldUpdate":848}],847:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
 
 var _shallowEqual = require('fbjs/lib/shallowEqual');
 
@@ -91072,14 +97385,10 @@ var _shallowEqual2 = _interopRequireDefault(_shallowEqual);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 exports.default = _shallowEqual2.default;
-},{"fbjs/lib/shallowEqual":45}],799:[function(require,module,exports){
+},{"fbjs/lib/shallowEqual":48}],848:[function(require,module,exports){
 'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+exports.__esModule = true;
 
 var _react = require('react');
 
@@ -91106,20 +97415,16 @@ var shouldUpdate = function shouldUpdate(test) {
       function _class() {
         _classCallCheck(this, _class);
 
-        return _possibleConstructorReturn(this, Object.getPrototypeOf(_class).apply(this, arguments));
+        return _possibleConstructorReturn(this, _Component.apply(this, arguments));
       }
 
-      _createClass(_class, [{
-        key: 'shouldComponentUpdate',
-        value: function shouldComponentUpdate(nextProps) {
-          return test(this.props, nextProps);
-        }
-      }, {
-        key: 'render',
-        value: function render() {
-          return createElement(this.props);
-        }
-      }]);
+      _class.prototype.shouldComponentUpdate = function shouldComponentUpdate(nextProps) {
+        return test(this.props, nextProps);
+      };
+
+      _class.prototype.render = function render() {
+        return createElement(this.props);
+      };
 
       return _class;
     }(_react.Component);
@@ -91127,9 +97432,23 @@ var shouldUpdate = function shouldUpdate(test) {
 };
 
 exports.default = (0, _createHelper2.default)(shouldUpdate, 'shouldUpdate');
-},{"./createElement":792,"./createHelper":793,"react":791}],800:[function(require,module,exports){
-arguments[4][530][0].apply(exports,arguments)
-},{"./getDisplayName":794,"dup":530}],801:[function(require,module,exports){
+},{"./createElement":841,"./createHelper":842,"react":840}],849:[function(require,module,exports){
+'use strict';
+
+exports.__esModule = true;
+
+var _getDisplayName = require('./getDisplayName');
+
+var _getDisplayName2 = _interopRequireDefault(_getDisplayName);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var wrapDisplayName = function wrapDisplayName(BaseComponent, hocName) {
+  return hocName + '(' + (0, _getDisplayName2.default)(BaseComponent) + ')';
+};
+
+exports.default = wrapDisplayName;
+},{"./getDisplayName":843}],850:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -91153,7 +97472,7 @@ var thunk = createThunkMiddleware();
 thunk.withExtraArgument = createThunkMiddleware;
 
 exports['default'] = thunk;
-},{}],802:[function(require,module,exports){
+},{}],851:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -91212,7 +97531,7 @@ function applyMiddleware() {
     };
   };
 }
-},{"./compose":805}],803:[function(require,module,exports){
+},{"./compose":854}],852:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -91264,7 +97583,7 @@ function bindActionCreators(actionCreators, dispatch) {
   }
   return boundActionCreators;
 }
-},{}],804:[function(require,module,exports){
+},{}],853:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -91392,7 +97711,7 @@ function combineReducers(reducers) {
     return hasChanged ? nextState : state;
   };
 }
-},{"./createStore":806,"./utils/warning":808,"lodash/isPlainObject":306}],805:[function(require,module,exports){
+},{"./createStore":855,"./utils/warning":857,"lodash/isPlainObject":305}],854:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -91433,7 +97752,7 @@ function compose() {
     if (typeof _ret === "object") return _ret.v;
   }
 }
-},{}],806:[function(require,module,exports){
+},{}],855:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -91696,7 +98015,7 @@ function createStore(reducer, initialState, enhancer) {
     replaceReducer: replaceReducer
   }, _ref2[_symbolObservable2["default"]] = observable, _ref2;
 }
-},{"lodash/isPlainObject":306,"symbol-observable":816}],807:[function(require,module,exports){
+},{"lodash/isPlainObject":305,"symbol-observable":865}],856:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -91743,7 +98062,7 @@ exports.combineReducers = _combineReducers2["default"];
 exports.bindActionCreators = _bindActionCreators2["default"];
 exports.applyMiddleware = _applyMiddleware2["default"];
 exports.compose = _compose2["default"];
-},{"./applyMiddleware":802,"./bindActionCreators":803,"./combineReducers":804,"./compose":805,"./createStore":806,"./utils/warning":808}],808:[function(require,module,exports){
+},{"./applyMiddleware":851,"./bindActionCreators":852,"./combineReducers":853,"./compose":854,"./createStore":855,"./utils/warning":857}],857:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -91769,7 +98088,7 @@ function warning(message) {
   } catch (e) {}
   /* eslint-enable no-empty */
 }
-},{}],809:[function(require,module,exports){
+},{}],858:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -91885,7 +98204,7 @@ function createStructuredSelector(selectors) {
     }, {});
   });
 }
-},{}],810:[function(require,module,exports){
+},{}],859:[function(require,module,exports){
 // Copyright 2014 Simon Lydell
 // X11 (“MIT”) Licensed. (See LICENSE.)
 
@@ -91934,7 +98253,7 @@ void (function(root, factory) {
 
 }));
 
-},{}],811:[function(require,module,exports){
+},{}],860:[function(require,module,exports){
 'use strict';
 var numberIsInteger = require('number-is-integer');
 
@@ -91958,7 +98277,7 @@ var fn = module.exports = round.bind(null, 'round');
 fn.up = round.bind(null, 'ceil');
 fn.down = round.bind(null, 'floor');
 
-},{"number-is-integer":563}],812:[function(require,module,exports){
+},{"number-is-integer":562}],861:[function(require,module,exports){
 'use strict';
 
 module.exports = ShelfPack;
@@ -92201,7 +98520,7 @@ Shelf.prototype.resize = function(w) {
     return true;
 };
 
-},{}],813:[function(require,module,exports){
+},{}],862:[function(require,module,exports){
 module.exports = function (target) {
   for (var i = 1; i < arguments.length; i++) {
     var source = arguments[i];
@@ -92214,7 +98533,7 @@ module.exports = function (target) {
   return target;
 };
 
-},{}],814:[function(require,module,exports){
+},{}],863:[function(require,module,exports){
 'use strict';
 module.exports = function (str) {
 	return encodeURIComponent(str).replace(/[!'()*]/g, function (c) {
@@ -92222,7 +98541,7 @@ module.exports = function (str) {
 	});
 };
 
-},{}],815:[function(require,module,exports){
+},{}],864:[function(require,module,exports){
 'use strict';
 
 var kdbush = require('kdbush');
@@ -92437,7 +98756,7 @@ function getY(p) {
     return p.y;
 }
 
-},{"kdbush":143}],816:[function(require,module,exports){
+},{"kdbush":146}],865:[function(require,module,exports){
 (function (global){
 /* global window */
 'use strict';
@@ -92445,7 +98764,7 @@ function getY(p) {
 module.exports = require('./ponyfill')(global || window || this);
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ponyfill":817}],817:[function(require,module,exports){
+},{"./ponyfill":866}],866:[function(require,module,exports){
 'use strict';
 
 module.exports = function symbolObservablePonyfill(root) {
@@ -92466,7 +98785,7 @@ module.exports = function symbolObservablePonyfill(root) {
 	return result;
 };
 
-},{}],818:[function(require,module,exports){
+},{}],867:[function(require,module,exports){
 var each = require('turf-meta').coordEach;
 
 /**
@@ -92536,7 +98855,7 @@ module.exports = function(layer) {
     return extent;
 };
 
-},{"turf-meta":819}],819:[function(require,module,exports){
+},{"turf-meta":868}],868:[function(require,module,exports){
 /**
  * Lazily iterate over coordinates in any GeoJSON object, similar to
  * Array.forEach.
@@ -92676,7 +98995,7 @@ function propReduce(layer, callback, memo) {
 }
 module.exports.propReduce = propReduce;
 
-},{}],820:[function(require,module,exports){
+},{}],869:[function(require,module,exports){
 /*
  * Copyright (C) 2008 Apple Inc. All Rights Reserved.
  *
@@ -92783,7 +99102,7 @@ UnitBezier.prototype.solve = function(x, epsilon) {
     return this.sampleCurveY(this.solveCurveX(x, epsilon));
 };
 
-},{}],821:[function(require,module,exports){
+},{}],870:[function(require,module,exports){
 'use strict';
 var ipRegex = require('ip-regex');
 
@@ -92807,7 +99126,7 @@ module.exports = function (opts) {
 						new RegExp(regex, 'ig');
 };
 
-},{"ip-regex":140}],822:[function(require,module,exports){
+},{"ip-regex":143}],871:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -93541,7 +99860,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":823,"punycode":571,"querystring":575}],823:[function(require,module,exports){
+},{"./util":872,"punycode":571,"querystring":575}],872:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -93559,14 +99878,14 @@ module.exports = {
   }
 };
 
-},{}],824:[function(require,module,exports){
+},{}],873:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],825:[function(require,module,exports){
+},{}],874:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -94156,12 +100475,12 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":824,"_process":570,"inherits":107}],826:[function(require,module,exports){
+},{"./support/isBuffer":873,"_process":570,"inherits":110}],875:[function(require,module,exports){
 module.exports.VectorTile = require('./lib/vectortile.js');
 module.exports.VectorTileFeature = require('./lib/vectortilefeature.js');
 module.exports.VectorTileLayer = require('./lib/vectortilelayer.js');
 
-},{"./lib/vectortile.js":827,"./lib/vectortilefeature.js":828,"./lib/vectortilelayer.js":829}],827:[function(require,module,exports){
+},{"./lib/vectortile.js":876,"./lib/vectortilefeature.js":877,"./lib/vectortilelayer.js":878}],876:[function(require,module,exports){
 'use strict';
 
 var VectorTileLayer = require('./vectortilelayer');
@@ -94180,7 +100499,7 @@ function readTile(tag, layers, pbf) {
 }
 
 
-},{"./vectortilelayer":829}],828:[function(require,module,exports){
+},{"./vectortilelayer":878}],877:[function(require,module,exports){
 'use strict';
 
 var Point = require('point-geometry');
@@ -94415,7 +100734,7 @@ function signedArea(ring) {
     return sum;
 }
 
-},{"point-geometry":569}],829:[function(require,module,exports){
+},{"point-geometry":569}],878:[function(require,module,exports){
 'use strict';
 
 var VectorTileFeature = require('./vectortilefeature.js');
@@ -94478,7 +100797,7 @@ VectorTileLayer.prototype.feature = function(i) {
     return new VectorTileFeature(this._pbf, end, this.extent, this._keys, this._values);
 };
 
-},{"./vectortilefeature.js":828}],830:[function(require,module,exports){
+},{"./vectortilefeature.js":877}],879:[function(require,module,exports){
 var Pbf = require('pbf')
 var vtpb = require('./vector-tile-pb')
 var GeoJSONWrapper = require('./lib/geojson_wrapper')
@@ -94633,7 +100952,7 @@ function wrapValue (value) {
   return result
 }
 
-},{"./lib/geojson_wrapper":831,"./vector-tile-pb":832,"pbf":568}],831:[function(require,module,exports){
+},{"./lib/geojson_wrapper":880,"./vector-tile-pb":881,"pbf":567}],880:[function(require,module,exports){
 'use strict'
 
 var Point = require('point-geometry')
@@ -94700,7 +101019,7 @@ FeatureWrapper.prototype.bbox = function () {
 
 FeatureWrapper.prototype.toGeoJSON = VectorTileFeature.prototype.toGeoJSON
 
-},{"point-geometry":569,"vector-tile":826}],832:[function(require,module,exports){
+},{"point-geometry":569,"vector-tile":875}],881:[function(require,module,exports){
 'use strict';
 
 // tile ========================================
@@ -94806,7 +101125,7 @@ function writeLayer(layer, pbf) {
     if (layer.extent !== undefined) pbf.writeVarintField(5, layer.extent);
 }
 
-},{}],833:[function(require,module,exports){
+},{}],882:[function(require,module,exports){
 /**
  * Copyright 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -94868,7 +101187,7 @@ if ("production" !== 'production') {
 
 module.exports = warning;
 
-},{}],834:[function(require,module,exports){
+},{}],883:[function(require,module,exports){
 var bundleFn = arguments[3];
 var sources = arguments[4];
 var cache = arguments[5];
@@ -94939,12 +101258,12 @@ module.exports = function (fn, options) {
     return worker;
 };
 
-},{}],835:[function(require,module,exports){
+},{}],884:[function(require,module,exports){
 module.exports.RADIUS = 6378137;
 module.exports.FLATTENING = 1/298.257223563;
 module.exports.POLAR_RADIUS = 6356752.3142;
 
-},{}],836:[function(require,module,exports){
+},{}],885:[function(require,module,exports){
 'use strict';
 
 var updateFilter = function updateFilter(filter) {
@@ -94966,7 +101285,7 @@ module.exports = {
   moveMap: moveMap
 };
 
-},{}],837:[function(require,module,exports){
+},{}],886:[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -95181,7 +101500,7 @@ DateFilter.PropTypes = {
 
 module.exports = DateFilter;
 
-},{"../../config.json":1,"../styles":871,"../util/text_helpers":875,"./show_all_button":844,"material-ui/IconButton":482,"material-ui/List":487,"material-ui/Popover":493,"material-ui/svg-icons/action/date-range":539,"material-ui/svg-icons/editor/mode-edit":542,"moment":561,"react":791,"react-date-range":585,"react-pure-render/function":598,"recompose/pure":797}],838:[function(require,module,exports){
+},{"../../config.json":1,"../styles":924,"../util/text_helpers":928,"./show_all_button":895,"material-ui/IconButton":481,"material-ui/List":486,"material-ui/Popover":492,"material-ui/svg-icons/action/date-range":538,"material-ui/svg-icons/editor/mode-edit":541,"moment":560,"react":840,"react-date-range":587,"react-pure-render/function":602,"recompose/pure":846}],887:[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -95355,10 +101674,19 @@ DiscreteFilter.defaultProps = {
 
 module.exports = DiscreteFilter;
 
-},{"../styles":871,"../util/text_helpers":875,"./only_button":843,"./show_all_button":844,"material-ui/Checkbox":473,"material-ui/List":487,"material-ui/svg-icons/action/list":540,"react":791,"react-pure-render/function":598,"recompose/pure":797}],839:[function(require,module,exports){
+},{"../styles":924,"../util/text_helpers":928,"./only_button":894,"./show_all_button":895,"material-ui/Checkbox":472,"material-ui/List":486,"material-ui/svg-icons/action/list":539,"react":840,"react-pure-render/function":602,"recompose/pure":846}],888:[function(require,module,exports){
 'use strict';
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
 var React = require('react');
+var ReactDOM = require('react-dom');
 
 var _require = require('react-redux');
 
@@ -95431,76 +101759,118 @@ var styles = {
     objectFit: 'cover'
   },
   firstColumn: {
-    maxWidth: 100,
     fontWeight: 'bold'
   }
 };
 
-var FeatureDetail = function FeatureDetail(_ref) {
-  var color = _ref.color;
-  var media = _ref.media;
-  var properties = _ref.properties;
-  var title = _ref.title;
-  var subtitle = _ref.subtitle;
-  var onCloseClick = _ref.onCloseClick;
-  return React.createElement(
-    Card,
-    {
-      style: styles.card,
-      containerStyle: styles.cardContainerStyle,
-      zDepth: 2 },
-    React.createElement(
-      CardHeader,
-      {
-        style: styles.header,
-        avatar: React.createElement(MarkerIcon, { color: color, style: styles.markerIcon }),
-        title: title,
-        subtitle: subtitle },
-      React.createElement(
-        IconButton,
-        { style: { float: 'right' }, onClick: onCloseClick },
-        React.createElement(CloseIcon, null)
-      )
-    ),
-    React.createElement(
-      'div',
-      { style: styles.scrollable },
-      React.createElement(
-        CardMedia,
-        { style: styles.media },
-        React.createElement('img', { style: styles.img, src: 'http://resizer.digital-democracy.org/500/' + media })
-      ),
-      React.createElement(
-        CardText,
-        null,
+var FeatureDetail = function (_React$Component) {
+  _inherits(FeatureDetail, _React$Component);
+
+  function FeatureDetail() {
+    _classCallCheck(this, FeatureDetail);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(FeatureDetail).apply(this, arguments));
+  }
+
+  _createClass(FeatureDetail, [{
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      this.autoFitColumn();
+    }
+  }, {
+    key: 'componentDidUpdate',
+    value: function componentDidUpdate(prevProps) {
+      if (this.props.properties !== prevProps.properties) {
+        this.autoFitColumn();
+      }
+    }
+  }, {
+    key: 'autoFitColumn',
+    value: function autoFitColumn() {
+      var width = 0;
+      for (var p in this.props.properties) {
+        width = Math.max(width, this.refs[p].getBoundingClientRect().width);
+      }
+      var column = ReactDOM.findDOMNode(this.refs.__td0);
+      column.style.width = Math.ceil(width) + 'px';
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _props = this.props;
+      var color = _props.color;
+      var media = _props.media;
+      var properties = _props.properties;
+      var title = _props.title;
+      var subtitle = _props.subtitle;
+      var onCloseClick = _props.onCloseClick;
+
+      return React.createElement(
+        Card,
+        {
+          style: styles.card,
+          containerStyle: styles.cardContainerStyle,
+          zDepth: 2 },
         React.createElement(
-          Table,
-          { selectable: false },
+          CardHeader,
+          {
+            style: styles.header,
+            avatar: React.createElement(MarkerIcon, { color: color, style: styles.markerIcon }),
+            title: title,
+            subtitle: subtitle },
           React.createElement(
-            TableBody,
-            { displayRowCheckbox: false },
-            Object.keys(properties).map(function (prop) {
-              return React.createElement(
-                TableRow,
-                { key: prop },
-                React.createElement(
-                  TableRowColumn,
-                  { style: styles.firstColumn },
-                  prop
-                ),
-                React.createElement(
-                  TableRowColumn,
-                  null,
-                  properties[prop].toString()
-                )
-              );
-            })
+            IconButton,
+            { style: { float: 'right' }, onClick: onCloseClick },
+            React.createElement(CloseIcon, null)
+          )
+        ),
+        React.createElement(
+          'div',
+          { style: styles.scrollable },
+          React.createElement(
+            CardMedia,
+            { style: styles.media },
+            React.createElement('img', { style: styles.img, src: 'http://resizer.digital-democracy.org/500/' + media })
+          ),
+          React.createElement(
+            CardText,
+            null,
+            React.createElement(
+              Table,
+              { selectable: false },
+              React.createElement(
+                TableBody,
+                { displayRowCheckbox: false },
+                Object.keys(properties).map(function (prop, i) {
+                  return React.createElement(
+                    TableRow,
+                    { key: prop },
+                    React.createElement(
+                      TableRowColumn,
+                      { ref: '__td' + i, style: styles.firstColumn },
+                      React.createElement(
+                        'span',
+                        { ref: prop },
+                        prop
+                      )
+                    ),
+                    React.createElement(
+                      TableRowColumn,
+                      null,
+                      properties[prop].toString()
+                    )
+                  );
+                })
+              )
+            )
           )
         )
-      )
-    )
-  );
-};
+      );
+    }
+  }]);
+
+  return FeatureDetail;
+}(React.Component);
 
 module.exports = connect(function (state, ownProps) {
   var features = getFlattenedFeatures(state);
@@ -95519,7 +101889,7 @@ module.exports = connect(function (state, ownProps) {
   };
 })(FeatureDetail);
 
-},{"../selectors/color_index":861,"../selectors/field_mapping":865,"../selectors/flattened_features":867,"./marker_icon":842,"lodash/find":291,"material-ui/Card":471,"material-ui/IconButton":482,"material-ui/Table":505,"material-ui/svg-icons/navigation/close":545,"react":791,"react-redux":602}],840:[function(require,module,exports){
+},{"../selectors/color_index":913,"../selectors/field_mapping":917,"../selectors/flattened_features":919,"./marker_icon":893,"lodash/find":290,"material-ui/Card":470,"material-ui/IconButton":481,"material-ui/Table":504,"material-ui/svg-icons/navigation/close":544,"react":840,"react-dom":591,"react-redux":606}],889:[function(require,module,exports){
 'use strict';
 
 var React = require('react');
@@ -95633,7 +102003,160 @@ Filter.propTypes = {
 
 module.exports = pure(Filter);
 
-},{"../constants":845,"./date_filter":837,"./discrete_filter":838,"material-ui/Divider":475,"material-ui/List":487,"material-ui/svg-icons/action/settings":541,"react":791,"recompose/pure":797}],841:[function(require,module,exports){
+},{"../constants":896,"./date_filter":886,"./discrete_filter":887,"material-ui/Divider":474,"material-ui/List":486,"material-ui/svg-icons/action/settings":540,"react":840,"recompose/pure":846}],890:[function(require,module,exports){
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var React = require('react');
+
+var style = {
+  border: '1px solid white',
+  boxSizing: 'border-box',
+  display: 'block',
+  height: '100%',
+  objectFit: 'cover',
+  width: '100%',
+  cursor: 'pointer'
+};
+
+var Image = function (_React$Component) {
+  _inherits(Image, _React$Component);
+
+  function Image() {
+    _classCallCheck(this, Image);
+
+    return _possibleConstructorReturn(this, Object.getPrototypeOf(Image).apply(this, arguments));
+  }
+
+  _createClass(Image, [{
+    key: 'render',
+    value: function render() {
+      var url = 'http://resizer.digital-democracy.org/200/' + this.props.url;
+      return React.createElement('img', { style: style, src: url, onClick: this.props.onClick });
+    }
+  }]);
+
+  return Image;
+}(React.Component);
+
+module.exports = Image;
+
+},{"react":840}],891:[function(require,module,exports){
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var React = require('react');
+var Dimensions = require('react-dimensions');
+var PropTypes = React.PropTypes;
+
+var _require = require('react-virtualized');
+
+var Grid = _require.Grid;
+
+var Image = require('./image');
+
+require('../../node_modules/react-virtualized/styles.css');
+
+var ImageGrid = function (_React$Component) {
+  _inherits(ImageGrid, _React$Component);
+
+  function ImageGrid() {
+    var _Object$getPrototypeO;
+
+    var _temp, _this, _ret;
+
+    _classCallCheck(this, ImageGrid);
+
+    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    return _ret = (_temp = (_this = _possibleConstructorReturn(this, (_Object$getPrototypeO = Object.getPrototypeOf(ImageGrid)).call.apply(_Object$getPrototypeO, [this].concat(args))), _this), _this._renderCell = function (_ref) {
+      var columnIndex = _ref.columnIndex;
+      var rowIndex = _ref.rowIndex;
+      var _this$props = _this.props;
+      var containerWidth = _this$props.containerWidth;
+      var images = _this$props.images;
+      var thumbSize = _this$props.thumbSize;
+
+      var columnsCount = Math.floor(containerWidth / thumbSize);
+      var image = images[rowIndex * columnsCount + columnIndex];
+      var url = image && image.url;
+      return React.createElement(Image, { url: url, key: url, onClick: _this.handleImageClick.bind(_this, image.featureId) });
+    }, _temp), _possibleConstructorReturn(_this, _ret);
+  }
+
+  _createClass(ImageGrid, [{
+    key: 'componentWillReceiveProps',
+    value: function componentWillReceiveProps(nextProps) {
+      if (this.props.images !== nextProps.images) {
+        this.refs.grid && this.refs.grid.recomputeGridSize();
+      }
+    }
+  }, {
+    key: 'handleImageClick',
+    value: function handleImageClick(featureId) {
+      this.props.onImageClick(featureId);
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _props = this.props;
+      var containerHeight = _props.containerHeight;
+      var containerWidth = _props.containerWidth;
+      var images = _props.images;
+      var thumbSize = _props.thumbSize;
+
+
+      var columnsCount = Math.floor(containerWidth / thumbSize);
+      var columnWidth = containerWidth / columnsCount;
+      var rowsCount = Math.ceil(images.length / columnsCount);
+      console.log(columnsCount, columnWidth, rowsCount, containerWidth);
+      return React.createElement(Grid, {
+        ref: 'grid',
+        columnCount: columnsCount,
+        columnWidth: columnWidth,
+        height: containerHeight,
+        cellRenderer: this._renderCell,
+        rowCount: rowsCount,
+        rowHeight: columnWidth,
+        width: containerWidth
+      });
+    }
+  }]);
+
+  return ImageGrid;
+}(React.Component);
+
+ImageGrid.propTypes = {
+  containerHeight: PropTypes.number.isRequired,
+  containerWidth: PropTypes.number.isRequired,
+  images: PropTypes.array.isRequired,
+  thumbSize: PropTypes.number.isRequired,
+  onImageClick: PropTypes.function
+};
+ImageGrid.defaultProps = {
+  thumbSize: 200
+};
+
+
+module.exports = Dimensions({ containerStyle: { flex: 3 } })(ImageGrid);
+
+},{"../../node_modules/react-virtualized/styles.css":694,"./image":890,"react":840,"react-dimensions":590,"react-virtualized":690}],892:[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -95971,7 +102494,7 @@ MapView.propTypes = {
 
 module.exports = MapView;
 
-},{"../../config.json":1,"../../css/popup.css":3,"../../node_modules/mapbox-gl/dist/mapbox-gl.css":353,"../../templates/popup.hbs":876,"../util/map_helpers":873,"../util/prop_types":874,"debug":13,"deep-equal":15,"mapbox-gl":367,"react":791}],842:[function(require,module,exports){
+},{"../../config.json":1,"../../css/popup.css":3,"../../node_modules/mapbox-gl/dist/mapbox-gl.css":352,"../../templates/popup.hbs":929,"../util/map_helpers":926,"../util/prop_types":927,"debug":13,"deep-equal":15,"mapbox-gl":366,"react":840}],893:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -96018,7 +102541,7 @@ var MarkerIcon = function MarkerIcon(_ref) {
 
 module.exports = MarkerIcon;
 
-},{"react":791}],843:[function(require,module,exports){
+},{"react":840}],894:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -96052,7 +102575,7 @@ var OnlyButton = function OnlyButton(props) {
 
 module.exports = OnlyButton;
 
-},{"material-ui/FlatButton":478,"react":791}],844:[function(require,module,exports){
+},{"material-ui/FlatButton":477,"react":840}],895:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -96083,7 +102606,7 @@ var ShowAllButton = function ShowAllButton(props) {
 
 module.exports = ShowAllButton;
 
-},{"material-ui/FlatButton":478,"react":791}],845:[function(require,module,exports){
+},{"material-ui/FlatButton":477,"react":840}],896:[function(require,module,exports){
 'use strict';
 
 var FIELD_TYPES = {
@@ -96111,7 +102634,7 @@ module.exports = {
   FILTER_TYPES: FILTER_TYPES
 };
 
-},{}],846:[function(require,module,exports){
+},{}],897:[function(require,module,exports){
 'use strict';
 
 var React = require('react');
@@ -96140,6 +102663,7 @@ var MuiThemeProvider = require('material-ui/styles/MuiThemeProvider').default;
 var IndexRoute = require('./index_route');
 var MapContainer = require('./map_container');
 var ReportContainer = require('./report_container');
+var ImageContainer = require('./image_container');
 var FeatureDetail = require('../components/feature_detail');
 var reducers = require('../reducers');
 var history = require('../history');
@@ -96171,7 +102695,12 @@ var App = function App() {
             { path: 'map', component: MapContainer },
             React.createElement(Route, { path: 'features/:id', component: FeatureDetail })
           ),
-          React.createElement(Route, { path: 'report', component: ReportContainer })
+          React.createElement(Route, { path: 'report', component: ReportContainer }),
+          React.createElement(
+            Route,
+            { path: 'photos', component: ImageContainer },
+            React.createElement(Route, { path: 'features/:id', component: FeatureDetail })
+          )
         )
       )
     )
@@ -96180,7 +102709,7 @@ var App = function App() {
 
 module.exports = App;
 
-},{"../../css/fonts.css":2,"../components/feature_detail":839,"../history":852,"../reducers":857,"./index_route":848,"./map_container":849,"./report_container":850,"material-ui/styles/MuiThemeProvider":531,"material-ui/styles/getMuiTheme":534,"react":791,"react-redux":602,"react-router":636,"redux":807,"redux-thunk":801}],847:[function(require,module,exports){
+},{"../../css/fonts.css":2,"../components/feature_detail":888,"../history":904,"../reducers":909,"./image_container":899,"./index_route":900,"./map_container":901,"./report_container":902,"material-ui/styles/MuiThemeProvider":530,"material-ui/styles/getMuiTheme":533,"react":840,"react-redux":606,"react-router":640,"redux":856,"redux-thunk":850}],898:[function(require,module,exports){
 'use strict';
 
 var _require = require('react-redux');
@@ -96206,7 +102735,41 @@ function mapDispatchToProps(dispatch) {
 
 module.exports = connect(getFilterProps, mapDispatchToProps)(FilterView);
 
-},{"../action_creators":836,"../components/filter":840,"../selectors/filter_props":866,"react-redux":602}],848:[function(require,module,exports){
+},{"../action_creators":885,"../components/filter":889,"../selectors/filter_props":918,"react-redux":606}],899:[function(require,module,exports){
+'use strict';
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var _require = require('react-redux');
+
+var connect = _require.connect;
+
+var history = require('../history');
+
+var ImageGrid = require('../components/image_grid');
+var getImages = require('../selectors/images');
+
+function mapStateToProps(state, ownProps) {
+  return {
+    images: getImages(state)
+  };
+}
+
+function mergeProps(stateProps, dispatchProps, ownProps) {
+  return Object.assign({}, {
+    onImageClick: function onImageClick(featureId) {
+      var location = ownProps.location;
+
+      history.push(_extends({}, location, {
+        pathname: '/photos/features/' + featureId
+      }));
+    }
+  }, stateProps, dispatchProps);
+}
+
+module.exports = connect(mapStateToProps, function () {}, mergeProps)(ImageGrid);
+
+},{"../components/image_grid":891,"../history":904,"../selectors/images":920,"react-redux":606}],900:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -96282,7 +102845,7 @@ var modalStyles = {
     height: 'calc(100% - 80px)',
     display: 'flex',
     alignItems: 'center',
-    maxWidth: 500
+    maxWidth: 640
   }
 };
 
@@ -96383,7 +102946,7 @@ module.exports = connect(function (state) {
   return bindActionCreators(actionCreators, dispatch);
 })(IndexRoute);
 
-},{"../action_creators":836,"../history":852,"../util/filter_helpers":872,"./filter_container":847,"./top_bar":851,"react":791,"react-modal":596,"react-redux":602,"redux":807}],849:[function(require,module,exports){
+},{"../action_creators":885,"../history":904,"../util/filter_helpers":925,"./filter_container":898,"./top_bar":903,"react":840,"react-modal":600,"react-redux":606,"redux":856}],901:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -96512,7 +103075,7 @@ function mapDispatchToProps(dispatch) {
 
 module.exports = connect(mapStateToProps, mapDispatchToProps)(MapContainer);
 
-},{"../action_creators":836,"../components/map_view":841,"../history":852,"../selectors/field_mapping":865,"../selectors/map_geojson":868,"../selectors/mapbox_filter":869,"deep-equal":15,"react":791,"react-redux":602,"round-to":811}],850:[function(require,module,exports){
+},{"../action_creators":885,"../components/map_view":892,"../history":904,"../selectors/field_mapping":917,"../selectors/map_geojson":921,"../selectors/mapbox_filter":922,"deep-equal":15,"react":840,"react-redux":606,"round-to":860}],902:[function(require,module,exports){
 'use strict';
 
 var React = require('react');
@@ -96523,7 +103086,7 @@ var ReportContainer = function ReportContainer() {
 
 module.exports = ReportContainer;
 
-},{"react":791}],851:[function(require,module,exports){
+},{"react":840}],903:[function(require,module,exports){
 'use strict';
 
 var React = require('react');
@@ -96574,6 +103137,7 @@ function TopBar(_ref) {
         style: styles.tabs
       },
       React.createElement(Tab, { label: 'Map', value: 'map', style: styles.tab }),
+      React.createElement(Tab, { label: 'Photos', value: 'photos', style: styles.tab }),
       React.createElement(Tab, { label: 'Report', value: 'report', style: styles.tab })
     ),
     React.createElement('div', { style: styles.right })
@@ -96582,7 +103146,7 @@ function TopBar(_ref) {
 
 module.exports = TopBar;
 
-},{"material-ui/AppBar":461,"material-ui/Tabs":510,"react":791}],852:[function(require,module,exports){
+},{"material-ui/AppBar":460,"material-ui/Tabs":509,"react":840}],904:[function(require,module,exports){
 'use strict';
 
 var _require = require('react-router');
@@ -96592,7 +103156,7 @@ var hashHistory = _require.hashHistory;
 
 module.exports = hashHistory;
 
-},{"react-router":636}],853:[function(require,module,exports){
+},{"react-router":640}],905:[function(require,module,exports){
 'use strict';
 
 var React = require('react');
@@ -96604,7 +103168,7 @@ require('react-tap-event-plugin')();
 
 ReactDOM.render(React.createElement(App, null), document.getElementById('root'));
 
-},{"./containers/app":846,"react":791,"react-dom":588,"react-tap-event-plugin":649}],854:[function(require,module,exports){
+},{"./containers/app":897,"react":840,"react-dom":591,"react-tap-event-plugin":653}],906:[function(require,module,exports){
 'use strict';
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
@@ -96639,7 +103203,7 @@ var features = function features() {
 
 module.exports = features;
 
-},{}],855:[function(require,module,exports){
+},{}],907:[function(require,module,exports){
 "use strict";
 
 var defaultFields = {
@@ -96657,7 +103221,7 @@ var fieldMapping = function fieldMapping() {
 
 module.exports = fieldMapping;
 
-},{}],856:[function(require,module,exports){
+},{}],908:[function(require,module,exports){
 'use strict';
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
@@ -96693,7 +103257,7 @@ var filters = function filters() {
 
 module.exports = filters;
 
-},{"lodash/omit":314}],857:[function(require,module,exports){
+},{"lodash/omit":313}],909:[function(require,module,exports){
 'use strict';
 
 var _require = require('redux');
@@ -96709,7 +103273,7 @@ module.exports = combineReducers({
   fieldMapping: require('./field_mapping')
 });
 
-},{"./features":854,"./field_mapping":855,"./filters":856,"./map_position":858,"./visible_filters":859,"redux":807}],858:[function(require,module,exports){
+},{"./features":906,"./field_mapping":907,"./filters":908,"./map_position":910,"./visible_filters":911,"redux":856}],910:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -96728,7 +103292,7 @@ var mapPosition = function mapPosition() {
 
 module.exports = mapPosition;
 
-},{}],859:[function(require,module,exports){
+},{}],911:[function(require,module,exports){
 "use strict";
 
 var visibleFilters = function visibleFilters() {
@@ -96740,7 +103304,7 @@ var visibleFilters = function visibleFilters() {
 
 module.exports = visibleFilters;
 
-},{}],860:[function(require,module,exports){
+},{}],912:[function(require,module,exports){
 'use strict';
 
 var _require = require('reselect');
@@ -96799,7 +103363,7 @@ var getBestFilterFields = createSelector(getFieldAnalysis, getFeatureCount, func
 
 module.exports = getBestFilterFields;
 
-},{"../constants":845,"./field_analysis":864,"reselect":809}],861:[function(require,module,exports){
+},{"../constants":896,"./field_analysis":916,"reselect":858}],913:[function(require,module,exports){
 'use strict';
 
 var _require = require('reselect');
@@ -96825,7 +103389,7 @@ var getColorIndex = createSelector(getColoredField, getFieldAnalysis, function (
 
 module.exports = getColorIndex;
 
-},{"../../config.json":1,"./colored_field":862,"./field_analysis":864,"reselect":809}],862:[function(require,module,exports){
+},{"../../config.json":1,"./colored_field":914,"./field_analysis":916,"reselect":858}],914:[function(require,module,exports){
 'use strict';
 
 var getBestFilterFields = require('./best_fields');
@@ -96845,7 +103409,7 @@ var getColoredFieldName = function getColoredFieldName(state) {
 
 module.exports = getColoredFieldName;
 
-},{"./best_fields":860}],863:[function(require,module,exports){
+},{"./best_fields":912}],915:[function(require,module,exports){
 'use strict';
 
 var _require = require('reselect');
@@ -96877,7 +103441,7 @@ var getDateFieldName = createSelector(getFieldAnalysis, function (fieldAnalysis)
 
 module.exports = getDateFieldName;
 
-},{"../constants":845,"./field_analysis":864,"reselect":809}],864:[function(require,module,exports){
+},{"../constants":896,"./field_analysis":916,"reselect":858}],916:[function(require,module,exports){
 'use strict';
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
@@ -97074,7 +103638,7 @@ var getFieldAnalysis = createSelector(getFlattenedFeatures, function analyzeFiel
 
 module.exports = getFieldAnalysis;
 
-},{"../constants":845,"./flattened_features":867,"path":566,"reselect":809,"url":822,"url-regex":821}],865:[function(require,module,exports){
+},{"../constants":896,"./flattened_features":919,"path":565,"reselect":858,"url":871,"url-regex":870}],917:[function(require,module,exports){
 'use strict';
 
 var _require = require('reselect');
@@ -97147,7 +103711,7 @@ var getFieldMapping = createSelector(function (state) {
 
 module.exports = getFieldMapping;
 
-},{"../constants":845,"./best_fields":860,"./colored_field":862,"./date_field":863,"./field_analysis":864,"reselect":809}],866:[function(require,module,exports){
+},{"../constants":896,"./best_fields":912,"./colored_field":914,"./date_field":915,"./field_analysis":916,"reselect":858}],918:[function(require,module,exports){
 'use strict';
 
 var union = require('lodash/union');
@@ -97185,7 +103749,7 @@ var getFilterProps = createSelector(getFilters, getFieldAnalysis, getMergedFilte
 
 module.exports = getFilterProps;
 
-},{"./field_analysis":864,"./visible_filters":870,"lodash/pick":315,"lodash/union":323,"reselect":809}],867:[function(require,module,exports){
+},{"./field_analysis":916,"./visible_filters":923,"lodash/pick":314,"lodash/union":322,"reselect":858}],919:[function(require,module,exports){
 'use strict';
 
 var flat = require('flat');
@@ -97207,7 +103771,48 @@ var getFlattenedFeatures = createSelector(function (state) {
 
 module.exports = getFlattenedFeatures;
 
-},{"flat":48,"reselect":809}],868:[function(require,module,exports){
+},{"flat":51,"reselect":858}],920:[function(require,module,exports){
+'use strict';
+
+var _require = require('reselect');
+
+var createSelector = _require.createSelector;
+
+
+var getFieldAnalysis = require('./field_analysis');
+var getFlattenedFeatures = require('./flattened_features');
+
+var _require2 = require('../constants');
+
+var FIELD_TYPES = _require2.FIELD_TYPES;
+
+
+var getImageFieldNames = createSelector(getFieldAnalysis, function (fieldAnalysis) {
+  return Object.keys(fieldAnalysis).filter(function (fieldname) {
+    return fieldAnalysis[fieldname].type === FIELD_TYPES.IMAGE;
+  });
+});
+
+/**
+ * Pick the date field that appears in most records
+ */
+var getImages = createSelector(getFlattenedFeatures, getImageFieldNames, function (features, imageFieldNames) {
+  return features.reduce(function (p, feature) {
+    imageFieldNames.forEach(function (f) {
+      if (feature.properties[f]) {
+        p.push({
+          url: feature.properties[f],
+          featureId: feature.id
+        });
+      }
+    });
+    return p;
+  }, []);
+});
+
+module.exports = getImages;
+
+},{"../constants":896,"./field_analysis":916,"./flattened_features":919,"reselect":858}],921:[function(require,module,exports){
 'use strict';
 
 var _require = require('reselect');
@@ -97245,7 +103850,7 @@ var getMapGeoJSON = createSelector([getFlattenedFeatures, getColoredField, getCo
 
 module.exports = getMapGeoJSON;
 
-},{"./color_index":861,"./colored_field":862,"./flattened_features":867,"reselect":809}],869:[function(require,module,exports){
+},{"./color_index":913,"./colored_field":914,"./flattened_features":919,"reselect":858}],922:[function(require,module,exports){
 'use strict';
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
@@ -97285,7 +103890,7 @@ var getMapboxFilter = createSelector(function (state) {
 
 module.exports = getMapboxFilter;
 
-},{"reselect":809}],870:[function(require,module,exports){
+},{"reselect":858}],923:[function(require,module,exports){
 'use strict';
 
 var _require = require('reselect');
@@ -97322,7 +103927,7 @@ var getVisibleFilters = createSelector(function (state) {
 
 module.exports = getVisibleFilters;
 
-},{"./best_fields":860,"./date_field":863,"./field_analysis":864,"lodash/intersection":296,"reselect":809}],871:[function(require,module,exports){
+},{"./best_fields":912,"./date_field":915,"./field_analysis":916,"lodash/intersection":296,"reselect":858}],924:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -97339,7 +103944,7 @@ module.exports = {
   }
 };
 
-},{}],872:[function(require,module,exports){
+},{}],925:[function(require,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -97384,7 +103989,7 @@ module.exports = {
 };
 
 }).call(this,require("buffer").Buffer)
-},{"base64-url":5,"buffer":8}],873:[function(require,module,exports){
+},{"base64-url":5,"buffer":8}],926:[function(require,module,exports){
 'use strict';
 
 var extent = require('turf-extent');
@@ -97434,7 +104039,7 @@ module.exports = {
   getBoundsOrWorld: getBoundsOrWorld
 };
 
-},{"turf-extent":818}],874:[function(require,module,exports){
+},{"turf-extent":867}],927:[function(require,module,exports){
 'use strict';
 
 var _require = require('react');
@@ -97495,7 +104100,7 @@ module.exports = {
   filters: filters
 };
 
-},{"react":791}],875:[function(require,module,exports){
+},{"react":840}],928:[function(require,module,exports){
 'use strict';
 
 function sentenceCase() {
@@ -97526,7 +104131,7 @@ module.exports = {
   t: t
 };
 
-},{}],876:[function(require,module,exports){
+},{}],929:[function(require,module,exports){
 // hbsfy compiled Handlebars template
 var HandlebarsCompiler = require('hbsfy/runtime');
 module.exports = HandlebarsCompiler.template({"1":function(container,depth0,helpers,partials,data) {
@@ -97550,4 +104155,4 @@ module.exports = HandlebarsCompiler.template({"1":function(container,depth0,help
     + "</h2>\n</div>\n";
 },"useData":true});
 
-},{"hbsfy/runtime":88}]},{},[853]);
+},{"hbsfy/runtime":91}]},{},[905]);
